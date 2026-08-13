@@ -193,7 +193,7 @@
             els[i].textContent=SYMS[Math.floor(Math.random()*SYMS.length)];
           }
           if(ticks>18){
-            clearInterval(t);
+            clearInterval(t);spinning=false;
             for(var i=0;i<3;i++){
               res[i]=Math.floor(Math.random()*SYMS.length);
               els[i].textContent=SYMS[res[i]];
