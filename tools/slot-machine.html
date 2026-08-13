@@ -32,7 +32,15 @@
     .sm-reel{width:80px;height:90px;font-size:54px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:2px solid var(--border);border-radius:12px;}
     .sm-reel.spin{animation:smshake .12s linear infinite;}
     @keyframes smshake{0%{transform:translateY(-8px);}50%{transform:translateY(8px);}100%{transform:translateY(-8px);}}
-    .sm-msg{text-align:center;font-size:18px;font-weight:700;margin:10px 0;color:var(--primary);}
+    .sm-msg{text-align:center;font-size:18px;font-weight:700;margin:10px 0;color:var(--primary);min-height:27px;}
+    .sm-dash{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .sm-dash-cell{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;}
+    .sm-dash-cell.wide{grid-column:1 / -1;}
+    .sm-dash-cell .lbl{font-size:12px;color:var(--text-3);font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+    .sm-dash-cell .val{font-size:26px;font-weight:800;color:var(--primary);line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums;}
+    .sm-dash-cell .val.danger{color:#e74c3c;}
+    .sm-dash-cell .val.up{color:#2ecc71;}
+    @media(max-width:480px){.sm-dash{grid-template-columns:1fr 1fr;}}
   </style>
 </head>
 <body>
@@ -69,8 +77,22 @@
     <p class="tool-sub">三转轮老虎机，押注旋转，三连或两连可赢积分。</p>
 
     <div class="panel">
+      <div class="sm-dash">
+        <div class="sm-dash-cell wide">
+          <div class="lbl">当前积分</div>
+          <div class="val" id="smCredit">100</div>
+        </div>
+        <div class="sm-dash-cell">
+          <div class="lbl">历史最高</div>
+          <div class="val" id="smBest">100</div>
+        </div>
+        <div class="sm-dash-cell">
+          <div class="lbl">累计赢得</div>
+          <div class="val up" id="smWon">0</div>
+        </div>
+      </div>
       <div class="sm-reels" id="smReels"></div>
-      <div class="sm-msg" id="smMsg">积分：<b id="smCredit">100</b></div>
+      <div class="sm-msg" id="smMsg">点击旋转开始游戏</div>
       <div class="row" style="justify-content:center;">
         <button class="btn primary" id="smSpin">🎰 旋转（-10）</button>
         <button class="btn" id="smReset">重置积分</button>
@@ -118,31 +140,88 @@
   <script>
     (function () {
       var SYMS=['🍒','🍋','🍉','⭐','7️⃣','💎'];
-      var credit=100,spinning=false;
-      var reels=document.getElementById('smReels'),msg=document.getElementById('smMsg'),creditEl=document.getElementById('smCredit');
-      function render(arr){reels.innerHTML='';for(var i=0;i<3;i++){var d=document.createElement('div');d.className='sm-reel';d.textContent=arr?arr[i]:SYMS[Math.floor(Math.random()*SYMS.length)];reels.appendChild(d);}}
+      var STORE_KEY='xhc_slot_best';
+      var best=parseInt(localStorage.getItem(STORE_KEY)||'100',10);
+      if(!isFinite(best)||best<100)best=100;
+      var credit=100,totalWon=0,totalSpins=0,spinning=false;
+      var reels=document.getElementById('smReels'),
+          msg=document.getElementById('smMsg'),
+          creditEl=document.getElementById('smCredit'),
+          bestEl=document.getElementById('smBest'),
+          wonEl=document.getElementById('smWon'),
+          spinBtn=document.getElementById('smSpin'),
+          resetBtn=document.getElementById('smReset');
+
+      function fmt(n){return n.toString();}
+      function refreshCredit(){
+        creditEl.textContent=fmt(credit);
+        creditEl.classList.toggle('danger',credit<10);
+        spinBtn.disabled=spinning||credit<10;
+      }
+      function refreshBest(){
+        if(credit>best){best=credit;localStorage.setItem(STORE_KEY,String(best));}
+        bestEl.textContent=fmt(Math.max(best,credit));
+      }
+      function refreshWon(){wonEl.textContent=fmt(totalWon);}
+
+      refreshCredit();refreshBest();refreshWon();
+
+      function render(arr){
+        reels.innerHTML='';
+        for(var i=0;i<3;i++){
+          var d=document.createElement('div');
+          d.className='sm-reel';
+          d.textContent=arr?arr[i]:SYMS[Math.floor(Math.random()*SYMS.length)];
+          reels.appendChild(d);
+        }
+      }
       render();
-      document.getElementById('smSpin').onclick=function(){
+
+      spinBtn.onclick=function(){
         if(spinning||credit<10)return;
-        credit-=10;creditEl.textContent=credit;spinning=true;
+        credit-=10;totalSpins++;
+        refreshCredit();refreshBest();
+        msg.textContent='旋转中…';
+        spinning=true;
         var els=reels.children;
         for(var i=0;i<3;i++)els[i].classList.add('spin');
         var ticks=0,res=[0,0,0];
         var t=setInterval(function(){
           ticks++;
-          for(var i=0;i<3;i++){if(ticks>8+i*5)continue;els[i].textContent=SYMS[Math.floor(Math.random()*SYMS.length)];}
+          for(var i=0;i<3;i++){
+            if(ticks>8+i*5)continue;
+            els[i].textContent=SYMS[Math.floor(Math.random()*SYMS.length)];
+          }
           if(ticks>18){
-            clearInterval(t);spinning=false;
-            for(var i=0;i<3;i++){res[i]=Math.floor(Math.random()*SYMS.length);els[i].textContent=SYMS[res[i]];els[i].classList.remove('spin');}
-            if(res[0]===res[1]&&res[1]===res[2]){var win=res[0]===4||res[0]===5?100:50;credit+=win;msg.textContent='🎉 三连！+'+win+' 积分';}
-            else if(res[0]===res[1]||res[1]===res[2]||res[0]===res[2]){credit+=20;msg.textContent='两连！+20 积分';}
-            else msg.textContent='没中，再试一次';
-            creditEl.textContent=credit;
-            if(credit<10)msg.textContent+='（积分不足，点重置）';
+            clearInterval(t);
+            for(var i=0;i<3;i++){
+              res[i]=Math.floor(Math.random()*SYMS.length);
+              els[i].textContent=SYMS[res[i]];
+              els[i].classList.remove('spin');
+            }
+            var win=0;
+            if(res[0]===res[1]&&res[1]===res[2]){
+              win=res[0]===4?200:res[0]===5?300:60;
+              msg.textContent='🎉 三连！+'+win+' 积分';
+            }else if(res[0]===res[1]||res[1]===res[2]||res[0]===res[2]){
+              win=20;
+              msg.textContent='✨ 两连！+20 积分';
+            }else{
+              msg.textContent='没中，再试一次';
+            }
+            if(win>0){credit+=win;totalWon+=win;refreshWon();}
+            refreshCredit();refreshBest();
           }
         },70);
       };
-      document.getElementById('smReset').onclick=function(){credit=100;creditEl.textContent=credit;msg.textContent='积分已重置';render();};
+
+      resetBtn.onclick=function(){
+        if(spinning)return;
+        credit=100;totalWon=0;totalSpins=0;
+        refreshCredit();refreshWon();refreshBest();
+        msg.textContent='积分已重置';
+        render();
+      };
     })();
   </script>
 </body>
