@@ -1,7 +1,11 @@
 # XHC 博客
+# 站长温馨提示：
+本站由SanhanaYuzu制作并发布，严禁任何形式盗用我的作品，被我发现没有好下场。
 
-个人博客系统，设计套用 XHC 主站风格（蓝 `#0d6efd` / 圆角卡片），功能参考 CSDN 博客。
-**纯静态站点**，无需后端服务器即可运行；要启用「真实账号 / 发帖 / 评论 / 头像」，接一个免费的 [Supabase](https://supabase.com) 后端即可（前端仍是静态，可部署到 GitHub Pages）。
+## ------------分割线--------------分割线---------------
+
+个人博客站点，设计套用 XHC 主站风格（蓝 `#0d6efd` / 圆角卡片）。
+**纯静态站点**，无需后端服务器即可运行（仅供模拟）；真要启用「真实账号 / 发帖 / 评论 / 头像」的话，得接一个免费的 [Supabase](https://supabase.com) 后端即可（前端仍是静态，可部署到 GitHub Pages）。
 
 ## 功能
 
@@ -77,13 +81,14 @@ python3 -m http.server 8080
    git push -u origin main
    ```
 3. 仓库 **Settings → Pages → Build and deployment → Source 选 "Deploy from a branch"**，分支选 `main` / 根目录 `/`。
-4. 几分钟生效后访问 `https://<你的用户名>.github.io/xhc-blog/`。
-
-如果在子路径（如 `/xhc-blog/`）下访问，文章内的相对链接（`article.html?id=`、`assets/...`）都能正常工作。
+4. 几分钟生效后访问 `https://<你的用户名>.github.io/xhc-blog/
 
 ## 注意事项
 
 - **演示模式**账号密码存浏览器、明文，**不要用于真实多用户场景**。
 - **注销账号**：演示模式可直接删除；真实模式因 Supabase 安全限制，普通用户无法直接删自己账号，需在 Supabase 后台 **Auth → Users** 手动删除（或后续接 Admin API）。
 - 头像存储桶 `avatars` 已设为公开读、登录用户可写；若上传失败，检查 Storage 策略是否随 `schema.sql` 一起执行。
-- 主站底部 `mobiri.se` 链接是给服务商的广告位，本博客未包含。
+
+## 联系我
+QQ：3958588526
+Email：feedback@hotpe.org
