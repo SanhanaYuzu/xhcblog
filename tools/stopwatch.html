@@ -3,104 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>秒表 - XHC 博客</title>
+  <title>秒表计时器 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
-    .tool-page{max-width:740px;margin:0 auto;padding:22px 16px 60px;}
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
     .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
     .back-link:hover{color:var(--primary);}
     .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
     .tool-head .ico{font-size:30px;line-height:1;}
     .tool-head h1{font-size:23px;margin:0;}
     .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
-    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;margin-bottom:18px;}
-    .panel h2{font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
-    .panel h2 .bar{width:4px;height:15px;background:var(--primary);border-radius:3px;display:inline-block;}
-
-    /* 圆形进度 + 时间 */
-    .sw-wrap{display:flex;justify-content:center;margin-bottom:22px;}
-    .sw-clock{position:relative;width:280px;height:280px;}
-    .sw-clock svg{width:100%;height:100%;transform:rotate(-90deg);}
-    .ring-bg{fill:none;stroke:var(--border);stroke-width:9;}
-    .ring-ms{fill:none;stroke:var(--primary-soft);stroke-width:9;stroke-linecap:round;}
-    .ring-sec{fill:none;stroke:var(--primary);stroke-width:9;stroke-linecap:round;}
-    .sw-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-    .sw-main{
-      font-size:44px;font-weight:800;line-height:1;color:var(--text);letter-spacing:1px;
-      font-variant-numeric:tabular-nums;font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
-    }
-    .sw-ms{
-      font-size:24px;font-weight:700;color:var(--primary);margin-top:6px;
-      font-variant-numeric:tabular-nums;font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
-    }
-    .sw-state{font-size:12.5px;color:var(--text-3);margin-top:9px;font-weight:600;height:16px;}
-
-    .ctrl{display:flex;gap:11px;justify-content:center;flex-wrap:wrap;}
-    .btn{
-      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:11px;
-      padding:12px 26px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;
-    }
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .panel{box-shadow:none;}
+    .btn{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:10px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
     .btn:hover{border-color:var(--primary);color:var(--primary);}
-    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;min-width:120px;}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
     .btn.primary:hover{background:var(--primary-dark);color:#fff;}
-    .btn:disabled{opacity:.45;cursor:not-allowed;}
-    .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
-    .btn.small{padding:8px 15px;font-size:13.5px;font-weight:600;}
-
-    /* 计次 */
-    .lap-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
-    .lap-head h2{margin:0;}
-    .lap-tbl{width:100%;border-collapse:collapse;font-size:14px;}
-    .lap-tbl th{
-      text-align:left;font-size:12px;color:var(--text-3);font-weight:600;
-      padding:8px 10px;border-bottom:1px solid var(--border);
-    }
-    .lap-tbl th:nth-child(2),.lap-tbl th:nth-child(3){text-align:right;}
-    .lap-tbl td{
-      padding:10px;border-bottom:1px solid var(--border-2);
-      font-variant-numeric:tabular-nums;font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
-    }
-    .lap-tbl td:first-child{font-family:inherit;color:var(--text-2);width:70px;}
-    .lap-tbl td:nth-child(2),.lap-tbl td:nth-child(3){text-align:right;}
-    .lap-tbl td:nth-child(2){font-weight:700;color:var(--text);}
-    .lap-tbl td:nth-child(3){color:var(--text-3);}
-    .lap-tbl tr.best td:nth-child(2){color:var(--green);}
-    .lap-tbl tr.worst td:nth-child(2){color:#e5484d;}
-    .lap-tag{font-size:10.5px;padding:1px 6px;border-radius:5px;margin-left:6px;font-family:inherit;font-weight:600;}
-    .lap-tag.b{background:rgba(33,186,114,.14);color:var(--green);}
-    .lap-tag.w{background:rgba(229,72,77,.12);color:#e5484d;}
-    .lap-empty{text-align:center;color:var(--text-3);font-size:13.5px;padding:26px 0;}
-    .lap-wrap{max-height:320px;overflow:auto;}
-
-    .tip-toast{
-      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
-      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
-      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
-    }
-    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-    @media(max-width:560px){
-      .panel{padding:18px 14px;}
-      .sw-clock{width:230px;height:230px;}
-      .sw-main{font-size:34px;}
-      .sw-ms{font-size:19px;}
-      .btn{padding:11px 20px;font-size:14px;}
-      .lap-tbl td:first-child{width:52px;}
-    }
+    .btn:disabled{opacity:.5;cursor:not-allowed;}
+    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
+    .row label{font-size:14px;font-weight:600;color:var(--text-2);min-width:64px;}
+    input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+    textarea{width:100%;resize:vertical;box-sizing:border-box;}
+    .res{margin-top:14px;font-size:15px;color:var(--text);}
+    .res b{color:var(--primary);font-size:20px;font-weight:800;}
+    canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
+    .sw-display{font-size:52px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--primary);margin:10px 0;}
+    .sw-laps{list-style:none;padding:0;margin:14px 0 0;max-height:200px;overflow-y:auto;}
+    .sw-laps li{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
   </style>
 </head>
 <body>
 
-  <!-- 页面跳转加载动画 -->
   <div class="page-loader" id="pageLoader">
     <div class="loader-content">
-      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
       <div class="loader-bar"><div class="loader-bar-inner"></div></div>
     </div>
   </div>
 
-  <!-- 顶栏 -->
   <header class="header">
     <div class="container">
       <a class="brand" href="../index.html">
@@ -121,69 +62,34 @@
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
       <span class="ico">⏱️</span>
-      <h1>秒表</h1>
+      <h1>秒表计时器</h1>
     </div>
-    <p class="tool-sub">毫秒级精确计时，外圈进度随秒数流动。支持计次记录，自动标出最快与最慢单圈。空格键可快速开始 / 暂停。</p>
+    <p class="tool-sub">支持开始/暂停/计圈/重置的秒表，精确到百分之一秒。</p>
 
     <div class="panel">
-      <div class="sw-wrap">
-        <div class="sw-clock">
-          <svg viewBox="0 0 280 280">
-            <circle class="ring-bg" cx="140" cy="140" r="128"></circle>
-            <circle class="ring-ms" id="ringMs" cx="140" cy="140" r="112"></circle>
-            <circle class="ring-sec" id="ringSec" cx="140" cy="140" r="128"></circle>
-          </svg>
-          <div class="sw-inner">
-            <div class="sw-main" id="swMain">00:00:00</div>
-            <div class="sw-ms" id="swMs">.000</div>
-            <div class="sw-state" id="swState">按「开始」启动计时</div>
-          </div>
-        </div>
+      <div class="sw-display" id="swDisp">00:00.00</div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="swToggle">开始</button>
+        <button class="btn" id="swLap">计圈</button>
+        <button class="btn" id="swReset">重置</button>
       </div>
-
-      <div class="ctrl">
-        <button class="btn primary" id="startBtn">▶ 开始</button>
-        <button class="btn" id="lapBtn" disabled>🚩 计次</button>
-        <button class="btn" id="resetBtn" disabled>↺ 重置</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="lap-head">
-        <h2><span class="bar"></span> 计次记录 <span style="font-weight:500;color:var(--text-3);font-size:13px;" id="lapCount"></span></h2>
-        <div>
-          <button class="btn small" id="copyLapBtn">📋 复制记录</button>
-          <button class="btn small" id="clearLapBtn">🗑️ 清空</button>
-        </div>
-      </div>
-      <div class="lap-wrap">
-        <table class="lap-tbl" id="lapTbl" style="display:none;">
-          <thead>
-            <tr><th>次数</th><th>单圈用时</th><th>累计时间</th></tr>
-          </thead>
-          <tbody id="lapBody"></tbody>
-        </table>
-      </div>
-      <div class="lap-empty" id="lapEmpty">暂无计次记录，计时过程中点击「计次」即可记录</div>
+      <ol class="sw-laps" id="swLaps"></ol>
     </div>
   </main>
 
-  <!-- 页脚 -->
   <footer class="footer">
     <div class="container">
-      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
-      本站由 XHC 制作
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
     </div>
   </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
 
-  <div class="tip-toast" id="tipToast"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/data.js"></script>
   <script src="../assets/js/app.js"></script>
 
-  <!-- 子目录站内链接修正 -->
   <script>
     (function () {
       function fix(h) {
@@ -208,224 +114,16 @@
     })();
   </script>
 
-  <!-- 工具逻辑 -->
   <script>
     (function () {
-      var R_SEC = 128, R_MS = 112;
-      var C_SEC = 2 * Math.PI * R_SEC;
-      var C_MS = 2 * Math.PI * R_MS;
-
-      var swMain = document.getElementById("swMain");
-      var swMs = document.getElementById("swMs");
-      var swState = document.getElementById("swState");
-      var ringSec = document.getElementById("ringSec");
-      var ringMs = document.getElementById("ringMs");
-      var startBtn = document.getElementById("startBtn");
-      var lapBtn = document.getElementById("lapBtn");
-      var resetBtn = document.getElementById("resetBtn");
-      var lapTbl = document.getElementById("lapTbl");
-      var lapBody = document.getElementById("lapBody");
-      var lapEmpty = document.getElementById("lapEmpty");
-      var lapCount = document.getElementById("lapCount");
-      var toastEl = document.getElementById("tipToast");
-
-      var running = false;
-      var elapsed = 0;      // 已累计毫秒
-      var startAt = 0;      // 本段开始时间戳
-      var raf = null;
-      var laps = [];        // {total, diff}
-
-      ringSec.style.strokeDasharray = C_SEC;
-      ringSec.style.strokeDashoffset = C_SEC;
-      ringMs.style.strokeDasharray = C_MS;
-      ringMs.style.strokeDashoffset = C_MS;
-
-      function toast(msg) {
-        toastEl.textContent = msg;
-        toastEl.classList.add("show");
-        clearTimeout(toastEl._t);
-        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1700);
-      }
-      function pad(n, w) {
-        var s = String(Math.floor(n));
-        while (s.length < (w || 2)) s = "0" + s;
-        return s;
-      }
-      function fmtFull(ms) {
-        var t = Math.max(0, Math.floor(ms));
-        var h = Math.floor(t / 3600000);
-        var m = Math.floor((t % 3600000) / 60000);
-        var s = Math.floor((t % 60000) / 1000);
-        var msec = t % 1000;
-        return pad(h) + ":" + pad(m) + ":" + pad(s) + "." + pad(msec, 3);
-      }
-
-      function now() { return elapsed + (running ? (performance.now() - startAt) : 0); }
-
-      function draw() {
-        var t = now();
-        var h = Math.floor(t / 3600000);
-        var m = Math.floor((t % 3600000) / 60000);
-        var s = Math.floor((t % 60000) / 1000);
-        var msec = Math.floor(t % 1000);
-
-        swMain.textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
-        swMs.textContent = "." + pad(msec, 3);
-
-        // 外圈：一分钟一圈；内圈：一秒一圈
-        var pSec = (t % 60000) / 60000;
-        var pMs = (t % 1000) / 1000;
-        ringSec.style.strokeDashoffset = C_SEC * (1 - pSec);
-        ringMs.style.strokeDashoffset = C_MS * (1 - pMs);
-
-        if (running) raf = requestAnimationFrame(draw);
-      }
-
-      function start() {
-        if (running) return;
-        running = true;
-        startAt = performance.now();
-        cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(draw);
-        startBtn.textContent = "⏸ 暂停";
-        lapBtn.disabled = false;
-        resetBtn.disabled = false;
-        swState.textContent = "计时中…";
-      }
-
-      function pause() {
-        if (!running) return;
-        elapsed += performance.now() - startAt;
-        running = false;
-        cancelAnimationFrame(raf);
-        draw();
-        startBtn.textContent = "▶ 继续";
-        swState.textContent = "已暂停 · " + fmtFull(elapsed);
-      }
-
-      function reset() {
-        running = false;
-        cancelAnimationFrame(raf);
-        elapsed = 0;
-        laps = [];
-        draw();
-        startBtn.textContent = "▶ 开始";
-        lapBtn.disabled = true;
-        resetBtn.disabled = true;
-        swState.textContent = "按「开始」启动计时";
-        renderLaps();
-        toast("已重置");
-      }
-
-      function addLap() {
-        var t = now();
-        if (t <= 0) { toast("计时尚未开始"); return; }
-        var prev = laps.length ? laps[laps.length - 1].total : 0;
-        laps.push({ total: t, diff: t - prev });
-        renderLaps();
-      }
-
-      function renderLaps() {
-        lapBody.innerHTML = "";
-        lapCount.textContent = laps.length ? "共 " + laps.length + " 次" : "";
-        if (!laps.length) {
-          lapTbl.style.display = "none";
-          lapEmpty.style.display = "block";
-          return;
-        }
-        lapTbl.style.display = "table";
-        lapEmpty.style.display = "none";
-
-        var best = -1, worst = -1;
-        if (laps.length > 1) {
-          var minV = Infinity, maxV = -Infinity;
-          laps.forEach(function (l, i) {
-            if (l.diff < minV) { minV = l.diff; best = i; }
-            if (l.diff > maxV) { maxV = l.diff; worst = i; }
-          });
-        }
-
-        for (var i = laps.length - 1; i >= 0; i--) {
-          var l = laps[i];
-          var tr = document.createElement("tr");
-          if (i === best) tr.className = "best";
-          else if (i === worst) tr.className = "worst";
-
-          var td1 = document.createElement("td");
-          td1.textContent = "第 " + (i + 1) + " 次";
-
-          var td2 = document.createElement("td");
-          td2.textContent = fmtFull(l.diff);
-          if (i === best) {
-            var tb = document.createElement("span");
-            tb.className = "lap-tag b";
-            tb.textContent = "最快";
-            td2.appendChild(tb);
-          } else if (i === worst) {
-            var tw = document.createElement("span");
-            tw.className = "lap-tag w";
-            tw.textContent = "最慢";
-            td2.appendChild(tw);
-          }
-
-          var td3 = document.createElement("td");
-          td3.textContent = fmtFull(l.total);
-
-          tr.appendChild(td1);
-          tr.appendChild(td2);
-          tr.appendChild(td3);
-          lapBody.appendChild(tr);
-        }
-      }
-
-      function copyText(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
-        return new Promise(function (resolve, reject) {
-          try {
-            var ta = document.createElement("textarea");
-            ta.value = text;
-            ta.style.position = "fixed";
-            ta.style.opacity = "0";
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            resolve();
-          } catch (e) { reject(e); }
-        });
-      }
-
-      startBtn.addEventListener("click", function () { running ? pause() : start(); });
-      lapBtn.addEventListener("click", addLap);
-      resetBtn.addEventListener("click", reset);
-
-      document.getElementById("clearLapBtn").addEventListener("click", function () {
-        if (!laps.length) { toast("暂无计次记录"); return; }
-        laps = [];
-        renderLaps();
-        toast("计次记录已清空");
-      });
-      document.getElementById("copyLapBtn").addEventListener("click", function () {
-        if (!laps.length) { toast("暂无计次记录"); return; }
-        var txt = laps.map(function (l, i) {
-          return "第 " + (i + 1) + " 次\t单圈 " + fmtFull(l.diff) + "\t累计 " + fmtFull(l.total);
-        }).join("\n");
-        copyText(txt).then(function () { toast("已复制 " + laps.length + " 条计次记录"); })
-          .catch(function () { toast("复制失败，请手动选中复制"); });
-      });
-
-      document.addEventListener("keydown", function (e) {
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-        if (e.code === "Space") { e.preventDefault(); running ? pause() : start(); }
-        else if (e.key === "l" || e.key === "L") { if (!lapBtn.disabled) addLap(); }
-        else if (e.key === "r" || e.key === "R") { if (!resetBtn.disabled) reset(); }
-      });
-
-      draw();
+      var t0=0,elapsed=0,running=false,timer=null,laps=[];
+      var disp=document.getElementById('swDisp'),toggle=document.getElementById('swToggle'),lapBtn=document.getElementById('swLap'),resetBtn=document.getElementById('swReset'),lapsEl=document.getElementById('swLaps');
+      function fmt(ms){var cs=Math.floor(ms/10)%100,sec=Math.floor(ms/1000)%60,min=Math.floor(ms/60000);return (min<10?'0':'')+min+':'+(sec<10?'0':'')+sec+'.'+(cs<10?'0':'')+cs;}
+      function tick(){disp.textContent=fmt(elapsed+(running?Date.now()-t0:0));}
+      toggle.onclick=function(){if(running){elapsed+=Date.now()-t0;running=false;toggle.textContent='继续';clearInterval(timer);}else{t0=Date.now();running=true;toggle.textContent='暂停';timer=setInterval(tick,31);}};
+      lapBtn.onclick=function(){if(!running)return;var cur=elapsed+(Date.now()-t0);laps.push(cur);var li=document.createElement('li');li.innerHTML='<span>圈 '+laps.length+'</span><span>'+fmt(cur)+'</span>';lapsEl.insertBefore(li,lapsEl.firstChild);};
+      resetBtn.onclick=function(){running=false;clearInterval(timer);elapsed=0;t0=0;laps=[];lapsEl.innerHTML='';disp.textContent='00:00.00';toggle.textContent='开始';};
     })();
   </script>
-
-  <!-- 左下角水印 -->
-  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
 </body>
 </html>

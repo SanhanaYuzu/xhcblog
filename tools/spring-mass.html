@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>弹簧振子 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,8 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .sm-sliders{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+    .sm-sliders label{font-size:13px;color:var(--text-2);}
   </style>
 </head>
 <body>
@@ -61,14 +60,17 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">🔧</span>
+      <h1>弹簧振子</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">观察质量块在弹簧作用下的简谐振动与位移曲线。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="sm-sliders">
+        <label>劲度 k <input type="range" id="spK" min="2" max="40" value="14"></label>
+        <label>质量 m <input type="range" id="spM" min="1" max="20" value="6"></label>
+      </div>
+      <canvas id="spCv" width="560" height="360"></canvas>
     </div>
   </main>
 
@@ -111,23 +113,26 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
+      var cv=document.getElementById('spCv'),ctx=cv.getContext('2d');
+      var W=cv.width,H=cv.height,cx=W/2;
+      var kS=document.getElementById('spK'),mS=document.getElementById('spM');
+      var t=0,trace=[],maxTrace=W;
       function loop(){
+        var k=+kS.value,m=+mS.value;
+        var w=Math.sqrt(k/m);
+        var A=90;
+        var y=A*Math.cos(w*t)*Math.exp(-0.05*t);
+        trace.push(y);
+        if(trace.length>maxTrace)trace.shift();
         ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
+        ctx.strokeStyle='rgba(120,120,120,.4)';ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+        ctx.strokeStyle='#3498db';ctx.beginPath();for(var i=0;i<trace.length;i++){var px=W-trace.length+i;var py=H/2-trace[i];if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.stroke();
+        var bobY=H/2-y;
+        ctx.strokeStyle='#888';ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,bobY);ctx.stroke();
+        ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.arc(cx,bobY,16,0,7);ctx.fill();
+        t+=0.05;requestAnimationFrame(loop);
       }
+      kS.oninput=function(){t=0;trace=[];};mS.oninput=function(){t=0;trace=[];};
       loop();
     })();
   </script>

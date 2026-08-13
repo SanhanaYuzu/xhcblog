@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>勾股定理 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,10 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .py-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    @media(max-width:520px){.py-fields{grid-template-columns:1fr;}}
+    .py-out{margin-top:14px;font-size:16px;}
+    .py-out b{font-size:24px;color:var(--primary);}
   </style>
 </head>
 <body>
@@ -61,14 +62,18 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">📐</span>
+      <h1>勾股定理</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">已知直角三角形两边求第三边，或判断三边能否构成直角三角形。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <p style="color:var(--text-3);font-size:13px;margin-top:0;">留一个空，求第三边；或三边都填，判断是否为直角三角形。</p>
+      <div class="py-fields">
+        <input id="pyA" type="number" placeholder="边 a"><input id="pyB" type="number" placeholder="边 b"><input id="pyC" type="number" placeholder="斜边 c">
+      </div>
+      <div class="row" style="margin-top:12px;"><button class="btn primary" id="pyCalc">计算</button></div>
+      <div class="py-out" id="pyOut"></div>
     </div>
   </main>
 
@@ -111,24 +116,14 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var a=document.getElementById('pyA'),b=document.getElementById('pyB'),c=document.getElementById('pyC'),out=document.getElementById('pyOut');
+      document.getElementById('pyCalc').onclick=function(){
+        var A=a.value===''?null:+a.value,B=b.value===''?null:+b.value,C=c.value===''?null:+c.value;
+        var n=(A===null?0:1)+(B===null?0:1)+(C===null?0:1);
+        if(n===2){if(A!==null&&B!==null)out.innerHTML='斜边 c = <b>'+Math.sqrt(A*A+B*B).toFixed(3)+'</b>';else if(A!==null&&C!==null)out.innerHTML='边 b = <b>'+Math.sqrt(C*C-A*A).toFixed(3)+'</b>';else out.innerHTML='边 a = <b>'+Math.sqrt(C*C-B*B).toFixed(3)+'</b>';}
+        else if(n===3){var ok=Math.abs(A*A+B*B-C*C)<1e-6;out.innerHTML=ok?'✅ 是直角三角形（a²+b²=c²）':'❌ 不是直角三角形（a²+b²≠c²）';}
+        else out.textContent='请至少填写两条边，或填写三条边进行判断。';
+      };
     })();
   </script>
 </body>

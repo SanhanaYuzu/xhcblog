@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>HTTP 状态码速查 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,12 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .hs-list{max-height:420px;overflow-y:auto;}
+    .hs-item{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);}
+    .hs-code{font-weight:800;font-size:16px;min-width:54px;}
+    .hs-2{color:#27ae60;}.hs-3{color:#2980b9;}.hs-4{color:#e67e22;}.hs-5{color:#c0392b;}
+    .hs-text{color:var(--text-2);font-size:14px;}
+    .hs-text b{color:var(--text);}
   </style>
 </head>
 <body>
@@ -61,14 +64,14 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">📟</span>
+      <h1>HTTP 状态码速查</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">常见 HTTP 状态码中英文对照，支持关键词搜索。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <input id="hsSearch" type="text" placeholder="搜索状态码或含义，如 404 / 未找到" style="width:100%;margin-bottom:12px;">
+      <div class="hs-list" id="hsList"></div>
     </div>
   </main>
 
@@ -111,24 +114,35 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
+      var DATA=[
+        [200,'OK','请求成功'],
+        [201,'Created','已创建'],
+        [204,'No Content','无内容'],
+        [301,'Moved Permanently','永久重定向'],
+        [302,'Found','临时重定向'],
+        [304,'Not Modified','未修改（缓存）'],
+        [400,'Bad Request','请求有误'],
+        [401,'Unauthorized','未授权'],
+        [403,'Forbidden','禁止访问'],
+        [404,'Not Found','未找到'],
+        [405,'Method Not Allowed','方法不允许'],
+        [408,'Request Timeout','请求超时'],
+        [429,'Too Many Requests','请求过于频繁'],
+        [500,'Internal Server Error','服务器内部错误'],
+        [502,'Bad Gateway','网关错误'],
+        [503,'Service Unavailable','服务不可用'],
+        [504,'Gateway Timeout','网关超时']
+      ];
+      var list=document.getElementById('hsList'),search=document.getElementById('hsSearch');
+      function render(kw){
+        kw=(kw||'').toLowerCase();list.innerHTML='';
+        for(var i=0;i<DATA.length;i++){var d=DATA[i];if(kw&&((''+d[0]).indexOf(kw)<0&&d[1].toLowerCase().indexOf(kw)<0&&d[2].toLowerCase().indexOf(kw)<0))continue;
+          var it=document.createElement('div');it.className='hs-item';
+          it.innerHTML='<div class="hs-code hs-'+(Math.floor(d[0]/100))+'">'+d[0]+'</div><div class="hs-text"><b>'+d[1]+'</b> · '+d[2]+'</div>';
+          list.appendChild(it);}
       }
-      loop();
+      search.oninput=function(){render(search.value);};
+      render('');
     })();
   </script>
 </body>

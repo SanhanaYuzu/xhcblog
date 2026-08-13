@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>速算挑战 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,11 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .mq-q{font-size:30px;font-weight:800;text-align:center;margin:16px 0;color:var(--primary);}
+    .mq-info{display:flex;justify-content:space-around;font-size:16px;color:var(--text-2);margin-bottom:10px;}
+    .mq-info b{color:var(--text);font-size:20px;}
+    .mq-stats{font-size:40px;font-weight:800;text-align:center;color:var(--primary);margin:16px 0;}
+    .mq-area{display:none;}
   </style>
 </head>
 <body>
@@ -61,14 +63,20 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">🧠</span>
+      <h1>速算挑战</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">30 秒内尽可能多地答对随机四则运算题，看看你能拿多少分。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="mq-info"><span>得分：<b id="mqScore">0</b></span><span>剩余：<b id="mqTime">30</b>s</span></div>
+      <div class="mq-q" id="mqQ">准备开始</div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="mqStart">开始挑战</button>
+        <input id="mqAns" type="number" placeholder="答案" style="display:none;width:120px;">
+        <button class="btn" id="mqNext" style="display:none;">下一题</button>
+      </div>
+      <div class="mq-stats" id="mqFinal" style="display:none;"></div>
     </div>
   </main>
 
@@ -111,24 +119,16 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var score=0,time=30,a=0,b=0,op='+',ans=0,timer=null,running=false;
+      var q=document.getElementById('mqQ'),scoreEl=document.getElementById('mqScore'),timeEl=document.getElementById('mqTime');
+      var ansEl=document.getElementById('mqAns'),nextBtn=document.getElementById('mqNext'),finalEl=document.getElementById('mqFinal'),startBtn=document.getElementById('mqStart');
+      function nextQ(){var ops=['+','-','*'];op=ops[Math.floor(Math.random()*3)];a=1+Math.floor(Math.random()*20);b=1+Math.floor(Math.random()*20);if(op==='-'){if(b>a){var t=a;a=b;b=t;}}ans=op==='+'?a+b:op==='-'?a-b:a*b;q.textContent=a+' '+op+' '+b+' = ?';ansEl.value='';ansEl.focus();}
+      function tick(){time--;timeEl.textContent=time;if(time<=0)end();}
+      function end(){running=false;clearInterval(timer);q.textContent='时间到！';ansEl.style.display='none';nextBtn.style.display='none';startBtn.style.display='inline-block';startBtn.textContent='再来一次';finalEl.style.display='block';finalEl.textContent='最终得分：'+score;}
+      startBtn.onclick=function(){score=0;time=30;scoreEl.textContent=0;timeEl.textContent=30;running=true;finalEl.style.display='none';ansEl.style.display='inline-block';nextBtn.style.display='inline-block';startBtn.style.display='none';nextQ();timer=setInterval(tick,1000);};
+      function submit(){if(!running)return;if(parseInt(ansEl.value,10)===ans){score++;scoreEl.textContent=score;}nextQ();}
+      nextBtn.onclick=submit;
+      ansEl.addEventListener('keydown',function(e){if(e.key==='Enter')submit();});
     })();
   </script>
 </body>

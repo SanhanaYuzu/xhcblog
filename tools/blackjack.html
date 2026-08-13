@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>21点 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,11 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .bj-cards{display:flex;gap:6px;flex-wrap:wrap;min-height:64px;margin:8px 0;}
+    .bj-card{width:46px;height:64px;border-radius:8px;background:#fff;color:#222;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,.15);}
+    .bj-card.red{color:#c0392b;}
+    .bj-line{font-size:15px;color:var(--text-2);margin-bottom:6px;}
+    .bj-msg{text-align:center;font-size:18px;font-weight:700;margin:12px 0;color:var(--primary);}
   </style>
 </head>
 <body>
@@ -61,14 +63,22 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">🃏</span>
+      <h1>21点</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">经典 21 点：要牌凑近 21 点但不爆，超过庄家即胜。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="bj-line">庄家：<span id="bjDScore"></span></div>
+      <div class="bj-cards" id="bjDealer"></div>
+      <div class="bj-line">你：<span id="bjPScore"></span></div>
+      <div class="bj-cards" id="bjPlayer"></div>
+      <div class="bj-msg" id="bjMsg">点击发牌开始</div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="bjDeal">发牌</button>
+        <button class="btn" id="bjHit">要牌</button>
+        <button class="btn" id="bjStand">停牌</button>
+      </div>
     </div>
   </main>
 
@@ -111,24 +121,19 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var suits=['♠','♥','♦','♣'];
+      var ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+      var deck=[],player=[],dealer=[],busy=false;
+      var dC=document.getElementById('bjDealer'),pC=document.getElementById('bjPlayer');
+      var dS=document.getElementById('bjDScore'),pS=document.getElementById('bjPScore'),msg=document.getElementById('bjMsg');
+      function build(){deck=[];for(var s=0;s<4;s++)for(var r=0;r<13;r++)deck.push({r:ranks[r],s:suits[s]});for(var i=deck.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=deck[i];deck[i]=deck[j];deck[j]=t;}}
+      function val(h){var s=0,a=0;for(var i=0;i<h.length;i++){var r=h[i].r;if(r==='A'){a++;s+=11;}else if(r==='K'||r==='Q'||r==='J')s+=10;else s+=parseInt(r,10);}while(s>21&&a>0){s-=10;a--;}return s;}
+      function render(h,el,hide){el.innerHTML='';for(var i=0;i<h.length;i++){var c=document.createElement('div');c.className='bj-card'+(h[i].s==='♥'||h[i].s==='♦'?' red':'');c.textContent=h[i].r+(i===1&&hide?'':h[i].s);if(i===1&&hide)c.textContent='?';el.appendChild(c);}}
+      function deal(){build();player=[deck.pop(),deck.pop()];dealer=[deck.pop(),deck.pop()];render(player,pC);render(dealer,dC,true);dS.textContent='?';pS.textContent=val(player);msg.textContent='要牌或停牌';busy=false;}
+      function stand(){render(dealer,dC);while(val(dealer)<17)dealer.push(deck.pop());render(dealer,dC);var pv=val(player),dv=val(dealer);dS.textContent=dv;if(pv>21)msg.textContent='💥 你爆了，庄家胜';else if(dv>21)msg.textContent='🎉 庄家爆了，你胜！';else if(pv>dv)msg.textContent='🎉 你赢了！';else if(pv<dv)msg.textContent='庄家胜';else msg.textContent='平局';busy=true;}
+      document.getElementById('bjDeal').onclick=function(){busy=false;deal();};
+      document.getElementById('bjHit').onclick=function(){if(busy||!player.length)return;player.push(deck.pop());render(player,pC);var v=val(player);pS.textContent=v;if(v>21){pS.textContent=v;msg.textContent='💥 爆了！';render(dealer,dC);dS.textContent=val(dealer);busy=true;}};
+      document.getElementById('bjStand').onclick=function(){if(busy||!player.length)return;stand();};
     })();
   </script>
 </body>

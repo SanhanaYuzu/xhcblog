@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>数独 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,12 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .sd-grid{display:grid;grid-template-columns:repeat(9,34px);gap:2px;justify-content:center;margin:10px auto;}
+    .sd-cell{width:34px;height:34px;text-align:center;font-size:18px;font-weight:600;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+    .sd-cell.fixed{background:var(--card);color:var(--primary);font-weight:800;}
+    .sd-cell.bad{background:#fde2e2;color:#c0392b;}
+    .sd-cell:nth-child(3n){margin-right:3px;}
+    .sd-grid .sd-cell:nth-child(n+19):nth-child(-n+27),.sd-grid .sd-cell:nth-child(n+46):nth-child(-n+54){margin-bottom:3px;}
   </style>
 </head>
 <body>
@@ -61,14 +64,18 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">🔢</span>
+      <h1>数独</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">在空格中填入 1–9，每行每列每宫不重复。填入后点检查。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="sd-grid" id="sdGrid"></div>
+      <div class="res" id="sdMsg">提示：灰色为已知数，不可改。</div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="sdCheck">检查</button>
+        <button class="btn" id="sdNew">换一题</button>
+      </div>
     </div>
   </main>
 
@@ -111,24 +118,47 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
+      var PUZZLES=[
+        '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
+        '000260701680070090190004500820100040004602900050003028009300074040050036703018000'
+      ];
+      var SOL=['534678912672195348198342567859761423426853791713924856961537284287419635345286179','000260701680070090190004500820100040004602900050003028009300074040050036703018000'];
+      var grid=[],fixed=[],sol=[],idx=0;
+      var g=document.getElementById('sdGrid'),msg=document.getElementById('sdMsg');
+      function load(){
+        var p=PUZZLES[idx%PUZZLES.length];idx++;
+        grid=[];fixed=[];sol=[];
+        for(var i=0;i<81;i++){var ch=p[i];grid.push(ch==='0'?0:parseInt(ch,10));fixed.push(ch!=='0');}
+        sol=grid.slice();
+        g.innerHTML='';
+        for(var i=0;i<81;i++){
+          var c=document.createElement('input');
+          c.className='sd-cell'+(fixed[i]?' fixed':'');
+          c.maxLength=1;
+          if(fixed[i]){c.value=grid[i];c.readOnly=true;}
+          (function(i){c.oninput=function(){var v=c.value.replace(/[^1-9]/g,'');c.value=v;grid[i]=v?parseInt(v,10):0;c.classList.remove('bad');};})(i);
+          g.appendChild(c);
         }
-        requestAnimationFrame(loop);
+        msg.textContent='提示：灰色为已知数，不可改。';
       }
-      loop();
+      document.getElementById('sdCheck').onclick=function(){
+        var ok=true,full=true;
+        var cells=g.children;
+        for(var i=0;i<81;i++){
+          cells[i].classList.remove('bad');
+          if(!grid[i]){full=false;continue;}
+          // 校验行/列/宫
+          var r=Math.floor(i/9),col=i%9,br=Math.floor(r/3)*3,bc=Math.floor(col/3)*3,bad=false;
+          for(var k=0;k<9;k++){if(k!==col&&grid[r*9+k]===grid[i])bad=true;if(k!==r&&grid[k*9+col]===grid[i])bad=true;}
+          for(var dr=0;dr<3;dr++)for(var dc=0;dc<3;dc++){var j=(br+dr)*9+(bc+dc);if(j!==i&&grid[j]===grid[i])bad=true;}
+          if(bad){cells[i].classList.add('bad');ok=false;}
+        }
+        if(!full){msg.textContent='还有空格没填哦';}
+        else if(ok){msg.textContent='🎉 当前填写无冲突，全部正确！';}
+        else{msg.textContent='有红色格子冲突，检查一下';}
+      };
+      document.getElementById('sdNew').onclick=load;
+      load();
     })();
   </script>
 </body>

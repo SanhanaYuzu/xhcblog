@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>统计计算 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,11 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .st-out{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .st-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+    .st-card .k{font-size:12px;color:var(--text-3);}
+    .st-card .v{font-size:20px;font-weight:800;color:var(--primary);margin-top:4px;}
+    @media(max-width:520px){.st-out{grid-template-columns:repeat(2,1fr);}}
   </style>
 </head>
 <body>
@@ -61,14 +63,15 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">📈</span>
+      <h1>统计计算</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">输入一组数字，计算均值、中位数、众数、极差、方差与标准差。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <textarea id="stInput" rows="5" placeholder="输入数字，用空格、逗号或换行分隔，如：1 2 3 4 5"></textarea>
+      <div class="row" style="margin-top:10px;"><button class="btn primary" id="stRun">计算</button></div>
+      <div class="st-out" id="stOut"></div>
     </div>
   </main>
 
@@ -111,24 +114,20 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var input=document.getElementById('stInput'),out=document.getElementById('stOut');
+      function card(k,v){return '<div class="st-card"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
+      document.getElementById('stRun').onclick=function(){
+        var nums=input.value.split(/[\s,]+/).map(function(x){return parseFloat(x);}).filter(function(x){return !isNaN(x);});
+        if(nums.length===0){out.innerHTML='<div class="st-card"><div class="k">提示</div><div class="v">请输入数字</div></div>';return;}
+        var n=nums.length,sum=nums.reduce(function(a,b){return a+b;},0),mean=sum/n;
+        var sorted=nums.slice().sort(function(a,b){return a-b;});
+        var med=n%2?sorted[(n-1)/2]:(sorted[n/2-1]+sorted[n/2])/2;
+        var f={};nums.forEach(function(x){f[x]=(f[x]||0)+1;});var mode='—',mx=0;for(var k in f){if(f[k]>mx){mx=f[k];mode=k;}}
+        var range=sorted[n-1]-sorted[0];
+        var varsum=nums.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/n;
+        var std=Math.sqrt(varsum);
+        out.innerHTML=card('个数',n)+card('总和',sum)+card('均值',mean.toFixed(2))+card('中位数',med)+card('众数',mode)+card('极差',range)+card('方差',varsum.toFixed(2))+card('标准差',std.toFixed(2))+card('最大值',sorted[n-1]);
+      };
     })();
   </script>
 </body>

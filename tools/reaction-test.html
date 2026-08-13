@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>反应速度测试 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,10 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .rt-box{height:220px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;cursor:pointer;user-select:none;background:#c0392b;transition:background .1s;}
+    .rt-box.go{background:#27ae60;}
+    .rt-stat{text-align:center;margin-top:14px;color:var(--text-2);font-size:15px;}
+    .rt-stat b{color:var(--primary);font-size:24px;}
   </style>
 </head>
 <body>
@@ -61,14 +62,14 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">⚡</span>
+      <h1>反应速度测试</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">绿灯亮起后尽快点击，测出你的反应时间（毫秒）。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="rt-box" id="rtBox">点击开始</div>
+      <div class="rt-stat">本次：<b id="rtLast">—</b> ms ｜ 最佳：<b id="rtBest">—</b> ms</div>
     </div>
   </main>
 
@@ -111,24 +112,16 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var box=document.getElementById('rtBox');
+      var last=document.getElementById('rtLast');
+      var best=document.getElementById('rtBest');
+      var state='idle',startT=0,timer=null,bestV=null;
+      function reset(){state='waiting';box.className='rt-box';box.textContent='等待绿灯…';timer=setTimeout(function(){state='go';box.className='rt-box go';box.textContent='点！';startT=performance.now();},600+Math.random()*2400);}
+      box.onclick=function(){
+        if(state==='idle'){reset();return;}
+        if(state==='waiting'){clearTimeout(timer);state='idle';box.className='rt-box';box.textContent='太快了！等绿灯';return;}
+        if(state==='go'){var ms=Math.round(performance.now()-startT);last.textContent=ms;if(bestV===null||ms<bestV){bestV=ms;best.textContent=ms;}state='idle';box.className='rt-box';box.textContent='点击再来一次';}
+      };
     })();
   </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>正则片段库 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,14 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .rx-item{padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;}
+    .rx-item:hover{border-color:var(--primary);}
+    .rx-name{font-weight:700;color:var(--text);}
+    .rx-pat{font-family:monospace;font-size:13px;color:var(--primary);}
+    .rx-out{margin-top:10px;line-height:1.8;font-size:15px;}
+    .rx-out mark{background:#fff3a0;padding:0 2px;border-radius:3px;}
+    .rx-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:560px){.rx-cols{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
@@ -61,14 +66,23 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">📚</span>
+      <h1>正则片段库</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">常用正则表达式集合，一键加载并实时测试匹配效果。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="rx-cols">
+        <div>
+          <div style="font-weight:600;margin-bottom:8px;color:var(--text-2);">常用正则（点击加载）</div>
+          <div id="rxList"></div>
+        </div>
+        <div>
+          <label style="font-weight:600;color:var(--text-2);">测试文本</label>
+          <textarea id="rxText" rows="4" style="margin-top:6px;"></textarea>
+          <div class="rx-out" id="rxOut"></div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -111,24 +125,22 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
-        }
-        requestAnimationFrame(loop);
-      }
-      loop();
+      var LIB=[
+        ['邮箱','[\w.+-]+@[\w-]+\.[\w.-]+','test@example.com'],
+        ['手机号(中国)','1[3-9]\d{9}','我的号码13812345678'],
+        ['URL','https?:\/\/[\w.-]+(?:\/[\w./?%&=-]*)?','访问 https://xhc.dpdns.org 吧'],
+        ['IPv4','\b(?:\d{1,3}\.){3}\d{1,3}\b','服务器 192.168.1.1 正常'],
+        ['日期 YYYY-MM-DD','\d{4}-\d{2}-\d{2}','今天 2026-08-13'],
+        ['中文字符','[\u4e00-\u9fa5]+','Hello 世界'],
+        ['十六进制色值','#(?:[0-9a-fA-F]{3}){1,2}','颜色 #ff8800 好看'],
+        ['整数','-?\d+','温度 -5 度']
+      ];
+      var list=document.getElementById('rxList'),text=document.getElementById('rxText'),out=document.getElementById('rxOut');
+      function render(){list.innerHTML='';for(var i=0;i<LIB.length;i++){(function(i){var d=document.createElement('div');d.className='rx-item';d.innerHTML='<div class="rx-name">'+LIB[i][0]+'</div><div class="rx-pat">'+LIB[i][1]+'</div>';d.onclick=function(){text.value=LIB[i][2];test(LIB[i][1]);};list.appendChild(d);})(i);}}
+      function test(pat){try{var re=new RegExp(pat,'g');var s=text.value;var m;var html='';var last=0;while((m=re.exec(s))!==null){html+=esc(s.slice(last,m.index))+'<mark>'+esc(m[0])+'</mark>';last=m.index+m[0].length;if(m.index===re.lastIndex)re.lastIndex++;}html+=esc(s.slice(last));out.innerHTML=html||'(无匹配)';}catch(e){out.textContent='正则错误：'+e.message;}}
+      function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+      text.oninput=function(){var pat=list.querySelector('.rx-pat');if(pat)test(pat.textContent);};
+      render();
     })();
   </script>
 </body>

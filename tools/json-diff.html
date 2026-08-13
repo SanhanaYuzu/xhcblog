@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>太阳系模拟 - XHC 博客</title>
+  <title>JSON 对比 - XHC 博客</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -28,9 +28,10 @@
     .res{margin-top:14px;font-size:15px;color:var(--text);}
     .res b{color:var(--primary);font-size:20px;font-weight:800;}
     canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;border:1px solid var(--border);touch-action:none;}
-    .ss-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2);}
-    .ss-legend span{display:inline-flex;align-items:center;gap:5px;}
-    .ss-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .jd-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media(max-width:560px){.jd-cols{grid-template-columns:1fr;}}
+    .jd-out{margin-top:12px;font-family:monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;}
+    .jd-add{color:#27ae60;}.jd-del{color:#c0392b;}.jd-chg{color:#e67e22;}
   </style>
 </head>
 <body>
@@ -61,14 +62,21 @@
   <main class="tool-page">
     <a class="back-link" href="../tools.html">← 返回工具箱</a>
     <div class="tool-head">
-      <span class="ico">🪐</span>
-      <h1>太阳系模拟</h1>
+      <span class="ico">🆚</span>
+      <h1>JSON 对比</h1>
     </div>
-    <p class="tool-sub">简易太阳系：太阳居中，若干行星按不同速度绕行。</p>
+    <p class="tool-sub">粘贴两份 JSON，逐键比较，列出新增、删除与变更。</p>
 
     <div class="panel">
-      <canvas id="ssCv" width="560" height="420"></canvas>
-      <div class="ss-legend" id="ssLegend"></div>
+      <div class="jd-cols">
+        <textarea id="jdA" rows="8" placeholder="原始 JSON"></textarea>
+        <textarea id="jdB" rows="8" placeholder="修改后 JSON"></textarea>
+      </div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="jdRun">比较</button>
+        <button class="btn" id="jdClear">清空</button>
+      </div>
+      <div class="jd-out" id="jdOut"></div>
     </div>
   </main>
 
@@ -111,24 +119,37 @@
 
   <script>
     (function () {
-      var cv=document.getElementById('ssCv'),ctx=cv.getContext('2d');
-      var W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-      var P=[{r:40,sp:1.6,c:'#b0b0b0',n:'水星'},{r:70,sp:1.18,c:'#e8a35c',n:'金星'},{r:100,sp:1,c:'#3b82f6',n:'地球'},{r:140,sp:0.8,c:'#e0563b',n:'火星'},{r:190,sp:0.43,c:'#d9a066',n:'木星'},{r:240,sp:0.32,c:'#e0c068',n:'土星'}];
-      var ang=P.map(function(){return Math.random()*7;});
-      var leg=document.getElementById('ssLegend');
-      leg.innerHTML=P.map(function(p){return '<span><i class="ss-dot" style="background:'+p.c+'"></i>'+p.n+'</span>';}).join('');
-      function loop(){
-        ctx.clearRect(0,0,W,H);
-        ctx.fillStyle='#f1c40f';ctx.beginPath();ctx.arc(cx,cy,18,0,7);ctx.fill();
-        for(var i=0;i<P.length;i++){
-          ang[i]+=0.01*P[i].sp;
-          var x=cx+Math.cos(ang[i])*P[i].r,y=cy+Math.sin(ang[i])*P[i].r;
-          ctx.strokeStyle='rgba(150,150,150,.18)';ctx.beginPath();ctx.arc(cx,cy,P[i].r,0,7);ctx.stroke();
-          ctx.fillStyle=P[i].c;ctx.beginPath();ctx.arc(x,y,6+i,0,7);ctx.fill();
+      var aEl=document.getElementById('jdA'),bEl=document.getElementById('jdB'),out=document.getElementById('jdOut');
+      function walk(pa,pb,path,lines){
+        var ta=typ(pa),tb=typ(pb);
+        if(ta==='obj'&&tb==='obj'){
+          var keys={};var all=Object.keys(pa).concat(Object.keys(pb));
+          for(var i=0;i<all.length;i++)keys[all[i]]=1;
+          for(var k in keys){
+            var np=path?path+'.'+k:k;
+            if(!(k in pa))lines.push(['+',np,JSON.stringify(pb[k])]);
+            else if(!(k in pb))lines.push(['-',np,JSON.stringify(pa[k])]);
+            else walk(pa[k],pb[k],np,lines);
+          }
+        }else if(ta==='arr'&&tb==='arr'){
+          var n=Math.max(pa.length,pb.length);
+          for(var i=0;i<n;i++){var np=path+'['+i+']';
+            if(i>=pa.length)lines.push(['+',np,JSON.stringify(pb[i])]);
+            else if(i>=pb.length)lines.push(['-',np,JSON.stringify(pa[i])]);
+            else walk(pa[i],pb[i],np,lines);}
+        }else{
+          if(JSON.stringify(pa)!==JSON.stringify(pb))lines.push(['~',path,JSON.stringify(pa)+' → '+JSON.stringify(pb)]);
         }
-        requestAnimationFrame(loop);
       }
-      loop();
+      function typ(v){return v===null?'null':Array.isArray(v)?'arr':typeof v;}
+      document.getElementById('jdRun').onclick=function(){
+        try{var A=JSON.parse(aEl.value),B=JSON.parse(bEl.value);var lines=[];walk(A,B,'',lines);
+          if(!lines.length){out.innerHTML='<span class="jd-add">两份 JSON 完全一致 ✅</span>';return;}
+          var h='';for(var i=0;i<lines.length;i++){var c=lines[i][0];var cls=c==='+'?'jd-add':c==='-'?'jd-del':'jd-chg';h+='<div class="'+cls+'">'+c+' '+lines[i][1]+' = '+lines[i][2]+'</div>';}
+          out.innerHTML=h;
+        }catch(e){out.innerHTML='<span class="jd-del">解析错误：'+e.message+'</span>';}
+      };
+      document.getElementById('jdClear').onclick=function(){aEl.value='';bEl.value='';out.textContent='';};
     })();
   </script>
 </body>
