@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字数统计 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .tc-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .tc-panel{box-shadow:none;}
+
+    .tc-textarea{width:100%;min-height:200px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;line-height:1.6;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box;}
+
+    .tc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:18px;}
+    .tc-stat{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg);text-align:center;}
+    .tc-stat .k{font-size:12.5px;color:var(--text-3);}
+    .tc-stat .v{font-size:24px;font-weight:800;color:var(--primary);margin-top:4px;font-variant-numeric:tabular-nums;}
+
+    .tc-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .tc-bar .cnt{font-size:13px;color:var(--text-3);}
+
+    @media(max-width:560px){
+      .tc-stat .v{font-size:20px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔤</span>
+      <h1>字数统计</h1>
+    </div>
+    <p class="tool-sub">实时统计字符数、不含空格、汉字数、单词数与行数。</p>
+
+    <div class="tc-panel">
+      <div class="tc-bar">
+        <span class="cnt">在下方输入或粘贴文本：</span>
+      </div>
+      <textarea class="tc-textarea" id="tcInput" placeholder="在此输入文本…"></textarea>
+      <div class="tc-stats">
+        <div class="tc-stat"><div class="k">总字符</div><div class="v" id="sTotal">0</div></div>
+        <div class="tc-stat"><div class="k">不含空格</div><div class="v" id="sNoSpace">0</div></div>
+        <div class="tc-stat"><div class="k">汉字数</div><div class="v" id="sHan">0</div></div>
+        <div class="tc-stat"><div class="k">单词数</div><div class="v" id="sWord">0</div></div>
+        <div class="tc-stat"><div class="k">行数</div><div class="v" id="sLine">0</div></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var input = document.getElementById("tcInput");
+      var sTotal = document.getElementById("sTotal");
+      var sNoSpace = document.getElementById("sNoSpace");
+      var sHan = document.getElementById("sHan");
+      var sWord = document.getElementById("sWord");
+      var sLine = document.getElementById("sLine");
+
+      function count() {
+        var t = input.value;
+        var total = t.length;
+        var noSpace = t.replace(/\s/g, "").length;
+        var han = (t.match(/[一-龥぀-ヿ]/g) || []).length;
+        var words = (t.match(/[A-Za-z0-9'’.-]+/g) || []).length;
+        var lines = t === "" ? 0 : t.split(/\r\n|\r|\n/).length;
+
+        sTotal.textContent = total;
+        sNoSpace.textContent = noSpace;
+        sHan.textContent = han;
+        sWord.textContent = words;
+        sLine.textContent = lines;
+      }
+
+      input.addEventListener("input", count);
+      count();
+    })();
+  </script>
+</body>
+</html>

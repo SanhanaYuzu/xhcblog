@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>万年历 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .cal-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .cal-panel{box-shadow:none;}
+
+    .cal-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+    .cal-bar select{font-family:inherit;font-size:15px;font-weight:600;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+    .cal-bar .nav{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-2);font-size:18px;cursor:pointer;transition:.15s;}
+    .cal-bar .nav:hover{border-color:var(--primary);color:var(--primary);}
+    .cal-bar .today{margin-left:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--primary);background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+    .cal-title{font-size:18px;font-weight:700;min-width:150px;text-align:center;}
+
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+    .cal-dow{text-align:center;font-size:13px;font-weight:700;color:var(--text-3);padding:6px 0;}
+    .cal-cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:10px;color:var(--text);background:var(--bg);user-select:none;}
+    .cal-cell.blank{background:transparent;}
+    .cal-cell.weekend{color:#ff6b6b;}
+    .cal-cell.today{background:var(--primary);color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.12);}
+    .cal-cell.muted{color:var(--text-3);opacity:.5;}
+
+    @media(max-width:520px){
+      .cal-cell{font-size:13px;border-radius:8px;}
+      .cal-dow{font-size:11px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📅</span>
+      <h1>万年历</h1>
+    </div>
+    <p class="tool-sub">任意年月日历查询，支持跳转，自动高亮今天。</p>
+
+    <div class="cal-panel">
+      <div class="cal-bar">
+        <button class="nav" id="prevBtn" title="上一月">‹</button>
+        <select id="yearSel"></select>
+        <select id="monthSel"></select>
+        <button class="nav" id="nextBtn" title="下一月">›</button>
+        <button class="today" id="todayBtn">今天</button>
+      </div>
+      <div class="cal-title" id="calTitle"></div>
+      <div style="height:14px"></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var yearSel = document.getElementById("yearSel");
+      var monthSel = document.getElementById("monthSel");
+      var grid = document.getElementById("calGrid");
+      var title = document.getElementById("calTitle");
+      var prevBtn = document.getElementById("prevBtn");
+      var nextBtn = document.getElementById("nextBtn");
+      var todayBtn = document.getElementById("todayBtn");
+
+      var now = new Date();
+      var MONTHS = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+      var DOW = ["日","一","二","三","四","五","六"];
+
+      // 填充年份（1900-2100）
+      for (var y = 1900; y <= 2100; y++) {
+        var o = document.createElement("option");
+        o.value = y; o.textContent = y + " 年";
+        yearSel.appendChild(o);
+      }
+      MONTHS.forEach(function (m, i) {
+        var o = document.createElement("option");
+        o.value = i; o.textContent = m;
+        monthSel.appendChild(o);
+      });
+
+      yearSel.value = now.getFullYear();
+      monthSel.value = now.getMonth();
+
+      function render() {
+        var y = parseInt(yearSel.value, 10);
+        var m = parseInt(monthSel.value, 10);
+        title.textContent = y + " 年 " + (m + 1) + " 月";
+
+        // 星期表头
+        grid.innerHTML = "";
+        DOW.forEach(function (d) {
+          var cell = document.createElement("div");
+          cell.className = "cal-dow";
+          cell.textContent = d;
+          grid.appendChild(cell);
+        });
+
+        var first = new Date(y, m, 1);
+        var startDow = first.getDay();
+        var days = new Date(y, m + 1, 0).getDate();
+        var tY = now.getFullYear(), tM = now.getMonth(), tD = now.getDate();
+
+        for (var i = 0; i < startDow; i++) {
+          var blank = document.createElement("div");
+          blank.className = "cal-cell blank";
+          grid.appendChild(blank);
+        }
+        for (var d = 1; d <= days; d++) {
+          var cell = document.createElement("div");
+          cell.className = "cal-cell";
+          cell.textContent = d;
+          var dow = new Date(y, m, d).getDay();
+          if (dow === 0 || dow === 6) cell.classList.add("weekend");
+          if (y === tY && m === tM && d === tD) cell.classList.add("today");
+          grid.appendChild(cell);
+        }
+      }
+
+      prevBtn.addEventListener("click", function () {
+        var m = parseInt(monthSel.value, 10) - 1;
+        var y = parseInt(yearSel.value, 10);
+        if (m < 0) { m = 11; y--; }
+        yearSel.value = y; monthSel.value = m; render();
+      });
+      nextBtn.addEventListener("click", function () {
+        var m = parseInt(monthSel.value, 10) + 1;
+        var y = parseInt(yearSel.value, 10);
+        if (m > 11) { m = 0; y++; }
+        yearSel.value = y; monthSel.value = m; render();
+      });
+      todayBtn.addEventListener("click", function () {
+        yearSel.value = now.getFullYear(); monthSel.value = now.getMonth(); render();
+      });
+      yearSel.addEventListener("change", render);
+      monthSel.addEventListener("change", render);
+
+      render();
+    })();
+  </script>
+</body>
+</html>

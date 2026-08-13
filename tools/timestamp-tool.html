@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>时间戳转换 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:920px;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;}
+.tool-page .panel-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+.tool-page .lbl{font-size:14px;font-weight:700;color:var(--text-2);}
+.tool-page .meta{margin-left:auto;font-size:12px;color:var(--text-3);}
+.tool-page .now-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+.tool-page .now-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;}
+.tool-page .now-card .cap{font-size:12px;color:var(--text-3);margin-bottom:6px;}
+.tool-page .now-card .val{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:21px;font-weight:700;color:var(--primary);letter-spacing:.4px;word-break:break-all;}
+.tool-page .now-card .val.small{font-size:16px;color:var(--text);}
+.tool-page .now-card button{margin-top:9px;padding:5px 14px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text-3);font-size:12px;cursor:pointer;transition:.15s;}
+.tool-page .now-card button:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.tool-page input[type="text"],
+.tool-page input[type="datetime-local"]{flex:1;min-width:0;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;}
+.tool-page input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(13,110,253,.12);}
+.tool-page .btn{padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .result{margin-top:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;}
+.tool-page .result.show{display:block;}
+.tool-page .rrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:14px;}
+.tool-page .rrow:last-child{border-bottom:0;}
+.tool-page .rrow .k{flex:0 0 auto;min-width:112px;color:var(--text-3);font-size:13px;}
+.tool-page .rrow .v{flex:1;min-width:140px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:600;word-break:break-all;color:var(--text);}
+.tool-page .rrow .cp{flex:0 0 auto;padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-3);font-size:12px;cursor:pointer;transition:.15s;}
+.tool-page .rrow .cp:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .tip{margin-top:12px;padding:11px 14px;border-radius:8px;font-size:13px;line-height:1.7;display:none;}
+.tool-page .tip.err{display:block;background:#fdecec;color:#c0392b;border:1px solid #f5c6c6;}
+.tool-page .tip.ok{display:block;background:#eaf7ee;color:#1e7e34;border:1px solid #c3e6cb;}
+.tool-page .quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.tool-page .quick button{padding:6px 13px;border-radius:16px;border:1px dashed var(--border);background:transparent;color:var(--text-2);font-size:13px;cursor:pointer;transition:.15s;}
+.tool-page .quick button:hover{border-style:solid;border-color:var(--primary);color:var(--primary);background:var(--primary-soft);}
+.tool-page .hint{font-size:13px;color:var(--text-3);line-height:1.8;margin-top:14px;}
+.tool-page .hint code{background:var(--bg);border:1px solid var(--border);padding:1px 6px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.tool-page .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:rgba(20,22,28,.92);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:9999;}
+.tool-page .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+@media(max-width:680px){
+  .tool-page .panel{padding:14px;}
+  .tool-page .now-grid{grid-template-columns:1fr;}
+  .tool-page .now-card .val{font-size:19px;}
+  .tool-page .row{gap:8px;}
+  .tool-page input[type="text"],
+  .tool-page input[type="datetime-local"]{flex:1 1 100%;font-size:14px;}
+  .tool-page .btn{flex:1 1 auto;min-width:calc(50% - 4px);padding:10px 8px;}
+  .tool-page .rrow .k{min-width:auto;flex:1 1 100%;}
+  .tool-page .meta{margin-left:0;width:100%;}
+}
+/* 深色模式适配 */
+body.dark .tool-page .panel{background:var(--card);border-color:var(--border);}
+body.dark .tool-page .now-card{background:#171b22;border-color:var(--border);}
+body.dark .tool-page .now-card .val.small{color:var(--text);}
+body.dark .tool-page .now-card button{background:#1d2128;color:var(--text-3);border-color:var(--border);}
+body.dark .tool-page input[type="text"],
+body.dark .tool-page input[type="datetime-local"]{background:#171b22;border-color:var(--border);color:var(--text);color-scheme:dark;}
+body.dark .tool-page .btn{background:#1d2128;color:var(--text-2);border-color:var(--border);}
+body.dark .tool-page .btn.primary{background:var(--primary);color:#fff;}
+body.dark .tool-page .result{border-color:var(--border);}
+body.dark .tool-page .rrow{border-bottom-color:var(--border);}
+body.dark .tool-page .quick button{color:var(--text-2);border-color:var(--border);}
+body.dark .tool-page .quick button:hover{background:rgba(13,110,253,.18);color:#7ab8ff;}
+body.dark .tool-page .hint code{background:#171b22;border-color:var(--border);}
+body.dark .tool-page .tip.err{background:#3a1d1f;color:#ff8a80;border-color:#5a2a2d;}
+body.dark .tool-page .tip.ok{background:#16301f;color:#7ee2a8;border-color:#255c3a;}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">时间戳转换</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">Unix 时间戳与北京时间（UTC+8）双向互转</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="lbl">当前时间</span>
+      <span class="meta">每秒自动刷新 · 北京时间 UTC+8</span>
+    </div>
+    <div class="now-grid">
+      <div class="now-card">
+        <div class="cap">秒级时间戳（10 位）</div>
+        <div class="val" id="nowSec">—</div>
+        <button type="button" id="cpSec">复制</button>
+      </div>
+      <div class="now-card">
+        <div class="cap">毫秒级时间戳（13 位）</div>
+        <div class="val" id="nowMs">—</div>
+        <button type="button" id="cpMs">复制</button>
+      </div>
+      <div class="now-card">
+        <div class="cap">北京时间</div>
+        <div class="val small" id="nowStr">—</div>
+        <button type="button" id="cpStr">复制</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="lbl">① 时间戳 → 北京时间</span></div>
+    <div class="row">
+      <input id="tsInput" type="text" inputmode="numeric" placeholder="输入 10 位或 13 位 Unix 时间戳，如 1785000000" autocomplete="off">
+      <button class="btn primary" id="ts2dtBtn" type="button">转换</button>
+      <button class="btn" id="tsNowBtn" type="button">现在</button>
+      <button class="btn" id="tsClearBtn" type="button">清空</button>
+    </div>
+    <div class="quick" id="tsQuick">
+      <button type="button" data-off="-86400">昨天此刻</button>
+      <button type="button" data-off="0">此刻</button>
+      <button type="button" data-off="86400">明天此刻</button>
+      <button type="button" data-off="604800">7 天后</button>
+    </div>
+    <div class="tip" id="tsTip"></div>
+    <div class="result" id="tsResult"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="lbl">② 北京时间 → 时间戳</span></div>
+    <div class="row">
+      <input id="dtInput" type="datetime-local" step="1">
+      <button class="btn primary" id="dt2tsBtn" type="button">转换</button>
+      <button class="btn" id="dtNowBtn" type="button">现在</button>
+      <button class="btn" id="dtClearBtn" type="button">清空</button>
+    </div>
+    <div class="tip" id="dtTip"></div>
+    <div class="result" id="dtResult"></div>
+  </div>
+
+  <p class="hint">说明：所有日期时间均按 <code>北京时间 UTC+8</code> 计算与展示，与本机所处时区无关。输入 10 位按秒处理、13 位按毫秒处理，其它长度会给出提示。</p>
+  <div class="toast" id="toastBox"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var CN_OFFSET = 8 * 60 * 60 * 1000;
+  var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  var toastBox = document.getElementById('toastBox');
+  var tsInput = document.getElementById('tsInput');
+  var dtInput = document.getElementById('dtInput');
+  var tsTip = document.getElementById('tsTip');
+  var dtTip = document.getElementById('dtTip');
+  var tsResult = document.getElementById('tsResult');
+  var dtResult = document.getElementById('dtResult');
+  var toastTimer = null;
+
+  function pad(n, len) {
+    var s = String(Math.abs(n));
+    var width = len || 2;
+    while (s.length < width) { s = '0' + s; }
+    return (n < 0 ? '-' : '') + s;
+  }
+
+  function toast(msg) {
+    toastBox.textContent = msg;
+    toastBox.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastBox.classList.remove('show'); }, 1800);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* 把毫秒时间戳拆成北京时间各字段（用 UTC 取值 + 8 小时偏移，避免受本机时区影响） */
+  function cnParts(ms) {
+    var d = new Date(ms + CN_OFFSET);
+    return {
+      y: d.getUTCFullYear(),
+      mo: d.getUTCMonth() + 1,
+      d: d.getUTCDate(),
+      h: d.getUTCHours(),
+      mi: d.getUTCMinutes(),
+      s: d.getUTCSeconds(),
+      ms: d.getUTCMilliseconds(),
+      w: d.getUTCDay()
+    };
+  }
+
+  function fmtCN(ms) {
+    var p = cnParts(ms);
+    return p.y + '-' + pad(p.mo) + '-' + pad(p.d) + ' ' + pad(p.h) + ':' + pad(p.mi) + ':' + pad(p.s);
+  }
+
+  function fmtCNFull(ms) {
+    var p = cnParts(ms);
+    return fmtCN(ms) + '.' + pad(p.ms, 3);
+  }
+
+  function fmtInputValue(ms) {
+    var p = cnParts(ms);
+    return p.y + '-' + pad(p.mo) + '-' + pad(p.d) + 'T' + pad(p.h) + ':' + pad(p.mi) + ':' + pad(p.s);
+  }
+
+  /* 相对现在的人性化描述 */
+  function relative(ms) {
+    var diff = ms - Date.now();
+    var future = diff > 0;
+    var abs = Math.abs(diff);
+    if (abs < 1000) { return '就是现在'; }
+    var units = [
+      { n: 31536000000, u: '年' },
+      { n: 2592000000, u: '个月' },
+      { n: 86400000, u: '天' },
+      { n: 3600000, u: '小时' },
+      { n: 60000, u: '分钟' },
+      { n: 1000, u: '秒' }
+    ];
+    for (var i = 0; i < units.length; i++) {
+      if (abs >= units[i].n) {
+        var v = Math.floor(abs / units[i].n);
+        return future ? ('还有 ' + v + ' ' + units[i].u) : (v + ' ' + units[i].u + '前');
+      }
+    }
+    return '就是现在';
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch (e) { toast('复制失败，请手动选择复制'); }
+    document.body.removeChild(ta);
+  }
+
+  function copyText(text) {
+    if (!text) { toast('没有可复制的内容'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('已复制：' + (text.length > 28 ? text.slice(0, 28) + '…' : text));
+      }).catch(function () {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function showTip(el, msg, kind) {
+    el.className = 'tip ' + kind;
+    el.textContent = msg;
+  }
+
+  function hideTip(el) {
+    el.className = 'tip';
+    el.textContent = '';
+  }
+
+  /* 渲染结果表格，rows 为 [{k:'标签', v:'值'}, ...] */
+  function renderRows(box, rows) {
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      html += '<div class="rrow"><span class="k">' + escapeHtml(rows[i].k) + '</span>'
+        + '<span class="v">' + escapeHtml(rows[i].v) + '</span>'
+        + '<button class="cp" type="button" data-copy="' + encodeURIComponent(rows[i].v) + '">复制</button></div>';
+    }
+    box.innerHTML = html;
+    box.classList.add('show');
+    var btns = box.querySelectorAll('.cp');
+    for (var b = 0; b < btns.length; b++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          copyText(decodeURIComponent(btn.getAttribute('data-copy') || ''));
+        });
+      })(btns[b]);
+    }
+  }
+
+  /* ---------- 顶部当前时间 ---------- */
+  var nowSecEl = document.getElementById('nowSec');
+  var nowMsEl = document.getElementById('nowMs');
+  var nowStrEl = document.getElementById('nowStr');
+
+  function tickNow() {
+    var now = Date.now();
+    nowSecEl.textContent = String(Math.floor(now / 1000));
+    nowMsEl.textContent = String(now);
+    var p = cnParts(now);
+    nowStrEl.textContent = fmtCN(now) + ' ' + WEEK[p.w];
+  }
+
+  tickNow();
+  setInterval(tickNow, 1000);
+
+  document.getElementById('cpSec').addEventListener('click', function () { copyText(nowSecEl.textContent); });
+  document.getElementById('cpMs').addEventListener('click', function () { copyText(nowMsEl.textContent); });
+  document.getElementById('cpStr').addEventListener('click', function () { copyText(nowStrEl.textContent); });
+
+  /* ---------- ① 时间戳 → 北京时间 ---------- */
+  function ts2dt() {
+    var raw = tsInput.value.trim().replace(/[,\s_]/g, '');
+    tsResult.classList.remove('show');
+    if (!raw) {
+      showTip(tsTip, '请输入一个 Unix 时间戳（10 位秒级或 13 位毫秒级）。', 'err');
+      return;
+    }
+    if (!/^-?\d+$/.test(raw)) {
+      showTip(tsTip, '格式错误：时间戳只能包含数字（可带负号表示 1970 年之前）。', 'err');
+      return;
+    }
+    var digits = raw.replace('-', '').length;
+    var num = Number(raw);
+    if (!isFinite(num)) {
+      showTip(tsTip, '数值超出可处理范围。', 'err');
+      return;
+    }
+    var ms;
+    var unit;
+    if (digits <= 10) { ms = num * 1000; unit = '按 秒级(10位) 解析'; }
+    else if (digits <= 13) { ms = num; unit = '按 毫秒级(13位) 解析'; }
+    else if (digits <= 16) { ms = Math.floor(num / 1000); unit = '按 微秒级(16位) 解析'; }
+    else { showTip(tsTip, '无法识别的时间戳长度（' + digits + ' 位），请输入 10 位或 13 位。', 'err'); return; }
+
+    var check = new Date(ms);
+    if (isNaN(check.getTime())) {
+      showTip(tsTip, '该时间戳无法转换为有效日期。', 'err');
+      return;
+    }
+
+    var p = cnParts(ms);
+    renderRows(tsResult, [
+      { k: '北京时间', v: fmtCN(ms) },
+      { k: '含毫秒', v: fmtCNFull(ms) },
+      { k: '星期', v: WEEK[p.w] },
+      { k: '秒级时间戳', v: String(Math.floor(ms / 1000)) },
+      { k: '毫秒时间戳', v: String(ms) },
+      { k: 'ISO 8601', v: new Date(ms).toISOString() },
+      { k: '相对现在', v: relative(ms) }
+    ]);
+    showTip(tsTip, '转换成功（' + unit + '）。', 'ok');
+  }
+
+  document.getElementById('ts2dtBtn').addEventListener('click', ts2dt);
+
+  document.getElementById('tsNowBtn').addEventListener('click', function () {
+    tsInput.value = String(Math.floor(Date.now() / 1000));
+    ts2dt();
+  });
+
+  document.getElementById('tsClearBtn').addEventListener('click', function () {
+    tsInput.value = '';
+    hideTip(tsTip);
+    tsResult.classList.remove('show');
+    tsResult.innerHTML = '';
+    tsInput.focus();
+  });
+
+  tsInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); ts2dt(); }
+  });
+
+  var quickBtns = document.querySelectorAll('#tsQuick button');
+  for (var q = 0; q < quickBtns.length; q++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        var off = parseInt(btn.getAttribute('data-off'), 10) || 0;
+        tsInput.value = String(Math.floor(Date.now() / 1000) + off);
+        ts2dt();
+      });
+    })(quickBtns[q]);
+  }
+
+  /* ---------- ② 北京时间 → 时间戳 ---------- */
+  function dt2ts() {
+    var v = dtInput.value;
+    dtResult.classList.remove('show');
+    if (!v) {
+      showTip(dtTip, '请先选择或输入一个日期时间。', 'err');
+      return;
+    }
+    var m = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) {
+      showTip(dtTip, '日期格式无法识别，请使用日期选择器输入。', 'err');
+      return;
+    }
+    var ms = Date.UTC(
+      parseInt(m[1], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[3], 10),
+      parseInt(m[4], 10),
+      parseInt(m[5], 10),
+      m[6] ? parseInt(m[6], 10) : 0
+    ) - CN_OFFSET;
+
+    if (isNaN(ms)) {
+      showTip(dtTip, '无效的日期时间。', 'err');
+      return;
+    }
+
+    var p = cnParts(ms);
+    renderRows(dtResult, [
+      { k: '秒级（10 位）', v: String(Math.floor(ms / 1000)) },
+      { k: '毫秒级（13 位）', v: String(ms) },
+      { k: '北京时间', v: fmtCN(ms) },
+      { k: '星期', v: WEEK[p.w] },
+      { k: 'ISO 8601', v: new Date(ms).toISOString() },
+      { k: '相对现在', v: relative(ms) }
+    ]);
+    showTip(dtTip, '已按北京时间（UTC+8）换算为时间戳。', 'ok');
+  }
+
+  document.getElementById('dt2tsBtn').addEventListener('click', dt2ts);
+
+  document.getElementById('dtNowBtn').addEventListener('click', function () {
+    dtInput.value = fmtInputValue(Date.now());
+    dt2ts();
+  });
+
+  document.getElementById('dtClearBtn').addEventListener('click', function () {
+    dtInput.value = '';
+    hideTip(dtTip);
+    dtResult.classList.remove('show');
+    dtResult.innerHTML = '';
+  });
+
+  dtInput.addEventListener('change', dt2ts);
+
+  var yearEl = document.getElementById('year');
+  if (yearEl && !yearEl.textContent) { yearEl.textContent = new Date().getFullYear(); }
+
+  dtInput.value = fmtInputValue(Date.now());
+})();
+</script>
+</body>
+</html>

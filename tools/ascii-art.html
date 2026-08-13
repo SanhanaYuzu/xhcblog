@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>图片转ASCII艺术 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:860px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} .upload-area{border:2px dashed var(--border);border-radius:14px;padding:30px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:14px;} .upload-area:hover{border-color:#3498db;background:#f0f7ff;} .upload-area input{display:none;} .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;} .row label{font-size:13px;font-weight:600;} .row input[type=range]{width:120px;} .ascii-out{background:#111;color:#0f0;font-family:Courier New,monospace;font-size:6px;line-height:1;padding:16px;border-radius:10px;overflow-x:auto;white-space:pre;max-height:500px;overflow-y:auto;} body.dark .upload-area:hover{background:#162030;}</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>🖼️ 图片转 ASCII 艺术</h1><p class="desc">上传图片，用字符密度映射明暗，生成 ASCII 艺术画。可调宽高和字符集。</p>
+<div class="card"><div class="upload-area" id="uploadArea"><input type="file" accept="image/*" id="fileInput"><div>📂 点击选择图片或拖拽</div></div><div class="row"><label>宽度(字符): <input type="range" id="wRange" min="40" max="200" value="100"></label><span id="wVal">100</span><label>字符集: <select id="charSet"><option value="8" selected>@%#*+=-:. (8级)</option><option value="10">$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`'. (密集)</option></select></label><button class="btn btn-primary" id="exportBtn">复制文本</button></div><div class="ascii-out" id="asciiOut"></div></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+var c1='@%#*+=-:. ';var c2='$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ';
+var out=qs('#asciiOut');
+function load(f){
+  var reader=new FileReader();
+  reader.onload=function(e){var img=new Image();img.onload=function(){convert(img)};img.src=e.target.result;};
+  reader.readAsDataURL(f);
+}
+function convert(img){
+  var w=parseInt(qs('#wRange').value);var h=Math.floor(w*img.height/img.width*0.45);
+  var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);var px=ctx.getImageData(0,0,w,h).data;
+  var chars=qs('#charSet').value==='8'?c1:c2;var len=chars.length;
+  var result='';
+  for(var y=0;y<h;y++){var line='';for(var x=0;x<w;x++){var i=(y*w+x)*4;var bright=(px[i]+px[i+1]+px[i+2])/3;var idx=Math.floor(bright/255*(len-1));line+=chars[idx]||' ';}result+=line+'\n';}
+  out.textContent=result;
+}
+qs('#uploadArea').addEventListener('click',function(){qs('#fileInput').click();});
+qs('#fileInput').addEventListener('change',function(){if(this.files[0])load(this.files[0]);});
+qs('#uploadArea').addEventListener('dragover',function(e){e.preventDefault();});
+qs('#uploadArea').addEventListener('drop',function(e){e.preventDefault();if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+qs('#wRange').addEventListener('input',function(){qs('#wVal').textContent=this.value;var img=qs('#uploadArea').querySelector('img');if(document.querySelector('img[src^=data]'))load(null);});
+qs('#charSet').addEventListener('change',function(){var f=qs('#fileInput');if(f.files[0])load(f.files[0]);});
+qs('#exportBtn').addEventListener('click',function(){var t=out.textContent;if(navigator.clipboard)navigator.clipboard.writeText(t);else{var el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);}var b=qs('#exportBtn');b.textContent='已复制!';setTimeout(function(){b.textContent='复制文本';},1500);});
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

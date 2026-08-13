@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown 预览器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:1140px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 18px;}
+
+    .md-toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:14px;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:9px;
+      padding:8px 14px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .md-stat{margin-left:auto;font-size:12.5px;color:var(--text-3);font-variant-numeric:tabular-nums;}
+
+    .md-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;}
+    .pane{
+      background:var(--card);border:1px solid var(--border);border-radius:14px;
+      box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-height:520px;
+    }
+    .pane-h{
+      display:flex;align-items:center;gap:8px;padding:11px 16px;
+      border-bottom:1px solid var(--border-2);font-size:13.5px;font-weight:700;color:var(--text-2);
+    }
+    .pane-h .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;}
+    #mdInput{
+      flex:1;width:100%;border:0;outline:none;resize:none;padding:16px 18px;
+      background:transparent;color:var(--text);font-size:14px;line-height:1.75;
+      font-family:"SFMono-Regular",Consolas,"Courier New","PingFang SC","Microsoft YaHei",monospace;
+    }
+    .md-preview{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.8;}
+
+    /* 全屏预览 */
+    .pane.fullscreen{
+      position:fixed;left:0;top:0;right:0;bottom:0;z-index:9998;
+      border-radius:0;min-height:0;max-width:none;
+    }
+    .pane.fullscreen .md-preview{max-width:900px;margin:0 auto;width:100%;padding:26px 24px 60px;}
+    body.fs-lock{overflow:hidden;}
+
+    /* ---------- 预览区排版 ---------- */
+    .md-preview h1,.md-preview h2,.md-preview h3,.md-preview h4{line-height:1.4;margin:1.4em 0 .6em;font-weight:700;}
+    .md-preview h1{font-size:1.65em;padding-bottom:.3em;border-bottom:1px solid var(--border);}
+    .md-preview h2{font-size:1.35em;padding-bottom:.28em;border-bottom:1px solid var(--border);}
+    .md-preview h3{font-size:1.15em;}
+    .md-preview h4{font-size:1em;}
+    .md-preview > :first-child{margin-top:0;}
+    .md-preview p{margin:.75em 0;}
+    .md-preview a{color:var(--primary);text-decoration:underline;text-underline-offset:2px;}
+    .md-preview ul,.md-preview ol{padding-left:1.6em;margin:.7em 0;}
+    .md-preview li{margin:.28em 0;}
+    .md-preview li > input[type="checkbox"]{margin-right:6px;accent-color:var(--primary);}
+    .md-preview blockquote{
+      margin:.9em 0;padding:.6em 1em;border-left:4px solid var(--primary);
+      background:var(--primary-soft);border-radius:0 8px 8px 0;color:var(--text-2);
+    }
+    .md-preview blockquote p{margin:.3em 0;}
+    .md-preview code{
+      background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:.12em .4em;
+      font-size:.88em;font-family:"SFMono-Regular",Consolas,"Courier New",monospace;color:#c7254e;
+    }
+    .md-preview pre{
+      background:#1b1f27;border-radius:10px;padding:14px 16px;overflow:auto;margin:.9em 0;
+      font-size:13.2px;line-height:1.65;
+    }
+    .md-preview pre code{
+      background:transparent;border:0;padding:0;color:#e6e8eb;font-size:inherit;
+    }
+    .md-preview table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14px;display:block;overflow-x:auto;}
+    .md-preview th,.md-preview td{border:1px solid var(--border);padding:8px 12px;text-align:left;}
+    .md-preview th{background:var(--bg);font-weight:700;}
+    .md-preview tr:nth-child(even) td{background:var(--bg);}
+    .md-preview hr{border:0;border-top:1px solid var(--border);margin:1.6em 0;}
+    .md-preview img{border-radius:8px;margin:.6em 0;}
+    .md-preview del{color:var(--text-3);}
+
+    body.dark .md-preview code{background:#262b34;border-color:#333a44;color:#e89b9b;}
+    body.dark .md-preview pre{background:#0f1319;}
+    body.dark .md-preview pre code{color:#dfe3e8;}
+
+    /* ---------- 代码高亮配色 ---------- */
+    .hljs-comment,.hljs-quote{color:#8a94a6;font-style:italic;}
+    .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-doctag{color:#c792ea;}
+    .hljs-string,.hljs-regexp,.hljs-addition{color:#a5e075;}
+    .hljs-number,.hljs-symbol,.hljs-bullet{color:#f78c6c;}
+    .hljs-title,.hljs-section,.hljs-name,.hljs-title.function_{color:#82aaff;}
+    .hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#ffcb6b;}
+    .hljs-built_in,.hljs-type,.hljs-class .hljs-title{color:#89ddff;}
+    .hljs-meta,.hljs-tag,.hljs-punctuation,.hljs-operator{color:#89ddff;}
+    .hljs-params,.hljs-property{color:#e6e8eb;}
+    .hljs-deletion{color:#ff6b6b;}
+    .hljs-emphasis{font-style:italic;}
+    .hljs-strong{font-weight:700;}
+
+    @media(max-width:860px){
+      .md-wrap{grid-template-columns:1fr;}
+      .pane{min-height:340px;}
+      .md-stat{margin-left:0;width:100%;}
+    }
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📝</span>
+      <h1>Markdown 预览器</h1>
+    </div>
+    <p class="tool-sub">左侧输入 Markdown，右侧实时渲染。支持 GFM 语法（表格、任务列表、删除线、围栏代码块与语法高亮），草稿自动本地保存。</p>
+
+    <div class="md-toolbar">
+      <button class="btn primary" id="fsBtn">⛶ 全屏预览</button>
+      <button class="btn" id="copyHtmlBtn">📋 复制 HTML</button>
+      <button class="btn" id="copyMdBtn">📄 复制 Markdown</button>
+      <button class="btn" id="sampleBtn">✨ 载入示例</button>
+      <button class="btn" id="clearBtn">🗑️ 清空</button>
+      <span class="md-stat" id="mdStat"></span>
+    </div>
+
+    <div class="md-wrap">
+      <section class="pane">
+        <div class="pane-h"><span class="bar"></span> Markdown 源码</div>
+        <textarea id="mdInput" spellcheck="false" placeholder="在这里输入 Markdown…"></textarea>
+      </section>
+      <section class="pane" id="previewPane">
+        <div class="pane-h">
+          <span class="bar"></span> 实时预览
+          <button class="btn" id="exitFsBtn" style="margin-left:auto;display:none;padding:5px 12px;font-size:12.5px;">✕ 退出全屏</button>
+        </div>
+        <div class="md-preview" id="mdPreview"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var KEY = "xhc_md_draft";
+      var input = document.getElementById("mdInput");
+      var preview = document.getElementById("mdPreview");
+      var pane = document.getElementById("previewPane");
+      var stat = document.getElementById("mdStat");
+      var toastEl = document.getElementById("tipToast");
+      var timer = null;
+
+      var SAMPLE = [
+        "# Markdown 预览器",
+        "",
+        "> 左边写，右边即时看到渲染结果。支持 **GFM** 全套语法。",
+        "",
+        "## 一、基础语法",
+        "",
+        "**加粗**、*斜体*、~~删除线~~、`行内代码`、[站点链接](https://xhc.dpdns.org)",
+        "",
+        "1. 有序列表第一项",
+        "2. 有序列表第二项",
+        "   - 嵌套无序项",
+        "   - 再来一项",
+        "",
+        "## 二、任务列表",
+        "",
+        "- [x] 完成页面骨架",
+        "- [x] 接入 marked.js",
+        "- [ ] 写一篇博客",
+        "",
+        "## 三、表格",
+        "",
+        "| 工具 | 说明 | 状态 |",
+        "| :--- | :--- | :---: |",
+        "| 二维码生成器 | 文本转二维码 | 可用 |",
+        "| 取色器 | 屏幕拾色 | 可用 |",
+        "| Markdown | 实时预览 | 可用 |",
+        "",
+        "## 四、代码块",
+        "",
+        "```javascript",
+        "function greet(name) {",
+        "  const msg = `你好，${name}！`;",
+        "  console.log(msg);",
+        "  return msg;",
+        "}",
+        "greet('XHC');",
+        "```",
+        "",
+        "---",
+        "",
+        "*由 XHC 工具箱提供*"
+      ].join("\n");
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      function parseMd(md) {
+        if (!window.marked) return null;
+        if (typeof window.marked.parse === "function") return window.marked.parse(md);
+        if (typeof window.marked === "function") return window.marked(md);
+        return null;
+      }
+
+      function render() {
+        var md = input.value;
+        var html = parseMd(md);
+        if (html === null) {
+          preview.innerHTML = '<p style="color:var(--text-3)">Markdown 解析库加载失败，请检查网络后刷新页面重试。</p>';
+        } else {
+          preview.innerHTML = html;
+          if (window.hljs) {
+            Array.prototype.forEach.call(preview.querySelectorAll("pre code"), function (block) {
+              try { window.hljs.highlightElement(block); } catch (e) {}
+            });
+          }
+          // 预览内的链接一律新窗口打开，避免被站内跳转拦截
+          Array.prototype.forEach.call(preview.querySelectorAll("a[href]"), function (a) {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+          });
+        }
+        updateStat(md);
+        try { localStorage.setItem(KEY, md); } catch (e) {}
+      }
+
+      function updateStat(md) {
+        var chars = md.length;
+        var lines = md ? md.split("\n").length : 0;
+        var words = (md.match(/[\u4e00-\u9fa5]|[A-Za-z0-9_'-]+/g) || []).length;
+        stat.textContent = chars + " 字符 · " + words + " 词 · " + lines + " 行";
+      }
+
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(render, 150);
+      }
+
+      input.addEventListener("input", schedule);
+
+      // Tab 键插入两个空格
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          var s = input.selectionStart, t = input.selectionEnd;
+          input.value = input.value.slice(0, s) + "  " + input.value.slice(t);
+          input.selectionStart = input.selectionEnd = s + 2;
+          schedule();
+        }
+      });
+
+      /* ---------- 全屏预览 ---------- */
+      var fsBtn = document.getElementById("fsBtn");
+      var exitFsBtn = document.getElementById("exitFsBtn");
+      function setFs(on) {
+        pane.classList.toggle("fullscreen", on);
+        document.body.classList.toggle("fs-lock", on);
+        exitFsBtn.style.display = on ? "block" : "none";
+        fsBtn.textContent = on ? "⛶ 退出全屏" : "⛶ 全屏预览";
+      }
+      fsBtn.addEventListener("click", function () { setFs(!pane.classList.contains("fullscreen")); });
+      exitFsBtn.addEventListener("click", function () { setFs(false); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && pane.classList.contains("fullscreen")) setFs(false);
+      });
+
+      /* ---------- 复制 ---------- */
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            resolve();
+          } catch (e) { reject(e); }
+        });
+      }
+      document.getElementById("copyHtmlBtn").addEventListener("click", function () {
+        copyText(preview.innerHTML).then(function () { toast("HTML 已复制到剪贴板"); })
+          .catch(function () { toast("复制失败，请手动选中复制"); });
+      });
+      document.getElementById("copyMdBtn").addEventListener("click", function () {
+        copyText(input.value).then(function () { toast("Markdown 已复制到剪贴板"); })
+          .catch(function () { toast("复制失败，请手动选中复制"); });
+      });
+
+      document.getElementById("sampleBtn").addEventListener("click", function () {
+        input.value = SAMPLE;
+        render();
+        toast("已载入示例内容");
+      });
+      document.getElementById("clearBtn").addEventListener("click", function () {
+        if (!input.value) { toast("内容已是空的"); return; }
+        input.value = "";
+        render();
+        input.focus();
+        toast("已清空");
+      });
+
+      /* ---------- 初始化 ---------- */
+      function boot() {
+        var saved = null;
+        try { saved = localStorage.getItem(KEY); } catch (e) {}
+        input.value = (saved === null || saved === "") ? SAMPLE : saved;
+
+        var tries = 0;
+        (function wait() {
+          if (window.marked) {
+            try { window.marked.setOptions({ gfm: true, breaks: true }); } catch (e) {}
+            render();
+            return;
+          }
+          if (++tries > 40) { render(); return; }
+          setTimeout(wait, 100);
+        })();
+      }
+
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

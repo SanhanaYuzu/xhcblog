@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>世界时钟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .wc-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;}
+    body.dark .wc-panel{box-shadow:none;}
+
+    .wc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+    .wc-item{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg);}
+    .wc-item.home{border-color:var(--primary);background:rgba(0,122,255,0.06);}
+    .wc-city{font-size:14px;font-weight:700;color:var(--text-2);display:flex;align-items:center;gap:6px;}
+    .wc-time{font-size:26px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;margin-top:6px;letter-spacing:.5px;}
+    .wc-date{font-size:12.5px;color:var(--text-3);margin-top:2px;}
+    .wc-ampm{font-size:12px;color:var(--text-3);}
+
+    @media(max-width:520px){
+      .wc-time{font-size:22px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🕐</span>
+      <h1>世界时钟</h1>
+    </div>
+    <p class="tool-sub">主要城市实时时间（每秒刷新），北京时间为基准高亮显示。</p>
+
+    <div class="wc-panel">
+      <div class="wc-list" id="wcList"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var list = document.getElementById("wcList");
+      var zones = [
+        { city: "北京", tz: "Asia/Shanghai", home: true },
+        { city: "东京", tz: "Asia/Tokyo" },
+        { city: "首尔", tz: "Asia/Seoul" },
+        { city: "新加坡", tz: "Asia/Singapore" },
+        { city: "迪拜", tz: "Asia/Dubai" },
+        { city: "莫斯科", tz: "Europe/Moscow" },
+        { city: "伦敦", tz: "Europe/London" },
+        { city: "巴黎", tz: "Europe/Paris" },
+        { city: "纽约", tz: "America/New_York" },
+        { city: "洛杉矶", tz: "America/Los_Angeles" },
+        { city: "悉尼", tz: "Australia/Sydney" },
+        { city: "圣保罗", tz: "America/Sao_Paulo" }
+      ];
+
+      var items = zones.map(function (z) {
+        var el = document.createElement("div");
+        el.className = "wc-item" + (z.home ? " home" : "");
+        el.innerHTML = '<div class="wc-city">' + (z.home ? "🏠 " : "🌍 ") + z.city +
+          '</div><div class="wc-time">--:--:--</div><div class="wc-date"></div>';
+        list.appendChild(el);
+        return { tz: z.tz, time: el.querySelector(".wc-time"), date: el.querySelector(".wc-date") };
+      });
+
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+      function update() {
+        var now = new Date();
+        items.forEach(function (it) {
+          try {
+            var time = new Intl.DateTimeFormat("zh-CN", {
+              timeZone: it.tz, hour12: false,
+              hour: "2-digit", minute: "2-digit", second: "2-digit"
+            }).format(now);
+            var date = new Intl.DateTimeFormat("zh-CN", {
+              timeZone: it.tz, month: "long", day: "numeric", weekday: "short"
+            }).format(now);
+            it.time.textContent = time;
+            it.date.textContent = date;
+          } catch (e) {
+            it.time.textContent = "N/A";
+          }
+        });
+      }
+
+      update();
+      setInterval(update, 1000);
+    })();
+  </script>
+</body>
+</html>

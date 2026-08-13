@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>打字速度测试 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:700px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} .stats{display:flex;gap:20px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;} .stat{text-align:center;}.stat .num{font-size:36px;font-weight:800;color:#3498db;}.stat .label{font-size:12px;color:var(--text-3);} .display{background:#f6f8fb;border-radius:14px;padding:24px;font-size:20px;line-height:1.8;margin-bottom:14px;font-family:monospace;min-height:80px;text-align:center;}.display .correct{color:#27ae60;}.display .error{color:#e74c3c;background:#fdeeee;border-radius:3px;}.display .current{border-bottom:2px solid #3498db;} input[type=text]{width:100%;padding:14px;border:1px solid var(--border);border-radius:12px;font-size:18px;font-family:monospace;text-align:center;background:var(--bg);color:var(--text-1);} input[type=text]:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);} body.dark .display{background:#161b22;}</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>⌨️ 打字速度测试</h1><p class="desc">输入显示的文字，测试你的打字速度（WPM）和准确率。按空格键重新开始。</p>
+<div class="card"><div class="stats"><div class="stat"><div class="num" id="wpm">0</div><div class="label">WPM</div></div><div class="stat"><div class="num" id="accuracy">100%</div><div class="label">准确率</div></div><div class="stat"><div class="num" id="timer">0</div><div class="label">秒数</div></div></div><div class="display" id="display"></div><input type="text" id="typeInput" placeholder="开始输入…" autocomplete="off" autofocus></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+var sentences=["the quick brown fox jumps over the lazy dog","to be or not to be that is the question","all that glitters is not gold","a journey of a thousand miles begins with a single step","practice makes perfect so keep typing every day","coding is like poetry in motion on the screen","the best way to predict the future is to create it","life is what happens when you are busy making other plans","knowledge is power but wisdom is the key","every great developer you know got there by solving problems","simple and beautiful user experience wins every time","cloud computing has transformed how we build and deploy software","open source is not just about code it is about community","debugging is twice as hard as writing the code in the first place"];
+var target='',pos=0,correct=0,total=0,startTime=0,ended=false,timerId=0;
+function pickSentence(){return sentences[Math.floor(Math.random()*sentences.length)];}
+function render(){
+  var html='';for(var i=0;i<target.length;i++){if(i<pos)html+='<span class="correct">'+target[i]+'</span>';else if(i===pos)html+='<span class="current">'+target[i]+'</span>';else html+=target[i];}qs('#display').innerHTML=html;
+}
+function startTimer(){if(!startTime&&!ended){startTime=Date.now();timerId=setInterval(function(){var s=Math.floor((Date.now()-startTime)/1000);qs('#timer').textContent=s;},200);}}
+function finish(){
+  ended=true;clearInterval(timerId);
+  var elapsed=(Date.now()-startTime)/60000;
+  var wpm=elapsed>0?Math.round((correct/5)/elapsed):0;
+  qs('#wpm').textContent=wpm;qs('#accuracy').textContent=total>0?Math.round(correct/total*100)+'%':'100%';
+  qs('#display').innerHTML='<span style="font-size:28px;color:#27ae60;">'+wpm+' WPM</span><br><span style="font-size:14px;color:var(--text-2))">准确率 '+Math.round(correct/total*100)+'% | 按空格重来</span>';
+}
+function reset(){target=pickSentence();pos=0;correct=0;total=0;startTime=0;ended=false;clearInterval(timerId);qs('#wpm').textContent='0';qs('#accuracy').textContent='100%';qs('#timer').textContent='0';qs('#typeInput').value='';qs('#typeInput').focus();render();}
+qs('#typeInput').addEventListener('input',function(e){
+  if(ended)return;
+  startTimer();
+  var ch=e.data;
+  if(!ch)return;
+  total++;
+  if(ch===target[pos]){correct++;pos++;if(pos>=target.length)finish();}
+  else{/* ignore wrong input */ qs('#typeInput').value=qs('#typeInput').value.slice(0,-1);}
+  render();
+});
+document.addEventListener('keydown',function(e){if(e.code==='Space'&&ended)reset();});
+reset();
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

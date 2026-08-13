@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>科学计算器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:560px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+
+    .screen{background:var(--bg);border:1px solid var(--border);border-radius:13px;padding:15px 16px;margin-bottom:14px;text-align:right;overflow:hidden;}
+    .screen .expr{font-size:15px;color:var(--text-3);min-height:21px;line-height:1.5;word-break:break-all;font-family:"SFMono-Regular",Consolas,monospace;}
+    .screen .result{font-size:34px;font-weight:800;color:var(--text);line-height:1.25;margin-top:4px;word-break:break-all;font-variant-numeric:tabular-nums;font-family:"SFMono-Regular",Consolas,monospace;}
+    .screen.error .result{color:#e5484d;font-size:22px;}
+
+    .keys{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;}
+    .key{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:12px;height:52px;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s;user-select:none;display:flex;align-items:center;justify-content:center;}
+    .key:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);}
+    .key:active,.key.press{transform:scale(.94);}
+    .key.op{color:var(--primary);font-weight:700;}
+    .key.fn{font-size:14px;background:var(--card);color:var(--text-2);}
+    .key.fn:hover{color:var(--primary);}
+    .key.fn:active{color:#e5484d;border-color:#e5484d;}
+    .key.eq{grid-column:span 2;background:var(--primary);border-color:var(--primary);color:#fff;font-size:20px;}
+    .key.eq:hover{background:var(--primary-dark);color:#fff;}
+    .key.zero{grid-column:span 2;}
+
+    .kb-tip{font-size:12px;color:var(--text-3);margin-top:13px;line-height:1.8;padding:9px 12px;background:var(--bg);border:1px dashed var(--border);border-radius:10px;}
+    .kb-tip kbd{display:inline-block;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;background:var(--card);font-size:11px;font-family:Consolas,monospace;color:var(--text-2);}
+
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:480px){
+      .key{height:48px;font-size:15px;}
+      .keys{gap:7px;}
+      .screen .result{font-size:30px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🧮</span>
+      <h1>科学计算器</h1>
+    </div>
+    <p class="tool-sub">支持三角函数、对数、开方、幂运算与括号嵌套，角度采用弧度制，可直接键盘输入。</p>
+
+    <div class="panel">
+      <div class="screen" id="screen">
+        <div class="expr" id="exprLine">0</div>
+        <div class="result" id="resultLine">0</div>
+      </div>
+
+      <div class="keys" id="keys">
+        <button class="key fn" data-k="sin(">sin</button>
+        <button class="key fn" data-k="cos(">cos</button>
+        <button class="key fn" data-k="tan(">tan</button>
+        <button class="key fn" data-k="√(">√</button>
+        <button class="key fn" data-k="C">C</button>
+
+        <button class="key fn" data-k="ln(">ln</button>
+        <button class="key fn" data-k="log(">log</button>
+        <button class="key fn" data-k="^">x^y</button>
+        <button class="key fn" data-k="(">(</button>
+        <button class="key fn" data-k="DEL">DEL</button>
+
+        <button class="key fn" data-k="π">π</button>
+        <button class="key fn" data-k="e">e</button>
+        <button class="key fn" data-k=")">)</button>
+        <button class="key op" data-k="÷">÷</button>
+        <button class="key op" data-k="×">×</button>
+
+        <button class="key" data-k="7">7</button>
+        <button class="key" data-k="8">8</button>
+        <button class="key" data-k="9">9</button>
+        <button class="key op" data-k="-">−</button>
+        <button class="key op" data-k="+">+</button>
+
+        <button class="key" data-k="4">4</button>
+        <button class="key" data-k="5">5</button>
+        <button class="key" data-k="6">6</button>
+        <button class="key" data-k="1">1</button>
+        <button class="key" data-k="2">2</button>
+        <button class="key" data-k="3">3</button>
+
+        <button class="key zero" data-k="0">0</button>
+        <button class="key" data-k=".">.</button>
+        <button class="key eq" data-k="=">=</button>
+      </div>
+
+      <div class="kb-tip">
+        键盘：<kbd>0-9</kbd> <kbd>+</kbd><kbd>-</kbd><kbd>*</kbd><kbd>/</kbd> <kbd>(</kbd><kbd>)</kbd> <kbd>.</kbd> ·
+        幂用 <kbd>^</kbd> · <kbd>Enter</kbd>= <kbd>Backspace</kbd>退格 <kbd>Esc</kbd>清除
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var exprLine = document.getElementById("exprLine");
+      var resultLine = document.getElementById("resultLine");
+      var screen = document.getElementById("screen");
+      var toastEl = document.getElementById("tipToast");
+      var expr = "";
+
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+
+      /* ---------- 递归下降表达式求值 ---------- */
+      var FUNCS = {
+        sin: Math.sin, cos: Math.cos, tan: Math.tan,
+        ln: Math.log, log: function(x){return Math.log10(x);},
+        sqrt: Math.sqrt, abs: Math.abs
+      };
+
+      function parse(src) {
+        var i = 0;
+        var s = src;
+        function peek(){return s[i];}
+        function next(){return s[i++];}
+        function skipSpaces(){while(s[i]===' '||s[i]==='\t')i++;}
+
+        function parseExpr(){
+          var v = parseTerm();
+          skipSpaces();
+          while(s[i]==='+'||s[i]==='-'){
+            var op=next(); var r=parseTerm(); skipSpaces();
+            v = op==='+' ? v+r : v-r;
+          }
+          return v;
+        }
+        function parseTerm(){
+          var v = parseFactor();
+          skipSpaces();
+          while(s[i]==='*'||s[i]==='/'){
+            var op=next(); var r=parseFactor(); skipSpaces();
+            v = op==='*' ? v*r : v/r;
+            if (!isFinite(v)) throw 0;
+          }
+          return v;
+        }
+        function parseFactor(){
+          var v = parseUnary();
+          skipSpaces();
+          // 幂运算右结合
+          if(s[i]==='^'){
+            next(); var r=parseFactor();
+            v = Math.pow(v, r);
+          }
+          return v;
+        }
+        function parseUnary(){
+          skipSpaces();
+          if(s[i]==='+'||s[i]==='-'){
+            var op=next(); var v=parseUnary();
+            return op==='-' ? -v : v;
+          }
+          return parsePrimary();
+        }
+        function parsePrimary(){
+          skipSpaces();
+          var ch = s[i];
+          if(ch>='0'&&ch<='9'||ch==='.'){
+            var num="";
+            while(s[i]>='0'&&s[i]<='9'||s[i]==='.') num+=next();
+            return parseFloat(num);
+          }
+          if(ch==='('){
+            next(); var v=parseExpr(); skipSpaces();
+            if(s[i]!==')') throw 0;
+            next();
+            return v;
+          }
+          // 标识符：函数名或常量
+          if(/[a-zA-Zπ]/.test(ch)){
+            var name="";
+            while(/[a-zA-Zπ]/.test(s[i])) name+=next();
+            if(name in FUNCS){
+              skipSpaces();
+              if(s[i]!=='(') throw 0;
+              next();
+              var arg=parseExpr(); skipSpaces();
+              if(s[i]!==')') throw 0;
+              next();
+              return FUNCS[name](arg);
+            }
+            if(name==='pi'||name==='π') return Math.PI;
+            if(name==='e') return Math.E;
+            throw 0;
+          }
+          throw 0;
+        }
+
+        var val = parseExpr();
+        skipSpaces();
+        if(i!==s.length) throw 0;
+        return val;
+      }
+
+      function fmt(v){
+        if(!isFinite(v)) return "错误";
+        if(Number.isInteger(v)&&Math.abs(v)<1e15) return String(v);
+        var abs=Math.abs(v);
+        if(abs>=1e15||(abs<1e-9&&abs>0)) return v.toExponential(8);
+        return v.toFixed(10).replace(/(\.\d*?)0+$/,"$1").replace(/\.$/,"");
+      }
+
+      function render(){
+        exprLine.textContent = expr==="" ? "0" : expr;
+        screen.classList.remove("error");
+        if(expr===""){resultLine.textContent="0";return;}
+        try{
+          var v = parse(expr);
+          if(!isFinite(v)){screen.classList.add("error");resultLine.textContent="结果无效";return;}
+          resultLine.textContent = fmt(v);
+        }catch(e){
+          screen.classList.add("error");
+          resultLine.textContent = "表达式错误";
+        }
+      }
+
+      function endsWithOp(){return /[+\-×÷^]$/.test(expr);}
+
+      function handle(k){
+        if(k==="C"){expr="";render();return;}
+        if(k==="DEL"){expr=expr.slice(0,-1);render();return;}
+        if(k==="="){
+          if(!expr)return;
+          try{
+            var v=parse(expr);
+            if(!isFinite(v)){toast("结果无效");return;}
+            var t=fmt(v);
+            expr=t;
+            screen.classList.remove("error");
+            exprLine.textContent="";
+            resultLine.textContent=t;
+          }catch(e){screen.classList.add("error");resultLine.textContent="表达式错误";}
+          return;
+        }
+        // 函数名统一转小写写入
+        if(k==="√("){expr+="sqrt(";render();return;}
+        if(k==="π"){expr+="pi";render();return;}
+        if(["sin(","cos(","tan(","ln(","log("].indexOf(k)>-1){expr+=k;render();return;}
+        if(k==="^"){if(expr===""||endsWithOp()){toast("请先输入底数");return;}expr+="^";render();return;}
+        if(k==="÷"){if(expr===""||endsWithOp()){toast("请先输入数字");return;}expr+="÷";render();return;}
+        if(k==="×"){if(expr===""||endsWithOp()){toast("请先输入数字");return;}expr+="×";render();return;}
+        if(k==="+"){if(expr===""||endsWithOp()){toast("请先输入数字");return;}expr+="+";render();return;}
+        if(k==="-"){
+          // 减号或负号：表达式为空或前一个字符为运算符时可作负号
+          if(expr===""){expr+="-";render();return;}
+          var last=expr.charAt(expr.length-1);
+          if("+-×÷^(".indexOf(last)>-1){expr+="-";render();return;}
+          expr+="-";render();return;
+        }
+        if(k==="("){expr+="(";render();return;}
+        if(k===")"){
+          var open=(expr.match(/\(/g)||[]).length, close=(expr.match(/\)/g)||[]).length;
+          if(close>=open){toast("括号不匹配");return;}
+          expr+=")";render();return;
+        }
+        if(k==="."){
+          // 当前数字是否已含小数点
+          var j=expr.length-1; while(j>=0&&/[0-9]/.test(expr[j]))j--;
+          var cur=expr.slice(j+1);
+          if(cur.indexOf(".")>-1)return;
+          if(cur==="")expr+="0.";else expr+=".";
+          render();return;
+        }
+        if(/[0-9]/.test(k)){
+          // 定位当前正在输入的数字（含可能的前导负号）
+          var p = expr.length - 1;
+          while(p >= 0 && /[0-9.]/.test(expr[p])) p--;
+          if(p >= 0 && expr[p] === "-" && (p === 0 || /[+\-×÷^(]/.test(expr[p-1]))) p--;
+          var cur = expr.slice(p + 1);
+          if(cur === "0") { expr = expr.slice(0, -1) + k; }   // 去掉前导 0
+          else if(cur === "-0") { expr = expr.slice(0, -1) + k; }
+          else { expr += k; }
+          render();
+          return;
+        }
+      }
+
+      Array.prototype.forEach.call(document.querySelectorAll(".key"),function(btn){
+        btn.addEventListener("click",function(){handle(btn.dataset.k);});
+      });
+
+      function flash(k){
+        var sel='.key[data-k="'+k+'"]';
+        if(k==="×")sel='.key[data-k="×"]';
+        var btn=document.querySelector(sel);
+        if(!btn)return;
+        btn.classList.add("press");
+        setTimeout(function(){btn.classList.remove("press");},110);
+      }
+
+      document.addEventListener("keydown",function(e){
+        if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA")return;
+        var k=e.key, m=null;
+        if(k>="0"&&k<="9")m=k;
+        else if(k===".")m=".";
+        else if(k==="+")m="+";
+        else if(k==="-")m="-";
+        else if(k==="*"||k==="x"||k==="X")m="×";
+        else if(k==="/")m="÷";
+        else if(k==="(")m="(";
+        else if(k===")")m=")";
+        else if(k==="^")m="^";
+        else if(k==="Enter"||k==="=")m="=";
+        else if(k==="Backspace")m="DEL";
+        else if(k==="Escape")m="C";
+        if(!m)return;
+        e.preventDefault();
+        flash(m);
+        handle(m);
+      });
+
+      render();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

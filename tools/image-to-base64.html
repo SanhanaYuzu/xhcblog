@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片转 Base64 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:960px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .panel{box-shadow:none;}
+
+    .b64-grid{display:grid;grid-template-columns:320px 1fr;gap:22px;align-items:start;}
+    .b64-left{display:flex;flex-direction:column;gap:14px;}
+
+    .b64-drop{
+      border:2px dashed var(--border);border-radius:14px;padding:26px 16px;text-align:center;
+      cursor:pointer;transition:.18s;background:var(--bg);
+    }
+    .b64-drop:hover, .b64-drop.over{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--bg));}
+    .b64-drop .big{font-size:36px;display:block;margin-bottom:8px;}
+    .b64-drop .t1{font-size:14px;font-weight:600;color:var(--text);}
+    .b64-drop .t2{font-size:12px;color:var(--text-3);margin-top:4px;}
+    .b64-drop input[type=file]{display:none;}
+
+    .b64-preview{
+      border:1px solid var(--border);border-radius:12px;background:var(--bg);
+      min-height:170px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px;
+    }
+    .b64-preview img{max-width:100%;max-height:230px;border-radius:8px;display:block;}
+    .b64-preview .ph{color:var(--text-3);font-size:13px;}
+
+    .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .stat{
+      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--bg);text-align:center;
+    }
+    .stat .k{font-size:11.5px;color:var(--text-3);}
+    .stat .v{font-size:15px;font-weight:700;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums;}
+
+    .b64-output label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px;}
+    .b64-output textarea{
+      width:100%;height:200px;resize:vertical;padding:12px 14px;font-size:12.5px;line-height:1.55;
+      border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none;word-break:break-all;
+    }
+    .b64-output textarea:focus{border-color:var(--primary);background:var(--card);}
+    .b64-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
+    .btn.primary:disabled:hover{background:var(--primary);color:#fff;}
+
+    .b64-preview-box{
+      border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--bg);margin-top:14px;
+    }
+    .b64-preview-box .lbl{font-size:12px;color:var(--text-3);margin-bottom:8px;}
+    .b64-preview-box .demo{height:90px;border-radius:8px;background-size:cover;background-position:center;}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:760px){
+      .b64-grid{grid-template-columns:1fr;}
+      .panel{padding:18px 15px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🖼️</span>
+      <h1>图片转 Base64</h1>
+    </div>
+    <p class="tool-sub">上传或拖入图片，自动生成 Data URL（Base64）编码，可直接用于 <code>&lt;img src&gt;</code> 或 CSS 背景，支持一键复制。</p>
+
+    <div class="panel">
+      <div class="b64-grid">
+        <div class="b64-left">
+          <div class="b64-drop" id="dropZone">
+            <span class="big">📂</span>
+            <div class="t1">点击选择图片</div>
+            <div class="t2">或将图片拖拽到此处</div>
+            <div class="t2">支持 JPG / PNG / GIF / WEBP</div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/gif,image/webp">
+          </div>
+          <div class="b64-preview" id="previewBox">
+            <span class="ph">原图预览</span>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="k">原图大小</div><div class="v" id="stOrig">—</div></div>
+            <div class="stat"><div class="k">编码后</div><div class="v" id="stEnc">—</div></div>
+            <div class="stat"><div class="k">体积变化</div><div class="v" id="stRate">—</div></div>
+          </div>
+        </div>
+
+        <div class="b64-output">
+          <label for="b64Out">Base64 编码（Data URL）</label>
+          <textarea id="b64Out" readonly placeholder="选择图片后这里会显示 Base64 编码结果…"></textarea>
+          <div class="b64-actions">
+            <button class="btn primary" id="copyBtn" disabled>📋 复制 Base64</button>
+            <button class="btn" id="clearBtn" disabled>🗑️ 清空</button>
+            <button class="btn" id="dlBtn" disabled>⬇️ 下载 .txt</button>
+          </div>
+
+          <div class="b64-preview-box">
+            <div class="lbl">实时预览（即用上面的 Base64 渲染）</div>
+            <div class="demo" id="demoBox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var drop = document.getElementById("dropZone");
+      var fileInput = document.getElementById("fileInput");
+      var previewBox = document.getElementById("previewBox");
+      var out = document.getElementById("b64Out");
+      var stOrig = document.getElementById("stOrig");
+      var stEnc = document.getElementById("stEnc");
+      var stRate = document.getElementById("stRate");
+      var copyBtn = document.getElementById("copyBtn");
+      var clearBtn = document.getElementById("clearBtn");
+      var dlBtn = document.getElementById("dlBtn");
+      var demoBox = document.getElementById("demoBox");
+      var toastEl = document.getElementById("tipToast");
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      function fmt(n) {
+        if (n < 1024) return n + " B";
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+        return (n / 1024 / 1024).toFixed(2) + " MB";
+      }
+
+      function handleFile(file) {
+        if (!file) return;
+        if (!/^image\/(jpeg|png|gif|webp)$/i.test(file.type)) {
+          toast("仅支持 JPG / PNG / GIF / WEBP 图片");
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var dataUrl = e.target.result;
+          out.value = dataUrl;
+          previewBox.innerHTML = '<img src="' + dataUrl + '" alt="预览">';
+          demoBox.style.backgroundImage = 'url(' + dataUrl + ')';
+          var orig = file.size;
+          var enc = dataUrl.length;
+          stOrig.textContent = fmt(orig);
+          stEnc.textContent = fmt(enc);
+          var rate = ((enc - orig) / orig) * 100;
+          stRate.textContent = (rate >= 0 ? "+" : "") + rate.toFixed(1) + "%";
+          copyBtn.disabled = clearBtn.disabled = dlBtn.disabled = false;
+          toast("已生成 Base64（" + fmt(enc) + "）");
+        };
+        reader.onerror = function () { toast("读取文件失败，请重试"); };
+        reader.readAsDataURL(file);
+      }
+
+      drop.addEventListener("click", function () { fileInput.click(); });
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+      });
+
+      ["dragenter", "dragover"].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) {
+          e.preventDefault(); e.stopPropagation(); drop.classList.add("over");
+        });
+      });
+      ["dragleave", "drop"].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) {
+          e.preventDefault(); e.stopPropagation(); drop.classList.remove("over");
+        });
+      });
+      drop.addEventListener("drop", function (e) {
+        var dt = e.dataTransfer;
+        if (dt && dt.files && dt.files[0]) handleFile(dt.files[0]);
+      });
+      // 阻止整页拖放打开文件
+      window.addEventListener("dragover", function (e) { e.preventDefault(); });
+      window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+      function copyText(txt) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(txt);
+        }
+        return new Promise(function (res, rej) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+            document.body.appendChild(ta); ta.select();
+            document.execCommand("copy"); document.body.removeChild(ta);
+            res();
+          } catch (err) { rej(err); }
+        });
+      }
+
+      copyBtn.addEventListener("click", function () {
+        if (!out.value) return;
+        copyText(out.value).then(function () { toast("Base64 已复制到剪贴板"); })
+          .catch(function () { toast("复制失败，请手动选择复制"); });
+      });
+
+      dlBtn.addEventListener("click", function () {
+        if (!out.value) return;
+        var blob = new Blob([out.value], { type: "text/plain" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "base64-" + Date.now() + ".txt";
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        toast("已下载 Base64 文本");
+      });
+
+      clearBtn.addEventListener("click", function () {
+        out.value = "";
+        previewBox.innerHTML = '<span class="ph">原图预览</span>';
+        demoBox.style.backgroundImage = "none";
+        stOrig.textContent = stEnc.textContent = stRate.textContent = "—";
+        copyBtn.disabled = clearBtn.disabled = dlBtn.disabled = true;
+        fileInput.value = "";
+        toast("已清空");
+      });
+    })();
+  </script>
+</body>
+</html>

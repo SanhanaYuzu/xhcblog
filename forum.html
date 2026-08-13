@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛 - XHC 博客</title>
+  <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏（与全站一致，以便登录/账号菜单可用） -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="index.html">
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:760px;padding:20px 0;">
+    <h1>💬 论坛 · 实时聊天</h1>
+
+    <!-- 未登录时显示的登录门禁 -->
+    <div id="forumGate" class="card" style="padding:32px;text-align:center;display:none;">
+      <div style="font-size:42px;margin-bottom:10px;">🔒</div>
+      <h3>进入论坛前需先登录</h3>
+      <p class="note">论坛为实名登录后的实时聊天区，请先登录账号。</p>
+      <button class="btn btn-primary" id="forumLogin">去登录</button>
+    </div>
+
+    <!-- 已登录后显示的聊天界面 -->
+    <div id="forumApp" style="display:none;">
+      <div class="forum-bar card" style="padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>论坛昵称：<b id="nicknameShow"></b></span>
+        <button class="btn btn-outline sm" id="changeNick">修改昵称</button>
+        <span class="forum-tip">🧹 历史消息超过 200 条会自动清理最旧记录</span>
+      </div>
+
+      <div class="forum-chat" id="chatList"></div>
+
+      <div class="forum-input">
+        <textarea id="msgInput" placeholder="说点什么…（Enter 发送 / Shift+Enter 换行）" rows="2"></textarea>
+        <button class="btn btn-primary" id="sendBtn">发送</button>
+      </div>
+    </div>
+
+    <div id="forumNote"></div>
+  </main>
+
+  <!-- 论坛昵称弹窗 -->
+  <div class="modal-mask" id="nickModal" style="display:none;">
+    <div class="modal" style="max-width:360px;">
+      <h3 style="margin-top:0;">设置论坛昵称</h3>
+      <p class="note-mini" style="margin:6px 0 12px;color:var(--text-2);font-size:13px;">
+        此昵称仅用于论坛聊天，与你的博客账号无关。
+      </p>
+      <input id="nickInput" type="text" maxlength="20" placeholder="给自己起个昵称" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
+      <div id="nickErr" style="color:#dc3545;font-size:13px;min-height:18px;margin:6px 0;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-outline" id="nickCancel">取消</button>
+        <button class="btn btn-primary" id="nickSave">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

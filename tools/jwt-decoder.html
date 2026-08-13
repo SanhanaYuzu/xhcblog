@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT 解码器 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .card{padding:24px;margin-bottom:20px;}
+    textarea{width:100%;box-sizing:border-box;min-height:80px;padding:14px;border:1px solid var(--border);border-radius:12px;font-family:Consolas,monospace;font-size:14px;resize:vertical;background:var(--bg);color:var(--text-1);}
+    textarea:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    #headerBox,#payloadBox{background:#f0f3f7;border-radius:12px;padding:16px;font-family:Consolas,monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;margin-top:10px;color:#2c3e50;}
+    .label{font-weight:700;font-size:14px;color:#3498db;margin-top:18px;display:block;}
+    .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#e8f4fd;color:#3498db;}
+    .pill.expired{background:#fde8e8;color:#c0392b;}
+    .pill.valid{background:#e8fdf0;color:#27ae60;}
+    .notice{font-size:12px;color:var(--text-3);margin-top:4px;}
+    body.dark #headerBox,body.dark #payloadBox{background:#161b22;color:#d0d0d0;}
+    body.dark .pill{background:#1a3a4a;color:#5dade2;}
+    body.dark .pill.expired{background:#3a1a1a;color:#e74c3c;}
+    body.dark .pill.valid{background:#1a3a2a;color:#2ecc71;}
+      .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🔐 JWT 解码器</h1>
+    <p class="desc">解析 JWT Token，查看 Header 与 Payload 内容，判断是否过期。<strong>仅解码不验证签名，请勿在此粘贴敏感 Token。</strong></p>
+    <div class="card">
+      <textarea placeholder="请粘贴 JWT Token（格式：xxxxx.yyyyy.zzzzz）" id="jwtInput"></textarea>
+      <div id="errMsg" style="color:#c0392b;font-size:13px;margin-top:6px;display:none;"></div>
+      <span class="label">Header</span>
+      <div id="headerBox">等待输入…</div>
+      <span class="label">Payload</span>
+      <div id="payloadBox">等待输入…</div>
+      <div class="pills" id="pills"></div>
+      <div class="notice" id="notice"></div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>    /* app.js 把 qs/qsa/esc 包在 IIFE 内，本地定义自己的助手以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function qsa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]; }); }
+
+
+    function b64urlDecode(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';try{return JSON.parse(decodeURIComponent(atob(s).split('').map(function(c){return'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join('')));}catch(e){return null;}}
+    var inp=qs('#jwtInput'),err=qs('#errMsg'),hBox=qs('#headerBox'),pBox=qs('#payloadBox'),pills=qs('#pills'),notice=qs('#notice');
+    function formatJSON(obj){if(!obj)return'（无法解析）';try{return JSON.stringify(obj,null,2);}catch(e){return String(obj);}}
+    function ts2str(ts){return new Date(ts*1000).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'});}
+    inp.addEventListener('input',function(){
+      var v=inp.value.trim();err.style.display='none';hBox.textContent='等待输入…';pBox.textContent='等待输入…';pills.innerHTML='';notice.textContent='';
+      if(!v)return;
+      var parts=v.split('.');
+      if(parts.length!==3){err.style.display='block';err.textContent='格式错误：JWT 应为三段，用 . 分隔（header.payload.signature）';return;}
+      var h=b64urlDecode(parts[0]),p=b64urlDecode(parts[1]);
+      if(!h||!p){err.style.display='block';err.textContent='解码失败：Header 或 Payload 的 Base64 格式不正确';return;}
+      hBox.textContent=formatJSON(h);
+      pBox.textContent=formatJSON(p);
+      var ps=[];
+      if(p.iss)ps.push('<span class="pill">签发者(iss): '+p.iss+'</span>');
+      if(p.sub)ps.push('<span class="pill">主题(sub): '+p.sub+'</span>');
+      if(p.aud)ps.push('<span class="pill">受众(aud): '+(Array.isArray(p.aud)?p.aud.join(','):p.aud)+'</span>');
+      if(p.iat)ps.push('<span class="pill">签发时间(iat): '+ts2str(p.iat)+'</span>');
+      var now=Math.floor(Date.now()/1000);
+      if(p.exp){
+        var expCls=p.exp<now?' expired':' valid';
+        var expLabel=p.exp<now?'⚠ 已过期':'✅ 有效';
+        ps.push('<span class="pill'+expCls+'">过期时间(exp): '+ts2str(p.exp)+' ('+expLabel+')</span>');
+      }
+      if(p.nbf){
+        var nbfCls=p.nbf>now?' expired':' valid';
+        ps.push('<span class="pill'+nbfCls+'">生效时间(nbf): '+ts2str(p.nbf)+'</span>');
+      }
+      pills.innerHTML=ps.join('');
+      notice.textContent='⚠ 仅做解码展示，未验证签名有效性。请勿在生产环境中依赖此工具做鉴权。';
+    });
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

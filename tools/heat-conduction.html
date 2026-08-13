@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>热传导模拟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:1000px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .hc-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .panel{box-shadow:none;}
+
+    .hc-field{margin-bottom:16px;}
+    .hc-field .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+    .hc-field label{font-size:13px;font-weight:600;color:var(--text-2);}
+    .hc-field .val{font-size:13px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums;}
+    .hc-field input[type=range]{width:100%;accent-color:var(--primary);}
+
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;flex:1;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .hc-btns{display:flex;gap:10px;margin-top:6px;}
+
+    .hc-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+    .hc-stat{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg);text-align:center;}
+    .hc-stat .k{font-size:11.5px;color:var(--text-3);}
+    .hc-stat .v{font-size:16px;font-weight:700;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums;}
+
+    .hc-canvas-wrap{background:var(--bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;}
+    #hcCanvas{display:block;width:100%;cursor:crosshair;}
+    .hc-legend{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.6;}
+    .hc-legend b{color:var(--text-2);}
+    .hc-scale{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);margin-top:10px;}
+    .hc-scale .bar{flex:1;height:12px;border-radius:6px;background:linear-gradient(90deg,#1a2240,#0050c8,#00c853,#ffd600,#ff6a00,#ffffff);}
+
+    @media(max-width:760px){
+      .hc-grid{grid-template-columns:1fr;}
+      .panel{padding:18px 15px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌡️</span>
+      <h1>热传导模拟</h1>
+    </div>
+    <p class="tool-sub">加热金属板，观察热量从热源沿二维网格向四周扩散的传热过程。点击画布可添加或移除热源。</p>
+
+    <div class="hc-grid">
+      <div class="panel">
+        <div class="hc-field">
+          <div class="row"><label>热源温度</label><span class="val" id="tVal">300 °C</span></div>
+          <input type="range" id="tRange" min="50" max="500" step="5" value="300">
+        </div>
+        <div class="hc-field">
+          <div class="row"><label>传导速率</label><span class="val" id="kVal">0.18</span></div>
+          <input type="range" id="kRange" min="0.05" max="0.40" step="0.01" value="0.18">
+        </div>
+        <div class="hc-field">
+          <div class="row"><label>环境散热</label><span class="val" id="cVal">0.004</span></div>
+          <input type="range" id="cRange" min="0" max="0.02" step="0.001" value="0.004">
+        </div>
+
+        <div class="hc-btns">
+          <button class="btn primary" id="playBtn">⏸ 暂停</button>
+          <button class="btn" id="resetBtn">↺ 重置</button>
+        </div>
+
+        <div class="hc-stats">
+          <div class="hc-stat"><div class="k">最高温度</div><div class="v" id="stMax">—</div></div>
+          <div class="hc-stat"><div class="k">平均温度</div><div class="v" id="stAvg">—</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="hc-canvas-wrap">
+          <canvas id="hcCanvas"></canvas>
+        </div>
+        <div class="hc-scale">
+          <span>冷 (20°C)</span><span class="bar"></span><span>热 (500°C)</span>
+        </div>
+        <div class="hc-legend">
+          模拟说明：金属板初始处于 <b>20°C</b> 环境温度，中央（或你点击处）为持续加热的<b>热源</b>。每帧按二维热扩散方程
+          ∂T/∂t = k·∇²T 更新温度并叠加轻微环境散热，最终趋于稳态。颜色由<b>蓝（冷）</b>渐变到<b>白（热）</b>。
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var canvas = document.getElementById("hcCanvas");
+      var ctx = canvas.getContext("2d");
+      var tRange = document.getElementById("tRange"), kRange = document.getElementById("kRange"), cRange = document.getElementById("cRange");
+      var tVal = document.getElementById("tVal"), kVal = document.getElementById("kVal"), cVal = document.getElementById("cVal");
+      var playBtn = document.getElementById("playBtn"), resetBtn = document.getElementById("resetBtn");
+      var stMax = document.getElementById("stMax"), stAvg = document.getElementById("stAvg");
+
+      var DPR = window.devicePixelRatio || 1;
+      var NX = 140, NY = 90;
+      var AMBIENT = 20, SCALE_MAX = 500;
+      var temp = new Float32Array(NX * NY);
+      var next = new Float32Array(NX * NY);
+      var src = new Uint8Array(NX * NY);
+      var off = document.createElement("canvas");
+      off.width = NX; off.height = NY;
+      var offCtx = off.getContext("2d");
+      var imgData = offCtx.createImageData(NX, NY);
+
+      var params = { T: 300, k: 0.18, cool: 0.004 };
+      var running = true;
+      var rafId = null;
+
+      function idx(x, y) { return y * NX + x; }
+
+      function reset() {
+        temp.fill(AMBIENT);
+        next.fill(AMBIENT);
+        src.fill(0);
+        // 默认中央热源
+        addSource(Math.floor(NX / 2), Math.floor(NY / 2), 3);
+      }
+
+      function addSource(cx, cy, r) {
+        for (var dy = -r; dy <= r; dy++) {
+          for (var dx = -r; dx <= r; dx++) {
+            var x = cx + dx, y = cy + dy;
+            if (x < 0 || x >= NX || y < 0 || y >= NY) continue;
+            if (dx * dx + dy * dy <= r * r) src[idx(x, y)] = 1;
+          }
+        }
+      }
+
+      function toggleSource(px, py) {
+        if (px < 0 || px >= NX || py < 0 || py >= NY) return;
+        var i = idx(px, py);
+        if (src[i]) {
+          // 移除以该点为中心的小块
+          for (var dy = -3; dy <= 3; dy++)
+            for (var dx = -3; dx <= 3; dx++) {
+              var x = px + dx, y = py + dy;
+              if (x < 0 || x >= NX || y < 0 || y >= NY) continue;
+              if (dx * dx + dy * dy <= 9) src[idx(x, y)] = 0;
+            }
+        } else {
+          addSource(px, py, 3);
+        }
+      }
+
+      function step() {
+        var k = params.k, cool = params.cool;
+        for (var y = 0; y < NY; y++) {
+          for (var x = 0; x < NX; x++) {
+            var i = idx(x, y);
+            if (src[i]) { next[i] = params.T; continue; }
+            var c = temp[i];
+            var l = x > 0 ? temp[i - 1] : c;
+            var r = x < NX - 1 ? temp[i + 1] : c;
+            var u = y > 0 ? temp[i - NX] : c;
+            var d = y < NY - 1 ? temp[i + NX] : c;
+            var lap = l + r + u + d - 4 * c;
+            var nt = c + k * lap;
+            if (cool > 0) nt += cool * (AMBIENT - nt);
+            next[i] = nt;
+          }
+        }
+        var tmp = temp; temp = next; next = tmp;
+      }
+
+      function hslToRgb(h, s, l) {
+        h = (h % 360 + 360) % 360 / 360;
+        var r, g, b;
+        if (s === 0) { r = g = b = l; }
+        else {
+          var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          var p = 2 * l - q;
+          function hue2(pq, t) {
+            if (t < 0) t += 1; if (t > 1) t -= 1;
+            if (t < 1 / 6) return pq + (q - pq) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return pq + (q - pq) * (2 / 3 - t) * 6;
+            return pq;
+          }
+          r = hue2(p, h + 1 / 3); g = hue2(p, h); b = hue2(p, h - 1 / 3);
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+      }
+
+      function tempColor(t) {
+        var n = (t - AMBIENT) / (SCALE_MAX - AMBIENT);
+        if (n < 0) n = 0; if (n > 1) n = 1;
+        // 240°(蓝,冷) -> 0°(红,热)，亮度随温度提升
+        var hue = 240 - 240 * n;
+        var light = 0.12 + 0.55 * n;
+        var rgb = hslToRgb(hue, 0.9, light);
+        return rgb;
+      }
+
+      function render() {
+        var data = imgData.data;
+        var maxT = -Infinity, sum = 0, count = 0;
+        for (var i = 0; i < temp.length; i++) {
+          var t = temp[i];
+          if (t > maxT) maxT = t;
+          sum += t; count++;
+          var rgb = tempColor(t);
+          var o = i * 4;
+          data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255;
+        }
+        offCtx.putImageData(imgData, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        ctx.drawImage(off, 0, 0, NX, NY, 0, 0, canvas.clientWidth, canvas.clientHeight);
+        stMax.textContent = Math.round(maxT) + " °C";
+        stAvg.textContent = (sum / count).toFixed(1) + " °C";
+      }
+
+      function loop() {
+        if (running) step();
+        render();
+        rafId = requestAnimationFrame(loop);
+      }
+
+      function fit() {
+        var w = canvas.clientWidth;
+        var h = Math.round(w * (NY / NX));
+        canvas.style.height = h + "px";
+        canvas.width = Math.floor(w * DPR);
+        canvas.height = Math.floor(h * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      function readParams() {
+        params.T = parseFloat(tRange.value);
+        params.k = parseFloat(kRange.value);
+        params.cool = parseFloat(cRange.value);
+        tVal.textContent = params.T + " °C";
+        kVal.textContent = params.k.toFixed(2);
+        cVal.textContent = params.cool.toFixed(3);
+      }
+
+      [tRange, kRange, cRange].forEach(function (el) {
+        el.addEventListener("input", readParams);
+      });
+
+      playBtn.addEventListener("click", function () {
+        running = !running;
+        playBtn.textContent = running ? "⏸ 暂停" : "▶ 播放";
+      });
+
+      resetBtn.addEventListener("click", reset);
+
+      canvas.addEventListener("click", function (e) {
+        var rect = canvas.getBoundingClientRect();
+        var x = Math.floor((e.clientX - rect.left) / rect.width * NX);
+        var y = Math.floor((e.clientY - rect.top) / rect.height * NY);
+        toggleSource(x, y);
+      });
+
+      window.addEventListener("resize", fit);
+
+      fit(); reset(); readParams();
+      rafId = requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

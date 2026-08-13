@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工具箱 - XHC 博客</title>
+  <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .tools-page{max-width:1000px;margin:0 auto;padding:30px 20px 56px;}
+    .tools-page h1{margin:0 0 6px;font-size:30px;font-weight:800;letter-spacing:-.5px;
+      background:linear-gradient(135deg,#3498db,#9b59b6,#e74c3c);background-size:220% 100%;
+      -webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;
+      animation:tbTitle 8s ease infinite;}
+    @keyframes tbTitle{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    .tools-desc{color:var(--text-3);font-size:14px;margin:0 0 30px;}
+    /* 分区卡片（模仿 onyes5634.github.io 的 projects-section） */
+    .tool-section{margin-bottom:28px;padding:22px 26px;background:#f6f8fb;border:1px solid rgba(0,0,0,.06);border-radius:16px;transition:background .3s,border-color .3s;}
+    .tool-section h2{font-size:20px;margin:0 0 16px;padding-bottom:10px;border-bottom:2px solid #3498db;display:inline-block;color:#3498db;}
+    .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+    /* 工具卡片（模仿 onyes5634.github.io 的 project-item） */
+    .tool-card{position:relative;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:18px 20px;
+      transition:transform .25s cubic-bezier(.18,.89,.32,1.28),box-shadow .25s,border-color .25s;cursor:pointer;text-decoration:none;color:inherit;display:block;}
+    .tool-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
+      background:radial-gradient(circle,rgba(52,152,219,.12) 0%,transparent 70%);opacity:0;transition:opacity .4s;pointer-events:none;}
+    .tool-card:hover::before{opacity:1;}
+    .tool-card:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 35px rgba(0,0,0,.1);border-color:#3498db;}
+    .tool-card .t-icon{font-size:36px;margin-bottom:10px;display:block;transition:transform .25s;}
+    .tool-card:hover .t-icon{transform:scale(1.08);}
+    .tool-card .t-name{font-size:16px;font-weight:600;margin-bottom:6px;color:#3498db;}
+    .tool-card .t-desc{font-size:13px;color:var(--text-3);line-height:1.5;}
+    /* 搜索 + 分类筛选栏 */
+    .tool-toolbar{display:flex;gap:12px;margin:0 0 26px;flex-wrap:wrap;}
+    .tool-search{flex:1;min-width:200px;padding:11px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;outline:none;transition:.15s;}
+    .tool-search:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+    .tool-cat{padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;cursor:pointer;outline:none;transition:.15s;}
+    .tool-cat:focus{border-color:var(--primary);}
+    .tool-empty{text-align:center;color:var(--text-3);padding:44px 0;font-size:15px;display:none;}
+    body.dark .tool-section{background:#161b22;border-color:rgba(255,255,255,.07);}
+    body.dark .tool-card{background:#1c232c;border-color:rgba(255,255,255,.09);}
+    body.dark .tool-card .t-name{color:#5dade2;}
+    body.dark .tool-section h2{color:#5dade2;border-color:#5dade2;}
+    @media(max-width:680px){
+      .tool-section{padding:16px;}
+      .tool-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+      .tool-card{padding:14px;}
+      .tool-card .t-icon{font-size:30px;}
+      .tool-section h2{font-size:18px;}
+      .tool-toolbar{flex-direction:column;}
+      .tool-search,.tool-cat{width:100%;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="index.html">
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tools-page">
+    <h1>🧰 工具箱</h1>
+    <p class="tools-desc">精选实用工具、趣味游戏与模拟实验，即开即用。</p>
+
+    <!-- 搜索 + 分类筛选 -->
+    <div class="tool-toolbar">
+      <input id="toolSearch" class="tool-search" type="text" placeholder="🔍 搜索工具名称或描述…" autocomplete="off">
+      <select id="toolCat" class="tool-cat">
+        <option value="all">全部分类</option>
+        <option value="game">🎮 趣味游戏</option>
+        <option value="dev">💻 开发工具</option>
+        <option value="util">🛠️ 实用工具</option>
+        <option value="sim">🔬 模拟实验</option>
+      </select>
+    </div>
+
+    <!-- 游戏类 -->
+    <section class="tool-section" data-cat="game">
+      <h2>🎮 趣味游戏</h2>
+      <div class="tool-grid">
+        <a class="tool-card" href="tools/snake-game.html">
+          <span class="t-icon">🐍</span>
+          <div class="t-name">贪吃蛇</div>
+          <div class="t-desc">经典贪吃蛇，方向键控制移动</div>
+        </a>
+        <a class="tool-card" href="tools/2048.html">
+          <span class="t-icon">🔢</span>
+          <div class="t-name">2048</div>
+          <div class="t-desc">数字合并拼图，挑战高分</div>
+        </a>
+        <a class="tool-card" href="tools/number-puzzle.html">
+          <span class="t-icon">🧩</span>
+          <div class="t-name">数字华容道</div>
+          <div class="t-desc">4×4 滑块拼图，考验逻辑思维</div>
+        </a>
+        <a class="tool-card" href="tools/whack-mole.html">
+          <span class="t-icon">🔨</span>
+          <div class="t-name">打地鼠</div>
+          <div class="t-desc">30 秒限时挑战，测反应速度</div>
+        </a>
+        <a class="tool-card" href="tools/jigsaw-puzzle.html">
+          <span class="t-icon">🖼️</span>
+          <div class="t-name">拼图游戏</div>
+          <div class="t-desc">3×3 数字拼图，最少步数挑战</div>
+        </a>
+        <a class="tool-card" href="tools/breakout-game.html">
+          <span class="t-icon">🧱</span>
+          <div class="t-name">打砖块</div>
+          <div class="t-desc">经典打砖块，挡板接球击碎砖块</div>
+        </a>
+        <a class="tool-card" href="tools/dice.html">
+          <span class="t-icon">🎲</span>
+          <div class="t-name">骰子摇一摇</div>
+          <div class="t-desc">投掷 1–6 颗骰子，显示点数与总和</div>
+        </a>
+        <a class="tool-card" href="tools/random-draw.html">
+          <span class="t-icon">🎯</span>
+          <div class="t-name">随机抽签</div>
+          <div class="t-desc">名单点名 / 抽奖，支持不重复抽取</div>
+        </a>
+        <a class="tool-card" href="tools/tetris.html">
+          <span class="t-icon">🟦</span>
+          <div class="t-name">俄罗斯方块</div>
+          <div class="t-desc">经典方块下落，消行计分</div>
+        </a>
+        <a class="tool-card" href="tools/guess-number.html">
+          <span class="t-icon">❓</span>
+          <div class="t-name">猜数字</div>
+          <div class="t-desc">1–100 随机竞猜，提示大小</div>
+        </a>
+        <a class="tool-card" href="tools/memory-game.html">
+          <span class="t-icon">🃏</span>
+          <div class="t-name">记忆翻牌</div>
+          <div class="t-desc">翻牌配对，比拼记忆与步数</div>
+        </a>
+        <a class="tool-card" href="tools/maze-generator.html">
+          <span class="t-icon">🏗️</span>
+          <div class="t-name">迷宫生成器</div>
+          <div class="t-desc">DFS 算法随机迷宫，可调尺寸</div>
+        </a>
+        <a class="tool-card" href="tools/ascii-art.html">
+          <span class="t-icon">🖼️</span>
+          <div class="t-name">图片转 ASCII 艺术</div>
+          <div class="t-desc">字符密度映射明暗，复制文本</div>
+        </a>
+        <a class="tool-card" href="tools/keyboard-test.html">
+          <span class="t-icon">⌨️</span>
+          <div class="t-name">键盘测试器</div>
+          <div class="t-desc">按下按键高亮，检测坏键</div>
+        </a>
+        <a class="tool-card" href="tools/typing-test.html">
+          <span class="t-icon">⌨️</span>
+          <div class="t-name">打字速度测试</div>
+          <div class="t-desc">WPM 计速，准确率统计</div>
+        </a>
+        <a class="tool-card" href="tools/pixel-art.html">
+          <span class="t-icon">🎨</span>
+          <div class="t-name">像素画板</div>
+          <div class="t-desc">点阵绘图，多种尺寸，导出 PNG</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 开发工具 -->
+    <section class="tool-section" data-cat="dev">
+      <h2>💻 开发工具</h2>
+      <div class="tool-grid">
+        <a class="tool-card" href="tools/base64-tool.html">
+          <span class="t-icon">🔡</span>
+          <div class="t-name">Base64 编解码</div>
+          <div class="t-desc">文本与 Base64 互转，支持中文</div>
+        </a>
+        <a class="tool-card" href="tools/json-formatter.html">
+          <span class="t-icon">🧾</span>
+          <div class="t-name">JSON 格式化</div>
+          <div class="t-desc">美化 / 压缩 / 校验 JSON 数据</div>
+        </a>
+        <a class="tool-card" href="tools/regex-tester.html">
+          <span class="t-icon">🔍</span>
+          <div class="t-name">正则测试器</div>
+          <div class="t-desc">实时高亮匹配，调试正则表达式</div>
+        </a>
+        <a class="tool-card" href="tools/timestamp-tool.html">
+          <span class="t-icon">🕐</span>
+          <div class="t-name">时间戳转换</div>
+          <div class="t-desc">Unix 时间戳与北京时间互转</div>
+        </a>
+        <a class="tool-card" href="tools/url-encoder.html">
+          <span class="t-icon">🔗</span>
+          <div class="t-name">URL 编解码</div>
+          <div class="t-desc">URL 编码 / 解码，双标准切换</div>
+        </a>
+        <a class="tool-card" href="tools/cipher-tool.html">
+          <span class="t-icon">🔐</span>
+          <div class="t-name">加密 / 解密</div>
+          <div class="t-desc">AES-256 与凯撒密码双向加解密</div>
+        </a>
+        <a class="tool-card" href="tools/base-converter.html">
+          <span class="t-icon">🔢</span>
+          <div class="t-name">进制转换</div>
+          <div class="t-desc">2–36 进制互转，支持大整数</div>
+        </a>
+        <a class="tool-card" href="tools/text-counter.html">
+          <span class="t-icon">🔤</span>
+          <div class="t-name">字数统计</div>
+          <div class="t-desc">字符、汉字、单词、行数实时统计</div>
+        </a>
+        <a class="tool-card" href="tools/text-diff.html">
+          <span class="t-icon">🔎</span>
+          <div class="t-name">文本对比</div>
+          <div class="t-desc">按行 / 按字符高亮差异，增删一目了然</div>
+        </a>
+        <a class="tool-card" href="tools/color-convert.html">
+          <span class="t-icon">🌈</span>
+          <div class="t-name">颜色格式转换</div>
+          <div class="t-desc">HEX / RGB / HSL 互转，实时预览</div>
+        </a>
+        <a class="tool-card" href="tools/hash-tool.html">
+          <span class="t-icon">🔏</span>
+          <div class="t-name">哈希计算</div>
+          <div class="t-desc">SHA-1/256/384/512，本地计算</div>
+        </a>
+        <a class="tool-card" href="tools/case-convert.html">
+          <span class="t-icon">🔠</span>
+          <div class="t-name">大小写转换</div>
+          <div class="t-desc">驼峰 / 下划线 / 全半角互转</div>
+        </a>
+        <a class="tool-card" href="tools/uuid-generator.html">
+          <span class="t-icon">🆔</span>
+          <div class="t-name">UUID 生成器</div>
+          <div class="t-desc">UUID v4 / v7 / ULID，批量生成</div>
+        </a>
+        <a class="tool-card" href="tools/jwt-decoder.html">
+          <span class="t-icon">🔐</span>
+          <div class="t-name">JWT 解码器</div>
+          <div class="t-desc">解析 Token Header / Payload</div>
+        </a>
+        <a class="tool-card" href="tools/html-entity.html">
+          <span class="t-icon">📝</span>
+          <div class="t-name">HTML 实体编解码</div>
+          <div class="t-desc">文本与实体（&amp;lt; &amp;#20013;）互转</div>
+        </a>
+        <a class="tool-card" href="tools/subnet-calc.html">
+          <span class="t-icon">🌐</span>
+          <div class="t-name">IP 子网计算器</div>
+          <div class="t-desc">CIDR 解析，网络/广播/可用 IP</div>
+        </a>
+        <a class="tool-card" href="tools/cron-parser.html">
+          <span class="t-icon">⏱️</span>
+          <div class="t-name">Cron 表达式解析</div>
+          <div class="t-desc">解读 Cron 语法，列出执行计划</div>
+        </a>
+        <a class="tool-card" href="tools/css-gradient.html">
+          <span class="t-icon">🌈</span>
+          <div class="t-name">CSS 渐变生成器</div>
+          <div class="t-desc">拖拽颜色/角度，一键复制 CSS</div>
+        </a>
+        <a class="tool-card" href="tools/json-xml.html">
+          <span class="t-icon">🔄</span>
+          <div class="t-name">JSON ↔ XML 互转</div>
+          <div class="t-desc">双向转换，适合 API 调试</div>
+        </a>
+        <a class="tool-card" href="tools/svg-preview.html">
+          <span class="t-icon">📐</span>
+          <div class="t-name">SVG 路径预览</div>
+          <div class="t-desc">粘贴 d 属性，实时渲染图形</div>
+        </a>
+        <a class="tool-card" href="tools/unicode-lookup.html">
+          <span class="t-icon">🔤</span>
+          <div class="t-name">Unicode 字符查询</div>
+          <div class="t-desc">浏览符号/数学/表情，点击复制</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 实用工具 -->
+    <section class="tool-section" data-cat="util">
+      <h2>🛠️ 实用工具</h2>
+      <div class="tool-grid">
+        <a class="tool-card" href="tools/qr-code.html">
+          <span class="t-icon">📱</span>
+          <div class="t-name">二维码生成器</div>
+          <div class="t-desc">输入文本或网址生成二维码</div>
+        </a>
+        <a class="tool-card" href="tools/qr-scanner.html">
+          <span class="t-icon">📷</span>
+          <div class="t-name">二维码识别器</div>
+          <div class="t-desc">上传图片或摄像头扫码识别</div>
+        </a>
+        <a class="tool-card" href="tools/color-picker.html">
+          <span class="t-icon">🎨</span>
+          <div class="t-name">屏幕取色器</div>
+          <div class="t-desc">拾取任意颜色获取十六进制值</div>
+        </a>
+        <a class="tool-card" href="tools/markdown-preview.html">
+          <span class="t-icon">📝</span>
+          <div class="t-name">Markdown 预览器</div>
+          <div class="t-desc">实时将 Markdown 转 HTML 预览</div>
+        </a>
+        <a class="tool-card" href="tools/password-generator.html">
+          <span class="t-icon">🔑</span>
+          <div class="t-name">密码生成器</div>
+          <div class="t-desc">生成高强度随机安全密码</div>
+        </a>
+        <a class="tool-card" href="tools/todo.html">
+          <span class="t-icon">✅</span>
+          <div class="t-name">待办清单</div>
+          <div class="t-desc">增删改任务，自动本地保存</div>
+        </a>
+        <a class="tool-card" href="tools/pomodoro.html">
+          <span class="t-icon">🍅</span>
+          <div class="t-name">番茄时钟</div>
+          <div class="t-desc">25 分钟专注 + 5 分钟休息</div>
+        </a>
+        <a class="tool-card" href="tools/unit-convert.html">
+          <span class="t-icon">📏</span>
+          <div class="t-name">单位换算</div>
+          <div class="t-desc">长度、重量、温度、体积换算</div>
+        </a>
+        <a class="tool-card" href="tools/countdown.html">
+          <span class="t-icon">⏳</span>
+          <div class="t-name">倒计时器</div>
+          <div class="t-desc">设置目标时间实时倒计时</div>
+        </a>
+        <a class="tool-card" href="tools/stopwatch.html">
+          <span class="t-icon">⏱️</span>
+          <div class="t-name">秒表</div>
+          <div class="t-desc">精确计时，支持计次记录</div>
+        </a>
+        <a class="tool-card" href="tools/calculator.html">
+          <span class="t-icon">🧮</span>
+          <div class="t-name">计算器</div>
+          <div class="t-desc">基础四则运算，键盘支持</div>
+        </a>
+        <a class="tool-card" href="tools/image-to-base64.html">
+          <span class="t-icon">🖼️</span>
+          <div class="t-name">图片转Base64</div>
+          <div class="t-desc">上传图片转换为 Base64 编码</div>
+        </a>
+        <a class="tool-card" href="tools/image-compressor.html">
+          <span class="t-icon">🗜️</span>
+          <div class="t-name">图片压缩</div>
+          <div class="t-desc">调节质量压缩图片，一键下载</div>
+        </a>
+        <a class="tool-card" href="tools/image-cropper.html">
+          <span class="t-icon">✂️</span>
+          <div class="t-name">图片裁剪</div>
+          <div class="t-desc">框选区域裁剪图片，支持比例</div>
+        </a>
+        <a class="tool-card" href="tools/bmi-calculator.html">
+          <span class="t-icon">⚖️</span>
+          <div class="t-name">BMI 计算器</div>
+          <div class="t-desc">输入身高体重评估健康区间</div>
+        </a>
+        <a class="tool-card" href="tools/lucky-draw.html">
+          <span class="t-icon">🎯</span>
+          <div class="t-name">抽奖转盘</div>
+          <div class="t-desc">名单转盘随机抽奖，气氛拉满</div>
+        </a>
+        <a class="tool-card" href="tools/age-calculator.html">
+          <span class="t-icon">🎂</span>
+          <div class="t-name">年龄计算器</div>
+          <div class="t-desc">精确年龄、生肖星座、生日倒计时</div>
+        </a>
+        <a class="tool-card" href="tools/calendar.html">
+          <span class="t-icon">📅</span>
+          <div class="t-name">万年历</div>
+          <div class="t-desc">任意年月日历，自动高亮今天</div>
+        </a>
+        <a class="tool-card" href="tools/percentage.html">
+          <span class="t-icon">📐</span>
+          <div class="t-name">百分比计算器</div>
+          <div class="t-desc">百分比、占比、增减幅度计算</div>
+        </a>
+        <a class="tool-card" href="tools/world-clock.html">
+          <span class="t-icon">🕐</span>
+          <div class="t-name">世界时钟</div>
+          <div class="t-desc">全球主要城市实时时间</div>
+        </a>
+        <a class="tool-card" href="tools/random-number.html">
+          <span class="t-icon">🎰</span>
+          <div class="t-name">随机数生成器</div>
+          <div class="t-desc">指定区间批量生成，支持不重复</div>
+        </a>
+        <a class="tool-card" href="tools/scientific-calculator.html">
+          <span class="t-icon">🧮</span>
+          <div class="t-name">科学计算器</div>
+          <div class="t-desc">三角函数 / 对数 / 幂 / 括号运算</div>
+        </a>
+        <a class="tool-card" href="tools/loan-calculator.html">
+          <span class="t-icon">🏠</span>
+          <div class="t-name">房贷计算器</div>
+          <div class="t-desc">等额本息 / 等额本金，明细计划</div>
+        </a>
+        <a class="tool-card" href="tools/habit-tracker.html">
+          <span class="t-icon">📌</span>
+          <div class="t-name">习惯打卡</div>
+          <div class="t-desc">每日打卡，连续天数与记录</div>
+        </a>
+        <a class="tool-card" href="tools/timestamp.html">
+          <span class="t-icon">⏰</span>
+          <div class="t-name">时间戳转换</div>
+          <div class="t-desc">Unix 时间戳与日期互转，秒/毫秒</div>
+        </a>
+        <a class="tool-card" href="tools/json-formatter.html">
+          <span class="t-icon">🧾</span>
+          <div class="t-name">JSON 格式化</div>
+          <div class="t-desc">美化 / 压缩 / 校验，错误定位</div>
+        </a>
+        <a class="tool-card" href="tools/date-diff.html">
+          <span class="t-icon">📆</span>
+          <div class="t-name">日期差计算</div>
+          <div class="t-desc">相差天数与日期加减推算</div>
+        </a>
+        <a class="tool-card" href="tools/url-encode.html">
+          <span class="t-icon">🔗</span>
+          <div class="t-name">URL 编解码</div>
+          <div class="t-desc">百分号编码双向转换</div>
+        </a>
+        <a class="tool-card" href="tools/password-strength.html">
+          <span class="t-icon">🛡️</span>
+          <div class="t-name">密码强度检测</div>
+          <div class="t-desc">实时评估强度，提醒弱口令</div>
+        </a>
+        <a class="tool-card" href="memo/" target="_blank">
+          <span class="t-icon">📝</span>
+          <div class="t-name">备忘录</div>
+          <div class="t-desc">华为风格备忘录，支持定时提醒与通知</div>
+        </a>
+        <a class="tool-card" href="tools/tts.html">
+          <span class="t-icon">🗣️</span>
+          <div class="t-name">文字转语音</div>
+          <div class="t-desc">Web Speech 朗读，可调语速音调</div>
+        </a>
+        <a class="tool-card" href="tools/image-watermark.html">
+          <span class="t-icon">🖼️</span>
+          <div class="t-name">图片水印</div>
+          <div class="t-desc">上传图片加文字水印并下载</div>
+        </a>
+        <a class="tool-card" href="tools/palette.html">
+          <span class="t-icon">🎨</span>
+          <div class="t-name">调色板生成器</div>
+          <div class="t-desc">HSL 配色方案，点击复制色值</div>
+        </a>
+        <a class="tool-card" href="tools/rmb-amount.html">
+          <span class="t-icon">💰</span>
+          <div class="t-name">金额大写转换</div>
+          <div class="t-desc">数字转人民币中文大写</div>
+        </a>
+        <a class="tool-card" href="tools/text-lines.html">
+          <span class="t-icon">🔤</span>
+          <div class="t-name">文本去重排序</div>
+          <div class="t-desc">去重 / 排序 / 去空行处理</div>
+        </a>
+        <a class="tool-card" href="tools/morse.html">
+          <span class="t-icon">📶</span>
+          <div class="t-name">摩斯密码</div>
+          <div class="t-desc">文本与电码互转，可播放</div>
+        </a>
+        <a class="tool-card" href="tools/system-info.html">
+          <span class="t-icon">🖥️</span>
+          <div class="t-name">系统信息检测</div>
+          <div class="t-desc">OS 版本/Build/浏览器/硬件一览</div>
+        </a>
+        <a class="tool-card" href="tools/id-card-parser.html">
+          <span class="t-icon">🪪</span>
+          <div class="t-name">身份证号解析</div>
+          <div class="t-desc">解析籍贯/生日/性别/校验码</div>
+        </a>
+        <a class="tool-card" href="tools/speed-test.html">
+          <span class="t-icon">🚀</span>
+          <div class="t-name">网络测速</div>
+          <div class="t-desc">估算下载带宽与延迟</div>
+        </a>
+        <a class="tool-card" href="tools/random-users.html">
+          <span class="t-icon">👤</span>
+          <div class="t-name">随机用户数据生成</div>
+          <div class="t-desc">生成假用户姓名/电话/地址，可导出 JSON</div>
+        </a>
+        <a class="tool-card" href="tools/image-convert.html">
+          <span class="t-icon">🖼️</span>
+          <div class="t-name">图片格式转换</div>
+          <div class="t-desc">PNG ↔ JPEG ↔ WebP，纯本地</div>
+        </a>
+        <a class="tool-card" href="tools/video-meeting.html">
+          <span class="t-icon">🎥</span>
+          <div class="t-name">视频会议</div>
+          <div class="t-desc">仿腾讯会议，摄像头/麦克风/共享屏幕，点对点通话</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 模拟实验 -->
+    <section class="tool-section" data-cat="sim">
+      <h2>🔬 模拟实验</h2>
+      <div class="tool-grid">
+        <a class="tool-card" href="tools/solar-system.html">
+          <span class="t-icon">🪐</span>
+          <div class="t-name">太阳系模拟器</div>
+          <div class="t-desc">模拟太阳系行星运行轨迹</div>
+        </a>
+        <a class="tool-card" href="tools/fluid-simulator.html">
+          <span class="t-icon">💧</span>
+          <div class="t-name">流体物理模拟器</div>
+          <div class="t-desc">基于物理引擎的流体模拟效果</div>
+        </a>
+        <a class="tool-card" href="tools/color-mixer.html">
+          <span class="t-icon">🎨</span>
+          <div class="t-name">颜色混合</div>
+          <div class="t-desc">RGB 三色滑块实时混合任意颜色</div>
+        </a>
+        <a class="tool-card" href="tools/sound-visualizer.html">
+          <span class="t-icon">🎵</span>
+          <div class="t-name">音波可视化</div>
+          <div class="t-desc">麦克风捕捉声音，实时显示波形</div>
+        </a>
+        <a class="tool-card" href="tools/projectile.html">
+          <span class="t-icon">🚀</span>
+          <div class="t-name">抛体运动</div>
+          <div class="t-desc">调整角度和速度，模拟抛物线轨迹</div>
+        </a>
+        <a class="tool-card" href="tools/circuit.html">
+          <span class="t-icon">🔌</span>
+          <div class="t-name">电路模拟</div>
+          <div class="t-desc">开关控制电路通断，观察灯泡亮灭与电流</div>
+        </a>
+        <a class="tool-card" href="tools/heat-conduction.html">
+          <span class="t-icon">🌡️</span>
+          <div class="t-name">热传导模拟</div>
+          <div class="t-desc">加热金属板，观察热量向四周扩散</div>
+        </a>
+        <a class="tool-card" href="tools/double-pendulum.html">
+          <span class="t-icon">🌀</span>
+          <div class="t-name">双摆混沌</div>
+          <div class="t-desc">经典混沌系统，初始差异指数放大</div>
+        </a>
+        <a class="tool-card" href="tools/pendulum.html">
+          <span class="t-icon">⏳</span>
+          <div class="t-name">单摆模拟</div>
+          <div class="t-desc">简谐运动，实时周期与角度</div>
+        </a>
+        <a class="tool-card" href="tools/wave-interference.html">
+          <span class="t-icon">🌊</span>
+          <div class="t-name">波干涉模拟</div>
+          <div class="t-desc">双波源叠加，明暗相长相消图样</div>
+        </a>
+        <a class="tool-card" href="tools/mandelbrot.html">
+          <span class="t-icon">🔭</span>
+          <div class="t-name">曼德博分形</div>
+          <div class="t-desc">无限自相似边界，点击缩放探索</div>
+        </a>
+        <a class="tool-card" href="tools/lorenz-attractor.html">
+          <span class="t-icon">🦋</span>
+          <div class="t-name">洛伦兹吸引子</div>
+          <div class="t-desc">蝴蝶效应，混沌双翼轨迹</div>
+        </a>
+        <a class="tool-card" href="tools/nbody-gravity.html">
+          <span class="t-icon">🪐</span>
+          <div class="t-name">多体引力模拟</div>
+          <div class="t-desc">N 体万有引力，演化出复杂轨道</div>
+        </a>
+        <a class="tool-card" href="tools/fourier-series.html">
+          <span class="t-icon">🌊</span>
+          <div class="t-name">傅里叶级数合成</div>
+          <div class="t-desc">旋转向量叠加，逼近方波/锯齿波</div>
+        </a>
+        <a class="tool-card" href="tools/game-of-life.html">
+          <span class="t-icon">🧬</span>
+          <div class="t-name">生命游戏</div>
+          <div class="t-desc">元胞自动机，演化出复杂图案</div>
+        </a>
+        <a class="tool-card" href="tools/spring-oscillator.html">
+          <span class="t-icon">🍃</span>
+          <div class="t-name">弹簧振子</div>
+          <div class="t-desc">阻尼简谐振动与能量相图</div>
+        </a>
+        <a class="tool-card" href="tools/fractal-tree.html">
+          <span class="t-icon">🌳</span>
+          <div class="t-name">分形树</div>
+          <div class="t-desc">递归自相似枝桠，随风摆动</div>
+        </a>
+        <a class="tool-card" href="tools/brownian.html">
+          <span class="t-icon">🟤</span>
+          <div class="t-name">布朗运动</div>
+          <div class="t-desc">随机游走，验证均方位移定律</div>
+        </a>
+        <a class="tool-card" href="tools/three-body.html">
+          <span class="t-icon">🪐</span>
+          <div class="t-name">三体问题</div>
+          <div class="t-desc">三星引力演化，初值敏感</div>
+        </a>
+      </div>
+    </section>
+
+    <p class="tool-empty" id="toolEmpty">没有匹配的工具 🤔 换个关键词试试</p>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+
+  <!-- 工具箱搜索 + 分类筛选 -->
+  <script>
+  (function () {
+    var search = document.getElementById('toolSearch');
+    var cat = document.getElementById('toolCat');
+    var empty = document.getElementById('toolEmpty');
+    var sections = Array.prototype.slice.call(document.querySelectorAll('.tool-section'));
+    function apply() {
+      var q = (search.value || '').trim().toLowerCase();
+      var c = cat.value;
+      var anyVisible = false;
+      sections.forEach(function (sec) {
+        var matchCat = (c === 'all') || (sec.getAttribute('data-cat') === c);
+        var cards = sec.querySelectorAll('.tool-card');
+        var visible = 0;
+        Array.prototype.forEach.call(cards, function (card) {
+          var text = (card.textContent || '').toLowerCase();
+          var ok = matchCat && (!q || text.indexOf(q) !== -1);
+          card.style.display = ok ? '' : 'none';
+          if (ok) visible++;
+        });
+        sec.style.display = visible > 0 ? '' : 'none';
+        if (visible > 0) anyVisible = true;
+      });
+      if (empty) empty.style.display = anyVisible ? 'none' : 'block';
+    }
+    if (search) search.addEventListener('input', apply);
+    if (cat) cat.addEventListener('change', apply);
+  })();
+  </script>
+</body>
+</html>

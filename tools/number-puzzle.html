@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数字华容道 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.np-wrap{max-width:400px;margin:0 auto;padding:28px 0 48px;text-align:center;}
+.np-wrap h1{margin-bottom:4px;font-size:22px;}
+.np-info{display:flex;justify-content:center;gap:20px;margin:14px 0;font-size:15px;}
+.np-info span{background:var(--card);border:1px solid var(--border);padding:6px 18px;border-radius:8px;}
+.np-board{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#bbada0;padding:6px;border-radius:8px;width:280px;margin:0 auto;}
+.np-tile{width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;border-radius:6px;cursor:pointer;user-select:none;transition:transform .15s;background:#eee4da;color:#776e65;}
+.np-tile.empty{background:#cdc1b4;color:#cdc1b4;cursor:default;}
+.np-tile:not(.empty):active{transform:scale(0.95);}
+.np-btns{display:flex;justify-content:center;gap:10px;margin-top:16px;}
+.hint-text{color:var(--text-3);font-size:13px;margin-top:12px;}
+.np-win{color:#27ae60;font-weight:bold;font-size:18px;display:none;margin-top:10px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="np-wrap">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+<h1>🧩 数字华容道</h1>
+<div class="np-info"><span>步数：<strong id="npSteps">0</strong></span><span>时间：<strong id="npTime">00:00</strong></span></div>
+<div class="np-board" id="npBoard"></div>
+<div class="np-btns"><button class="btn btn-primary" id="npShuffle">打乱</button><button class="btn btn-outline" id="npReset">重置</button></div>
+<p class="hint-text">点击数字方块移动到空位，按 1-15 顺序排列获胜</p>
+<div class="np-win" id="npWin">🎉 恭喜完成！</div>
+</main>
+<footer class="footer"><div class="container">© <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+(function(){
+var board=[],emptyIdx=15,steps=0,timer=null,sec=0;
+var boardEl=document.getElementById('npBoard');
+
+function render(){boardEl.innerHTML='';for(var i=0;i<16;i++){var d=document.createElement('div');d.className='np-tile'+(i===emptyIdx?' empty':'');d.textContent=i===emptyIdx?'':board[i];if(i!==emptyIdx)d.onclick=(function(idx){return function(){moveTile(idx);};})(i);boardEl.appendChild(d);}document.getElementById('npSteps').textContent=steps;}
+
+function moveTile(idx){
+var er=(emptyIdx>>2),ec=emptyIdx%4,r=(idx>>2),c=idx%4;
+if((Math.abs(r-er)===1&&c===ec)||(Math.abs(c-ec)===1&&r==er)){
+board[emptyIdx]=board[idx];board[idx]=0;emptyIdx=idx;steps++;render();checkWin();if(!timer){timer=setInterval(function(){sec++;var m=('0'+((sec/60)|0)).slice(-2),s=('0'+(sec%60)).slice(-2);document.getElementById('npTime').textContent=m+':'+s;},1000);}}}
+
+function checkWin(){for(var i=0;i<15;i++)if(board[i]!==i+1)return;if(board[15]!==0)return;clearInterval(timer);timer=null;document.getElementById('npWin').style.display='block';}
+
+function shuffle(){for(var i=0;i<200;i++){var neighbors=[];var er=(emptyIdx>>2),ec=emptyIdx%4;if(er>0)neighbors.push(emptyIdx-4);if(er<3)neighbors.push(emptyIdx+4);if(ec>0)neighbors.push(emptyIdx-1);if(ec<3)neighbors.push(emptyIdx+1);var n=neighbors[Math.floor(Math.random()*neighbors.length)];board[emptyIdx]=board[n];board[n]=0;emptyIdx=n;}steps=0;sec=0;if(timer){clearInterval(timer);timer=null;}document.getElementById('npTime').textContent='00:00';document.getElementById('npWin').style.display='none';render();}
+
+function init(){board=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0];emptyIdx=15;steps=0;sec=0;if(timer){clearInterval(timer);timer=null;}document.getElementById('npTime').textContent='00:00';document.getElementById('npWin').style.display='none';render();shuffle();}
+
+document.getElementById('npShuffle').onclick=shuffle;
+document.getElementById('npReset').onclick=init;
+
+init();
+})();
+</script>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt=""></a></div>
+</body>
+</html>

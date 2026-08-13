@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>屏幕取色器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px;}
+    .panel h2{font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:15px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .pick-wrap{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
+    .swatch{
+      height:180px;border-radius:14px;border:1px solid var(--border);
+      display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;
+      font-size:17px;font-weight:700;letter-spacing:1px;
+      transition:background .25s;
+      background:#0d6efd;color:#fff;
+    }
+    .pick-actions{display:flex;flex-direction:column;gap:9px;margin-top:12px;}
+
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .val-list{display:flex;flex-direction:column;gap:11px;}
+    .val-row{
+      display:flex;align-items:center;gap:10px;
+      background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:11px 13px;
+    }
+    .val-row .tag{
+      font-size:11.5px;font-weight:700;color:var(--primary);background:var(--primary-soft);
+      padding:3px 9px;border-radius:6px;min-width:46px;text-align:center;flex-shrink:0;
+    }
+    .val-row .code{
+      flex:1;font-family:"SFMono-Regular",Consolas,"Courier New",monospace;font-size:14px;
+      color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .copy-btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);
+      border-radius:8px;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit;
+      transition:.15s;flex-shrink:0;
+    }
+    .copy-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .copy-btn.done{border-color:var(--green);color:var(--green);}
+
+    .manual{display:flex;gap:9px;align-items:center;margin-top:14px;flex-wrap:wrap;}
+    .manual input[type="text"]{
+      flex:1;min-width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;
+      background:var(--bg);color:var(--text);font-size:14px;font-family:"SFMono-Regular",Consolas,monospace;outline:none;
+    }
+    .manual input[type="text"]:focus{border-color:var(--primary);background:var(--card);}
+    .manual input[type="color"]{
+      width:46px;height:38px;padding:2px;border:1px solid var(--border);border-radius:9px;
+      background:var(--card);cursor:pointer;flex-shrink:0;
+    }
+
+    .hist-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .hist-head h2{margin:0;}
+    .hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px;}
+    .hist-item{
+      border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;
+      transition:transform .15s,box-shadow .15s;background:var(--card);
+    }
+    .hist-item:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.12);}
+    .hist-item .c{height:46px;}
+    .hist-item .h{
+      font-size:10.5px;text-align:center;padding:5px 2px;color:var(--text-2);
+      font-family:"SFMono-Regular",Consolas,monospace;
+    }
+    .hist-empty{color:var(--text-3);font-size:13.5px;padding:14px 0;text-align:center;}
+
+    .notice{
+      font-size:12.5px;color:var(--text-3);line-height:1.7;margin-top:12px;
+      padding:10px 13px;background:var(--bg);border-radius:9px;border:1px dashed var(--border);
+    }
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:720px){
+      .pick-wrap{grid-template-columns:1fr;}
+      .swatch{height:140px;}
+      .panel{padding:18px 15px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🎨</span>
+      <h1>屏幕取色器</h1>
+    </div>
+    <p class="tool-sub">一键拾取屏幕任意位置的颜色，实时输出 HEX / RGB / HSL 三种格式，并保留最近取色记录。</p>
+
+    <div class="panel">
+      <div class="pick-wrap">
+        <div>
+          <div class="swatch" id="swatch">#0D6EFD</div>
+          <div class="pick-actions">
+            <button class="btn primary" id="pickBtn">💧 激活取色器</button>
+            <button class="btn" id="randBtn">🎲 随机颜色</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="val-list">
+            <div class="val-row">
+              <span class="tag">HEX</span>
+              <span class="code" id="valHex">#0D6EFD</span>
+              <button class="copy-btn" data-target="valHex">复制</button>
+            </div>
+            <div class="val-row">
+              <span class="tag">RGB</span>
+              <span class="code" id="valRgb">rgb(13, 110, 253)</span>
+              <button class="copy-btn" data-target="valRgb">复制</button>
+            </div>
+            <div class="val-row">
+              <span class="tag">HSL</span>
+              <span class="code" id="valHsl">hsl(217, 98%, 52%)</span>
+              <button class="copy-btn" data-target="valHsl">复制</button>
+            </div>
+          </div>
+
+          <div class="manual">
+            <input type="color" id="fallbackColor" value="#0d6efd" title="调色板选色">
+            <input type="text" id="hexInput" value="#0D6EFD" placeholder="手动输入 HEX，如 #1abc9c" maxlength="7">
+            <button class="btn" id="applyHex">应用</button>
+          </div>
+
+          <div class="notice" id="apiNotice"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="hist-head">
+        <h2><span class="bar"></span> 最近取色</h2>
+        <button class="copy-btn" id="clearHist">清空记录</button>
+      </div>
+      <div class="hist-grid" id="histGrid"></div>
+      <div class="hist-empty" id="histEmpty">暂无取色记录，快去拾取第一个颜色吧～</div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var KEY = "xhc_color_history";
+      var MAX = 24;
+
+      var swatch = document.getElementById("swatch");
+      var valHex = document.getElementById("valHex");
+      var valRgb = document.getElementById("valRgb");
+      var valHsl = document.getElementById("valHsl");
+      var pickBtn = document.getElementById("pickBtn");
+      var randBtn = document.getElementById("randBtn");
+      var fallback = document.getElementById("fallbackColor");
+      var hexInput = document.getElementById("hexInput");
+      var applyHex = document.getElementById("applyHex");
+      var notice = document.getElementById("apiNotice");
+      var histGrid = document.getElementById("histGrid");
+      var histEmpty = document.getElementById("histEmpty");
+      var clearHist = document.getElementById("clearHist");
+      var toastEl = document.getElementById("tipToast");
+
+      var supported = typeof window.EyeDropper === "function";
+      var history = [];
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      /* ---------- 颜色换算 ---------- */
+      function normHex(h) {
+        if (!h) return null;
+        h = h.trim().replace(/^#/, "");
+        if (/^[0-9a-f]{3}$/i.test(h)) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+        return "#" + h.toUpperCase();
+      }
+      function hexToRgb(hex) {
+        var n = parseInt(hex.slice(1), 16);
+        return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+      }
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h = 0, s = 0, l = (max + min) / 2;
+        var d = max - min;
+        if (d !== 0) {
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h /= 6;
+        }
+        return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+      }
+      function luminance(r, g, b) {
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      }
+
+      /* ---------- 设置当前颜色 ---------- */
+      function setColor(raw, record) {
+        var hex = normHex(raw);
+        if (!hex) { toast("颜色格式无效，请输入如 #1ABC9C"); return; }
+        var rgb = hexToRgb(hex);
+        var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+        swatch.style.background = hex;
+        swatch.textContent = hex;
+        swatch.style.color = luminance(rgb.r, rgb.g, rgb.b) > 0.6 ? "#1a1a1a" : "#ffffff";
+
+        valHex.textContent = hex;
+        valRgb.textContent = "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+        valHsl.textContent = "hsl(" + hsl.h + ", " + hsl.s + "%, " + hsl.l + "%)";
+
+        fallback.value = hex.toLowerCase();
+        hexInput.value = hex;
+
+        if (record !== false) pushHistory(hex);
+      }
+
+      /* ---------- 历史记录 ---------- */
+      function loadHistory() {
+        try {
+          var raw = localStorage.getItem(KEY);
+          history = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(history)) history = [];
+        } catch (e) { history = []; }
+      }
+      function saveHistory() {
+        try { localStorage.setItem(KEY, JSON.stringify(history)); } catch (e) {}
+      }
+      function pushHistory(hex) {
+        history = history.filter(function (c) { return c !== hex; });
+        history.unshift(hex);
+        if (history.length > MAX) history = history.slice(0, MAX);
+        saveHistory();
+        renderHistory();
+      }
+      function renderHistory() {
+        histGrid.innerHTML = "";
+        histEmpty.style.display = history.length ? "none" : "block";
+        history.forEach(function (hex) {
+          var item = document.createElement("div");
+          item.className = "hist-item";
+          item.title = "点击使用 " + hex;
+          var c = document.createElement("div");
+          c.className = "c";
+          c.style.background = hex;
+          var h = document.createElement("div");
+          h.className = "h";
+          h.textContent = hex;
+          item.appendChild(c);
+          item.appendChild(h);
+          item.addEventListener("click", function () { setColor(hex, false); toast("已切换到 " + hex); });
+          histGrid.appendChild(item);
+        });
+      }
+
+      /* ---------- 复制 ---------- */
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            resolve();
+          } catch (e) { reject(e); }
+        });
+      }
+
+      Array.prototype.forEach.call(document.querySelectorAll(".copy-btn[data-target]"), function (btn) {
+        btn.addEventListener("click", function () {
+          var text = document.getElementById(btn.dataset.target).textContent;
+          copyText(text).then(function () {
+            btn.textContent = "已复制";
+            btn.classList.add("done");
+            toast("已复制 " + text);
+            setTimeout(function () { btn.textContent = "复制"; btn.classList.remove("done"); }, 1400);
+          }).catch(function () { toast("复制失败，请手动选中复制"); });
+        });
+      });
+
+      /* ---------- 取色 ---------- */
+      pickBtn.addEventListener("click", function () {
+        if (supported) {
+          try {
+            new window.EyeDropper().open().then(function (res) {
+              setColor(res.sRGBHex);
+              toast("取色成功：" + normHex(res.sRGBHex));
+            }).catch(function () { /* 用户取消取色，忽略 */ });
+          } catch (e) {
+            toast("取色器启动失败，请改用调色板");
+          }
+        } else {
+          fallback.click();
+        }
+      });
+
+      randBtn.addEventListener("click", function () {
+        var n = Math.floor(Math.random() * 0x1000000);
+        setColor("#" + ("000000" + n.toString(16)).slice(-6));
+      });
+
+      fallback.addEventListener("input", function () { setColor(fallback.value); });
+      applyHex.addEventListener("click", function () { setColor(hexInput.value); });
+      hexInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.stopPropagation(); setColor(hexInput.value); }
+      });
+
+      clearHist.addEventListener("click", function () {
+        if (!history.length) { toast("记录已是空的"); return; }
+        history = [];
+        saveHistory();
+        renderHistory();
+        toast("取色记录已清空");
+      });
+
+      /* ---------- 初始化 ---------- */
+      function boot() {
+        if (supported) {
+          pickBtn.textContent = "💧 激活取色器";
+          notice.innerHTML = "当前浏览器支持 <b>EyeDropper API</b>：点击「激活取色器」后，光标会变成十字，在屏幕任意位置单击即可拾取该点颜色（按 Esc 取消）。";
+        } else {
+          pickBtn.textContent = "🎨 打开调色板";
+          notice.innerHTML = "当前浏览器不支持 <b>EyeDropper API</b>（需 Chrome / Edge 95+ 且为 HTTPS 或本地环境），已自动回退为系统调色板取色，也可直接手动输入 HEX 值。";
+        }
+        loadHistory();
+        renderHistory();
+        setColor("#0D6EFD", false);
+      }
+
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>波干涉模拟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 18px;}
+
+    .layout{display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start;}
+    .canvas-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:14px;}
+    canvas{display:block;width:100%;height:auto;background:#000;border-radius:10px;touch-action:none;cursor:crosshair;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .ctrl{margin-bottom:14px;}
+    .ctrl label{display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+    .ctrl input[type=range]{width:100%;accent-color:var(--primary);}
+    .btn-row{display:flex;gap:8px;}
+    .btn-row button{flex:1;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-row button:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-row button.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn-row button.primary:hover{background:var(--primary-dark);color:#fff;}
+    .legend{font-size:12px;color:var(--text-3);line-height:1.9;margin-top:10px;}
+
+    @media(max-width:720px){.layout{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌊</span>
+      <h1>波干涉模拟</h1>
+    </div>
+    <p class="tool-sub">两个同频相干波源向外传播，振幅叠加后形成稳定的干涉图样。拖动画布可移动波源位置。</p>
+
+    <div class="layout">
+      <div class="canvas-wrap">
+        <canvas id="cv" width="600" height="460"></canvas>
+      </div>
+      <div class="panel">
+        <h2><span class="bar"></span> 参数</h2>
+        <div class="ctrl">
+          <label>波长 λ <span id="wVal">36</span></label>
+          <input type="range" id="wave" min="14" max="80" step="1" value="36">
+        </div>
+        <div class="ctrl">
+          <label>频率 <span id="fVal">1.0×</span></label>
+          <input type="range" id="freq" min="0.3" max="2.5" step="0.1" value="1">
+        </div>
+        <div class="ctrl">
+          <label>波源间距 <span id="dVal">160</span></label>
+          <input type="range" id="dist" min="40" max="360" step="5" value="160">
+        </div>
+        <div class="ctrl">
+          <label>显示模式</label>
+          <select id="mode" style="width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:9px;font-family:inherit;font-size:14px;">
+            <option value="amp">振幅图（明暗干涉）</option>
+            <option value="phase">相位（红蓝区分）</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button id="pauseBtn" class="primary">⏸ 暂停</button>
+          <button id="resetBtn">↺ 重置</button>
+        </div>
+        <div class="legend">
+          中心亮区 = 相长干涉（波峰叠加）<br>
+          深色条带 = 相消干涉（峰谷抵消）
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv = document.getElementById("cv");
+      var ctx = cv.getContext("2d");
+      var W = cv.width, H = cv.height;
+
+      var lambda=36, freq=1, sDist=160, mode="amp", paused=false, t=0;
+      var s1={x:0,y:0}, s2={x:0,y:0};
+
+      function place(){
+        s1.x = W/2 - sDist/2; s1.y = H/2;
+        s2.x = W/2 + sDist/2; s2.y = H/2;
+      }
+      place();
+
+      var img = ctx.createImageData(W,H);
+      var data = img.data;
+
+      function render(){
+        var k = 2*Math.PI/lambda;
+        var phase = t*2*Math.PI*freq; // 随时间推进
+        for(var y=0;y<H;y++){
+          for(var x=0;x<W;x++){
+            var r1=Math.sqrt((x-s1.x)*(x-s1.x)+(y-s1.y)*(y-s1.y));
+            var r2=Math.sqrt((x-s2.x)*(x-s2.x)+(y-s2.y)*(y-s2.y));
+            var a1=Math.cos(k*r1 - phase);
+            var a2=Math.cos(k*r2 - phase);
+            var sum = (a1+a2)/2; // [-1,1]
+            var i = (y*W + x)*4;
+            if(mode==="amp"){
+              // 振幅强度：取时间平均近似 = |cos| 包络，这里用 (1+sum)/2 并加亮度
+              var v = Math.round(((sum+1)/2)*255);
+              data[i]=v; data[i+1]=v; data[i+2]=v;
+            }else{
+              // 相位：红/蓝
+              var r = sum>=0? Math.round(sum*255) : 0;
+              var b = sum<0? Math.round(-sum*255) : 0;
+              data[i]=r; data[i+1]=0; data[i+2]=b;
+            }
+            data[i+3]=255;
+          }
+        }
+        ctx.putImageData(img,0,0);
+        // 波源标记
+        ctx.fillStyle="#fff";
+        ctx.beginPath();ctx.arc(s1.x,s1.y,5,0,7);ctx.fill();
+        ctx.beginPath();ctx.arc(s2.x,s2.y,5,0,7);ctx.fill();
+      }
+
+      var last=performance.now();
+      function loop(ts){
+        if(!paused){
+          var dt=(ts-last)/1000;
+          t += dt;
+        }
+        last=ts;
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      // 拖动移动波源
+      cv.addEventListener("pointerdown",function(e){drag(e);moving=true;cv.setPointerCapture(e.pointerId);});
+      cv.addEventListener("pointermove",function(e){if(moving)drag(e);});
+      cv.addEventListener("pointerup",function(){moving=false;});
+      cv.addEventListener("pointercancel",function(){moving=false;});
+      var moving=false;
+      function drag(e){
+        var r=cv.getBoundingClientRect();
+        var x=(e.clientX-r.left)*(cv.width/r.width);
+        var y=(e.clientY-r.top)*(cv.height/r.height);
+        // 把最近波源移过去
+        var d1=Math.hypot(x-s1.x,y-s1.y), d2=Math.hypot(x-s2.x,y-s2.y);
+        if(d1<d2){s1.x=x;s1.y=y;}else{s2.x=x;s2.y=y;}
+      }
+
+      var wEl=document.getElementById("wave"),fEl=document.getElementById("freq"),dEl=document.getElementById("dist"),mEl=document.getElementById("mode");
+      wEl.oninput=function(){lambda=+this.value;document.getElementById("wVal").textContent=lambda;};
+      fEl.oninput=function(){freq=+this.value;document.getElementById("fVal").textContent=freq.toFixed(1)+"×";};
+      dEl.oninput=function(){sDist=+this.value;document.getElementById("dVal").textContent=sDist;place();};
+      mEl.onchange=function(){mode=this.value;};
+
+      document.getElementById("pauseBtn").onclick=function(){paused=!paused;this.textContent=paused?"▶ 继续":"⏸ 暂停";};
+      document.getElementById("resetBtn").onclick=function(){place();t=0;};
+
+      requestAnimationFrame(loop);
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

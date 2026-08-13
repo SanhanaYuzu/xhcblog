@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>进制转换 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .bc-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .bc-panel{box-shadow:none;}
+
+    .bc-field{margin-bottom:16px;}
+    .bc-field label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px;}
+    .bc-input-row{display:flex;gap:10px;}
+    .bc-input-row input{fex:1;flex:1;width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+    .bc-input-row select{padding:11px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;}
+
+    .bc-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:8px;}
+    .bc-item{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg);}
+    .bc-item .k{font-size:12px;color:var(--text-3);margin-bottom:4px;}
+    .bc-item .v{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:700;color:var(--primary);word-break:break-all;}
+    .bc-note{font-size:12.5px;color:var(--text-3);margin-top:14px;line-height:1.6;}
+
+    @media(max-width:560px){
+      .bc-input-row{flex-direction:column;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔢</span>
+      <h1>进制转换</h1>
+    </div>
+    <p class="tool-sub">在 2–36 进制之间互转，支持大整数（基于 BigInt，不会溢出）。</p>
+
+    <div class="bc-panel">
+      <div class="bc-field">
+        <label>输入数值（可带 0x / 0b / 0o 前缀）</label>
+        <div class="bc-input-row">
+          <input id="bcInput" type="text" value="255" placeholder="例如 255、0xFF、1010、z">
+          <select id="bcFrom">
+            <option value="auto">自动识别</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bc-out" id="bcOut"></div>
+
+      <div class="bc-note">
+        说明：选择「自动识别」时会根据前缀判断（0x=十六进制，0b=二进制，0o=八进制，否则按下方指定进制解析）。
+        常用进制结果即时显示；输入非法字符时会提示错误。
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var input = document.getElementById("bcInput");
+      var fromSel = document.getElementById("bcFrom");
+      var out = document.getElementById("bcOut");
+
+      // 进制下拉 2-36
+      for (var b = 2; b <= 36; b++) {
+        var o = document.createElement("option");
+        o.value = b;
+        o.textContent = b + " 进制";
+        fromSel.appendChild(o);
+      }
+      fromSel.value = 10;
+
+      var DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+      function parseBig(str, base) {
+        str = str.trim().toLowerCase();
+        if (!str) return null;
+        // 前缀处理
+        if (base === "auto") {
+          if (str.startsWith("0x")) { str = str.slice(2); base = 16; }
+          else if (str.startsWith("0b")) { str = str.slice(2); base = 2; }
+          else if (str.startsWith("0o")) { str = str.slice(2); base = 8; }
+          else base = 10;
+        }
+        if (base < 2 || base > 36) return null;
+        var val = 0n;
+        for (var i = 0; i < str.length; i++) {
+          var c = str[i];
+          var d = DIGITS.indexOf(c);
+          if (d < 0 || d >= base) return null; // 非法字符
+          val = val * BigInt(base) + BigInt(d);
+        }
+        return val;
+      }
+
+      function render() {
+        var raw = input.value;
+        var baseSel = fromSel.value;
+        var val;
+        try { val = parseBig(raw, baseSel === "auto" ? "auto" : parseInt(baseSel, 10)); }
+        catch (e) { val = null; }
+
+        out.innerHTML = "";
+        if (val === null) {
+          var err = document.createElement("div");
+          err.className = "bc-item";
+          err.innerHTML = '<div class="k">错误</div><div class="v" style="color:#ff3b30">输入包含非法字符或空值</div>';
+          out.appendChild(err);
+          return;
+        }
+
+        var targets = [2, 8, 10, 16];
+        var labels = { 2: "二进制 (2)", 8: "八进制 (8)", 10: "十进制 (10)", 16: "十六进制 (16)" };
+        targets.forEach(function (tb) {
+          var item = document.createElement("div");
+          item.className = "bc-item";
+          item.innerHTML = '<div class="k">' + labels[tb] + '</div><div class="v">' + val.toString(tb) + '</div>';
+          out.appendChild(item);
+        });
+      }
+
+      input.addEventListener("input", render);
+      fromSel.addEventListener("change", render);
+      render();
+    })();
+  </script>
+</body>
+</html>

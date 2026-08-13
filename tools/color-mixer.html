@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>颜色混合器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:960px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .panel{box-shadow:none;}
+
+    .cm-grid{display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:start;}
+
+    .cm-preview{
+      width:100%;aspect-ratio:1/1;border-radius:16px;border:1px solid var(--border);
+      box-shadow:0 8px 28px rgba(0,0,0,.18);display:flex;align-items:flex-end;justify-content:flex-start;
+    }
+    .cm-preview .tag{
+      margin:12px;background:rgba(0,0,0,.42);color:#fff;font-size:12.5px;padding:5px 10px;border-radius:8px;
+      font-variant-numeric:tabular-nums;backdrop-filter:blur(2px);
+    }
+
+    .cm-sliders{margin-bottom:18px;}
+    .cm-slider{display:grid;grid-template-columns:24px 1fr 64px;align-items:center;gap:12px;margin-bottom:12px;}
+    .cm-slider .lab{font-weight:700;font-size:15px;text-align:center;border-radius:7px;padding:3px 0;}
+    .cm-slider .lab.r{background:rgba(255,59,48,.14);color:#ff3b30;}
+    .cm-slider .lab.g{background:rgba(52,199,89,.14);color:#34c759;}
+    .cm-slider .lab.b{background:rgba(0,122,255,.14);color:#007aff;}
+    .cm-slider input[type=range]{width:100%;accent-color:var(--primary);}
+    .cm-slider .num{
+      width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);
+      font-size:14px;text-align:center;font-family:inherit;outline:none;
+    }
+    .cm-slider .num:focus{border-color:var(--primary);}
+
+    .cm-values{display:flex;flex-direction:column;gap:10px;}
+    .cm-val{
+      display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;
+      padding:10px 12px;background:var(--bg);cursor:pointer;transition:.15s;
+    }
+    .cm-val:hover{border-color:var(--primary);}
+    .cm-val .k{font-size:12px;font-weight:700;color:var(--text-3);width:42px;}
+    .cm-val .v{flex:1;font-size:14px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--text);word-break:break-all;}
+    .cm-val .cpy{font-size:12px;color:var(--text-3);white-space:nowrap;}
+
+    .cm-btns{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .cm-hist-title{font-size:13px;font-weight:700;color:var(--text-2);margin:6px 0 10px;}
+    .cm-hist{display:flex;flex-wrap:wrap;gap:8px;}
+    .cm-hist .sw{
+      width:34px;height:34px;border-radius:9px;cursor:pointer;border:2px solid var(--border);
+      transition:.15s;position:relative;
+    }
+    .cm-hist .sw:hover{transform:scale(1.08);border-color:var(--primary);}
+    .cm-hist .empty{font-size:12.5px;color:var(--text-3);}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:760px){
+      .cm-grid{grid-template-columns:1fr;}
+      .panel{padding:18px 15px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🎨</span>
+      <h1>颜色混合器</h1>
+    </div>
+    <p class="tool-sub">拖动 R/G/B 滑块实时混合颜色，查看 HEX / RGB / HSL 三种格式，一键复制任意格式，并可保留最近 10 个历史颜色。</p>
+
+    <div class="panel">
+      <div class="cm-grid">
+        <div class="cm-preview" id="preview">
+          <span class="tag" id="previewTag">#000000</span>
+        </div>
+
+        <div>
+          <div class="cm-sliders">
+            <div class="cm-slider">
+              <span class="lab r">R</span>
+              <input type="range" id="rRange" min="0" max="255" value="52">
+              <input type="number" class="num" id="rNum" min="0" max="255" value="52">
+            </div>
+            <div class="cm-slider">
+              <span class="lab g">G</span>
+              <input type="range" id="gRange" min="0" max="255" value="120">
+              <input type="number" class="num" id="gNum" min="0" max="255" value="120">
+            </div>
+            <div class="cm-slider">
+              <span class="lab b">B</span>
+              <input type="range" id="bRange" min="0" max="255" value="220">
+              <input type="number" class="num" id="bNum" min="0" max="255" value="220">
+            </div>
+          </div>
+
+          <div class="cm-values">
+            <div class="cm-val" data-copy="hex"><span class="k">HEX</span><span class="v" id="vHex">#3478DC</span><span class="cpy">复制</span></div>
+            <div class="cm-val" data-copy="rgb"><span class="k">RGB</span><span class="v" id="vRgb">rgb(52,120,220)</span><span class="cpy">复制</span></div>
+            <div class="cm-val" data-copy="hsl"><span class="k">HSL</span><span class="v" id="vHsl">hsl(214,68%,53%)</span><span class="cpy">复制</span></div>
+          </div>
+
+          <div class="cm-btns">
+            <button class="btn primary" id="randomBtn">🎲 随机颜色</button>
+            <button class="btn" id="copyAllBtn">📋 复制 HEX</button>
+            <button class="btn" id="saveBtn">➕ 存入历史</button>
+          </div>
+
+          <div class="cm-hist-title">历史记录（最近 10 个，点击复用）</div>
+          <div class="cm-hist" id="hist">
+            <span class="empty">暂无记录</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var rRange = document.getElementById("rRange"), gRange = document.getElementById("gRange"), bRange = document.getElementById("bRange");
+      var rNum = document.getElementById("rNum"), gNum = document.getElementById("gNum"), bNum = document.getElementById("bNum");
+      var preview = document.getElementById("preview"), previewTag = document.getElementById("previewTag");
+      var vHex = document.getElementById("vHex"), vRgb = document.getElementById("vRgb"), vHsl = document.getElementById("vHsl");
+      var randomBtn = document.getElementById("randomBtn"), copyAllBtn = document.getElementById("copyAllBtn"), saveBtn = document.getElementById("saveBtn");
+      var histBox = document.getElementById("hist");
+      var toastEl = document.getElementById("tipToast");
+      var history = [];
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      function clamp(n) { n = parseInt(n, 10); if (isNaN(n)) n = 0; return Math.max(0, Math.min(255, n)); }
+
+      function toHex(n) { var s = clamp(n).toString(16); return s.length === 1 ? "0" + s : s; }
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h, s, l = (max + min) / 2;
+        if (max === min) { h = s = 0; }
+        else {
+          var d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            default: h = (r - g) / d + 4;
+          }
+          h /= 6;
+        }
+        return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+      }
+
+      function render() {
+        var r = clamp(rRange.value), g = clamp(gRange.value), b = clamp(bRange.value);
+        rNum.value = r; gNum.value = g; bNum.value = b;
+        var hex = "#" + toHex(r) + toHex(g) + toHex(b);
+        var hsl = rgbToHsl(r, g, b);
+        preview.style.background = hex;
+        previewTag.textContent = hex.toUpperCase();
+        // 根据亮度选择标签文字颜色
+        previewTag.style.color = (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#111" : "#fff";
+        vHex.textContent = hex.toUpperCase();
+        vRgb.textContent = "rgb(" + r + "," + g + "," + b + ")";
+        vHsl.textContent = "hsl(" + hsl.h + "," + hsl.s + "%," + hsl.l + "%)";
+      }
+
+      function syncFromSliders() {
+        rRange.value = clamp(rNum.value);
+        gRange.value = clamp(gNum.value);
+        bRange.value = clamp(bNum.value);
+        render();
+      }
+
+      [rRange, gRange, bRange].forEach(function (el) {
+        el.addEventListener("input", render);
+      });
+      [rNum, gNum, bNum].forEach(function (el) {
+        el.addEventListener("input", syncFromSliders);
+        el.addEventListener("blur", syncFromSliders);
+      });
+
+      function copyText(txt) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
+        return new Promise(function (res, rej) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+            document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); res();
+          } catch (err) { rej(err); }
+        });
+      }
+
+      document.querySelectorAll(".cm-val").forEach(function (row) {
+        row.addEventListener("click", function () {
+          var type = row.dataset.copy;
+          var txt = type === "hex" ? vHex.textContent : type === "rgb" ? vRgb.textContent : vHsl.textContent;
+          copyText(txt).then(function () { toast("已复制 " + type.toUpperCase() + "：" + txt); })
+            .catch(function () { toast("复制失败，请手动选择"); });
+        });
+      });
+
+      randomBtn.addEventListener("click", function () {
+        rRange.value = Math.floor(Math.random() * 256);
+        gRange.value = Math.floor(Math.random() * 256);
+        bRange.value = Math.floor(Math.random() * 256);
+        render();
+      });
+
+      copyAllBtn.addEventListener("click", function () {
+        copyText(vHex.textContent).then(function () { toast("已复制 HEX：" + vHex.textContent); })
+          .catch(function () { toast("复制失败"); });
+      });
+
+      function renderHistory() {
+        if (!history.length) { histBox.innerHTML = '<span class="empty">暂无记录</span>'; return; }
+        histBox.innerHTML = "";
+        history.forEach(function (hex) {
+          var sw = document.createElement("div");
+          sw.className = "sw"; sw.style.background = hex; sw.title = hex;
+          sw.addEventListener("click", function () {
+            var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+            if (m) { rRange.value = parseInt(m[1], 16); gRange.value = parseInt(m[2], 16); bRange.value = parseInt(m[3], 16); render(); }
+            toast("已载入 " + hex.toUpperCase());
+          });
+          histBox.appendChild(sw);
+        });
+      }
+
+      saveBtn.addEventListener("click", function () {
+        var hex = vHex.textContent;
+        history = history.filter(function (h) { return h !== hex; });
+        history.unshift(hex);
+        if (history.length > 10) history = history.slice(0, 10);
+        renderHistory();
+        toast("已存入历史");
+      });
+
+      renderHistory();
+      render();
+    })();
+  </script>
+</body>
+</html>

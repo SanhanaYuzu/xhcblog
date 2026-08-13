@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>布朗运动 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    canvas{display:block;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;}
+    .ctrl-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .field select,.field input[type=range]{accent-color:var(--primary);}
+    .field .val{color:var(--primary);font-weight:700;min-width:46px;text-align:right;}
+    .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .stat-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--text-2);}
+    .stat-row b{color:var(--primary);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🟤</span>
+      <div>
+        <h1>布朗运动</h1>
+        <p class="tool-sub">微观粒子受随机碰撞的不规则运动，验证均方位移随时间线性增长</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 参数</h2>
+      <div class="fields-grid">
+        <div class="field">粒子数
+          <input type="range" id="count" min="1" max="120" value="40" step="1">
+          <span class="val" id="countV">40</span>
+        </div>
+        <div class="field">步长
+          <input type="range" id="step" min="0.5" max="6" value="2.2" step="0.1">
+          <span class="val" id="stepV">2.2</span>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="pauseBtn">⏸ 暂停</button>
+        <button class="btn-ghost" id="resetBtn">🔄 重置</button>
+        <button class="btn-ghost" id="trailBtn">轨迹：开</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 粒子轨迹</h2>
+      <canvas id="cv" height="420"></canvas>
+      <div class="stat-row">
+        <span>步数：<b id="stepN">0</b></span>
+        <span>平均位移²：<b id="msd">0</b></span>
+        <span>理论 4·D·t：<b id="msdT">0</b></span>
+      </div>
+      <div class="note">每步粒子向随机方向移动固定步长。二维情况下均方位移 MSD ≈ 4·D·t（D=步长²/4），图中数值应随步数近似线性上升。</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 均方位移 — 时间曲线</h2>
+      <canvas id="plot" height="180"></canvas>
+      <div class="note">横轴为步数、纵轴为平均位移平方。红线为理论线性拟合，用于直观对比。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+      var plot=document.getElementById("plot"), pctx=plot.getContext("2d");
+      var countEl=document.getElementById("count"), stepEl=document.getElementById("step");
+      var countV=document.getElementById("countV"), stepV=document.getElementById("stepV");
+      var pauseBtn=document.getElementById("pauseBtn"), resetBtn=document.getElementById("resetBtn"), trailBtn=document.getElementById("trailBtn");
+      var stepNel=document.getElementById("stepN"), msdEl=document.getElementById("msd"), msdTEl=document.getElementById("msdT");
+
+      function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||null;}
+      var parts=[], steps=0, paused=false, showTrail=true, raf=null;
+
+      function reset(){
+        var W=cv.clientWidth, H=420;
+        parts=[]; steps=0;
+        var n=+countEl.value;
+        for(var i=0;i<n;i++) parts.push({x:W/2, y:H/2, ox:W/2, oy:H/2, sx:W/2, sy:H/2});
+        drawPlot();
+      }
+      function resize(){
+        var dpr=devicePixelRatio||1;
+        cv.width=cv.clientWidth*dpr; cv.height=420*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+        plot.width=plot.clientWidth*dpr; plot.height=180*dpr; pctx.setTransform(dpr,0,0,dpr,0,0);
+        if(parts.length===0) reset(); else draw();
+      }
+      function step(){
+        var s=+stepEl.value;
+        for(var i=0;i<parts.length;i++){
+          var p=parts[i];
+          p.ox=p.x; p.oy=p.y;
+          var a=Math.random()*Math.PI*2;
+          p.x+=Math.cos(a)*s; p.y+=Math.sin(a)*s;
+          var W=cv.clientWidth, H=420;
+          p.x=Math.max(4,Math.min(W-4,p.x)); p.y=Math.max(4,Math.min(H-4,p.y));
+        }
+        steps++;
+      }
+      function draw(){
+        var bg=getCss("--bg")||"#fff";
+        if(showTrail){ ctx.fillStyle=bg; ctx.globalAlpha=0.06; ctx.fillRect(0,0,cv.clientWidth,420); ctx.globalAlpha=1; }
+        else { ctx.fillStyle=bg; ctx.fillRect(0,0,cv.clientWidth,420); }
+        var fg=getCss("--text-2")||"#888", col=getCss("--primary")||"#6c5ce7";
+        for(var i=0;i<parts.length;i++){
+          var p=parts[i];
+          if(showTrail){ ctx.strokeStyle=col; ctx.globalAlpha=0.25; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.ox,p.oy); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.globalAlpha=1; }
+          ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(p.x,p.y,2.2,0,7); ctx.fill();
+        }
+        // 统计
+        var sum=0; for(var k=0;k<parts.length;k++){var q=parts[k]; sum+=((q.x-q.sx)*(q.x-q.sx)+(q.y-q.sy)*(q.y-q.sy));}
+        var msd=parts.length? sum/parts.length:0;
+        var D=(s*s)/4;
+        stepNel.textContent=steps;
+        msdEl.textContent=msd.toFixed(1);
+        msdTEl.textContent=(4*D*steps).toFixed(1);
+        drawPlot(msd);
+      }
+      var msdHist=[];
+      function drawPlot(curMsd){
+        var W=plot.clientWidth, H=180;
+        pctx.fillStyle=getCss("--bg")||"#fff"; pctx.fillRect(0,0,W,H);
+        pctx.strokeStyle=getCss("--border")||"#ddd"; pctx.lineWidth=1;
+        pctx.strokeRect(0.5,0.5,W-1,H-1);
+        if(curMsd!==undefined) msdHist.push(curMsd);
+        if(msdHist.length>W) msdHist.shift();
+        var maxV=Math.max(10, ...msdHist)*1.1;
+        // 理论红线 4Dt
+        var s=+stepEl.value, D=(s*s)/4;
+        pctx.strokeStyle="#e74c3c"; pctx.lineWidth=1.5; pctx.beginPath();
+        for(var x=0;x<msdHist.length;x++){ var y=H-(4*D*x)/maxV*H; if(x===0)pctx.moveTo(x,y); else pctx.lineTo(x,y);} pctx.stroke();
+        // 实测蓝线
+        pctx.strokeStyle=getCss("--primary")||"#6c5ce7"; pctx.lineWidth=1.5; pctx.beginPath();
+        for(var j=0;j<msdHist.length;j++){ var y2=H-(msdHist[j]/maxV)*H; if(j===0)pctx.moveTo(j,y2); else pctx.lineTo(j,y2);} pctx.stroke();
+      }
+      function loop(){ if(!paused){ step(); draw(); } raf=requestAnimationFrame(loop); }
+
+      countEl.oninput=function(){ countV.textContent=this.value; reset(); };
+      stepEl.oninput=function(){ stepV.textContent=(+this.value).toFixed(1); };
+      pauseBtn.onclick=function(){ paused=!paused; this.textContent=paused?"▶ 继续":"⏸ 暂停"; };
+      resetBtn.onclick=function(){ msdHist=[]; reset(); };
+      trailBtn.onclick=function(){ showTrail=!showTrail; this.textContent="轨迹："+(showTrail?"开":"关"); };
+
+      document.getElementById("year").textContent=new Date().getFullYear();
+      window.addEventListener("resize", resize);
+      resize(); reset(); loop();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

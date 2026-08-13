@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JSON ↔ XML 互转 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:900px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} .cols{display:flex;gap:16px;} .col{flex:1;display:flex;flex-direction:column;} .col label{font-weight:700;font-size:14px;color:#3498db;margin-bottom:8px;} .col textarea{flex:1;min-height:200px;padding:12px;border:1px solid var(--border);border-radius:10px;font-family:Consolas,monospace;font-size:13px;background:var(--bg);color:var(--text-1);resize:vertical;box-sizing:border-box;} .col textarea:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);} .col .actions{display:flex;gap:6px;margin-top:8px;} .col .actions button{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.12s;} .col .actions button:hover{background:#2c81ba;} .col .actions button.small{background:transparent;color:#3498db;} .col .actions button.small:hover{background:#e8f4fd;} #err{color:#c0392b;font-size:12px;margin-top:4px;display:none;} @media(max-width:680px){.cols{flex-direction:column;}}</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>🔄 JSON ↔ XML 互转</h1><p class="desc">在 JSON 与 XML 之间双向转换，适合 API 调试与数据交换场景。左侧输入，右侧输出。</p>
+<div class="card"><div id="err"></div><div class="cols"><div class="col"><label>JSON</label><textarea id="jsonInput">{"note":{"to":"Tove","from":"Jani","heading":"Reminder","body":"Don\'t forget me this weekend!"}}</textarea><div class="actions"><button onclick="jsonToXml()">→ 转 XML</button><button class="small" onclick="copyTo('json')">复制</button></div></div><div class="col"><label>XML</label><textarea id="xmlInput" readonly></textarea><div class="actions"><button onclick="xmlToJson()">← 转 JSON</button><button class="small" onclick="copyTo('xml')">复制</button></div></div></div></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+function showErr(msg){var e=qs('#err');e.textContent=msg;e.style.display='block';setTimeout(function(){e.style.display='none';},4000);}
+function jsonToXml(){
+  try{var obj=JSON.parse(qs('#jsonInput').value);}catch(e){showErr('JSON 解析失败: '+e.message);return;}
+  function toXml(o,tag){var xml='';if(Array.isArray(o)){for(var i=0;i<o.length;i++)xml+=toXml(o[i],'item');}else if(typeof o==='object'&&o!==null){xml+='<'+tag+'>';for(var k in o)xml+=toXml(o[k],k);xml+='</'+tag+'>';}else{xml+='<'+tag+'>'+(o===null?'':String(o).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'))+'</'+tag+'>';}return xml;}
+  var xml='<?xml version="1.0" encoding="UTF-8"?>\n'+toXml(obj,'root');
+  qs('#xmlInput').value=formatXml(xml);
+}
+function xmlToJson(){
+  try{
+    var parser=new DOMParser();var doc=parser.parseFromString(qs('#xmlInput').value,'text/xml');
+    var err=doc.querySelector('parsererror');if(err){showErr('XML 解析失败: '+err.textContent);return;}
+    function parse(node){if(node.children.length===0)return node.textContent||null;var obj={};for(var i=0;i<node.children.length;i++){var ch=node.children[i];if(obj[ch.tagName]){if(!Array.isArray(obj[ch.tagName]))obj[ch.tagName]=[obj[ch.tagName]];obj[ch.tagName].push(parse(ch));}else{obj[ch.tagName]=parse(ch);}}return obj;}
+    var root=doc.documentElement;var json=JSON.stringify(parse(root),null,2);
+    qs('#jsonInput').value=json;
+  }catch(e){showErr('转换失败: '+e.message);}
+}
+function formatXml(xml){var spaced=xml.replace(/>\s*</g,'><');var formatted='',indent=0;var lines=spaced.replace(/></g,'>\n<').split('\n');for(var i=0;i<lines.length;i++){var l=lines[i].trim();if(!l)continue;if(l.indexOf('</')===0){indent--;formatted+='  '.repeat(Math.max(0,indent))+l+'\n';}else if(l.indexOf('<')===0&&l.indexOf('/>')===-1&&l.indexOf('?>')===-1){formatted+='  '.repeat(indent)+l+'\n';if(l.indexOf('</')===-1)indent++;}else{formatted+='  '.repeat(indent)+l+'\n';}}return formatted;}
+function copyTo(t){var v=qs('#'+t+'Input').value;if(navigator.clipboard)navigator.clipboard.writeText(v);else{var el=document.createElement('textarea');el.value=v;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);}}
+jsonToXml();
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

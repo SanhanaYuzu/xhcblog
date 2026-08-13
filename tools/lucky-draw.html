@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抽奖转盘 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:960px;margin:0 auto;}
+.tool-page .grid{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;}
+
+.tool-page .fld label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px;}
+.tool-page textarea{width:100%;height:190px;resize:vertical;padding:11px 13px;font-size:14px;line-height:1.7;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;}
+.tool-page textarea:focus{border-color:var(--primary);}
+.tool-page .row{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--text-2);}
+.tool-page .row input[type=checkbox]{accent-color:var(--primary);width:16px;height:16px;cursor:pointer;}
+.tool-page .count{font-size:12px;color:var(--text-3);margin-top:8px;}
+
+.tool-page .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.tool-page .btn{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .btn:disabled{opacity:.45;cursor:not-allowed;}
+.tool-page .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
+.tool-page .btn.primary:disabled:hover{background:var(--primary);color:#fff;}
+.tool-page .btn.big{width:100%;padding:13px;font-size:16px;font-weight:800;letter-spacing:2px;margin-top:14px;}
+
+.tool-page .wheel-box{display:flex;flex-direction:column;align-items:center;}
+.tool-page canvas#wheel{width:100%;max-width:420px;height:auto;display:block;}
+.tool-page .winner{margin-top:14px;text-align:center;min-height:34px;}
+.tool-page .winner .w-lbl{font-size:12px;color:var(--text-3);}
+.tool-page .winner .w-name{font-size:22px;font-weight:800;color:var(--primary);margin-top:2px;word-break:break-all;}
+
+.tool-page .hist{margin-top:16px;}
+.tool-page .hist h3{font-size:13px;color:var(--text-2);margin:0 0 8px;}
+.tool-page .hist ol{margin:0;padding-left:20px;max-height:150px;overflow:auto;}
+.tool-page .hist li{font-size:13px;color:var(--text-2);line-height:1.9;}
+.tool-page .hist .empty{font-size:12.5px;color:var(--text-3);}
+
+.tool-page .mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9998;padding:20px;}
+.tool-page .mask.show{display:flex;}
+.tool-page .dlg{background:var(--card);border-radius:18px;padding:30px 34px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:340px;width:100%;animation:tp-pop .35s cubic-bezier(.22,1.4,.4,1);}
+.tool-page .dlg .em{font-size:44px;}
+.tool-page .dlg .t{font-size:13px;color:var(--text-3);margin-top:6px;}
+.tool-page .dlg .n{font-size:30px;font-weight:800;color:var(--primary);margin:8px 0 18px;word-break:break-all;line-height:1.3;}
+.tool-page .dlg .dacts{display:flex;gap:10px;justify-content:center;}
+@keyframes tp-pop{0%{transform:scale(.7);opacity:0;}100%{transform:scale(1);opacity:1;}}
+
+.tool-page .confetti{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
+.tool-page .confetti i{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;animation:tp-fall linear forwards;}
+@keyframes tp-fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(105vh) rotate(720deg);opacity:.9;}}
+
+@media(max-width:680px){
+  .tool-page .grid{grid-template-columns:1fr;}
+  .tool-page .panel{padding:15px;}
+  .tool-page .dlg{padding:24px 20px;}
+  .tool-page .dlg .n{font-size:24px;}
+}
+
+/* 深色模式适配 */
+body.dark .tool-page .panel{box-shadow:none;}
+body.dark .tool-page textarea{background:#12151b;color:var(--text);}
+body.dark .tool-page .btn{background:var(--card);color:var(--text-2);}
+body.dark .tool-page .btn.primary{color:#fff;}
+body.dark .tool-page .dlg{background:var(--card);box-shadow:0 20px 60px rgba(0,0,0,.6);}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">🎡 抽奖转盘</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">输入候选名单，转动幸运大转盘，随机决定谁是天选之子。</p>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="fld">
+        <label for="namesIn">候选名单（一行一个，也支持逗号分隔）</label>
+        <textarea id="namesIn" placeholder="张三&#10;李四&#10;王五&#10;赵六"></textarea>
+      </div>
+      <div class="count" id="cntTip">共 0 个候选</div>
+      <div class="row"><input type="checkbox" id="rmWin"><label for="rmWin" style="margin:0;font-weight:500;cursor:pointer;">中奖后从名单移除</label></div>
+      <div class="acts">
+        <button class="btn" id="demoBtn">示例名单</button>
+        <button class="btn" id="resetBtn">🔄 重置名单</button>
+      </div>
+      <button class="btn primary big" id="spinBtn">开始抽奖</button>
+
+      <div class="hist">
+        <h3>中奖记录</h3>
+        <ol id="histList"></ol>
+        <div class="empty" id="histEmpty">还没有抽奖记录</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="wheel-box">
+        <canvas id="wheel" width="420" height="420"></canvas>
+        <div class="winner">
+          <div class="w-lbl">本次结果</div>
+          <div class="w-name" id="winName">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="mask">
+    <div class="dlg">
+      <div class="em">🎉</div>
+      <div class="t">恭喜中奖的是</div>
+      <div class="n" id="dlgName">—</div>
+      <div class="dacts">
+        <button class="btn" id="closeBtn">关闭</button>
+        <button class="btn primary" id="againBtn">再抽一次</button>
+      </div>
+    </div>
+  </div>
+  <div class="confetti" id="confetti"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $("wheel"), ctx = cv.getContext("2d");
+  var namesIn = $("namesIn"), cntTip = $("cntTip"), spinBtn = $("spinBtn");
+  var winName = $("winName"), histList = $("histList"), histEmpty = $("histEmpty");
+  var mask = $("mask"), dlgName = $("dlgName"), confetti = $("confetti"), rmWin = $("rmWin");
+
+  var COLORS = ["#ff6b6b", "#ffa94d", "#ffd43b", "#69db7c", "#38d9a9", "#4dabf7", "#748ffc", "#da77f2", "#f783ac", "#63e6be"];
+  var W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, R = 185;
+  var names = [], rot = 0, spinning = false, history = [];
+
+  function parseNames() {
+    var raw = namesIn.value.split(/[\n,，、;；]+/);
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var t = raw[i].replace(/^\s+|\s+$/g, "");
+      if (t) out.push(t);
+    }
+    return out;
+  }
+
+  function refresh() {
+    names = parseNames();
+    cntTip.textContent = "共 " + names.length + " 个候选";
+    spinBtn.disabled = spinning || names.length < 2;
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var n = names.length;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (n === 0) {
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fillStyle = "#dfe3e8";
+      ctx.fill();
+      ctx.fillStyle = "#8a9099";
+      ctx.font = "600 16px system-ui,-apple-system,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("请先输入候选名单", 0, 6);
+      ctx.restore();
+      drawPointer();
+      return;
+    }
+
+    ctx.rotate(rot);
+    var seg = Math.PI * 2 / n;
+    for (var i = 0; i < n; i++) {
+      var a0 = i * seg, a1 = a0 + seg;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, R, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = COLORS[i % COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.75)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.rotate(a0 + seg / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#ffffff";
+      var fs = n > 18 ? 11 : (n > 12 ? 13 : 15);
+      ctx.font = "bold " + fs + "px system-ui,-apple-system,'Microsoft YaHei',sans-serif";
+      ctx.shadowColor = "rgba(0,0,0,.28)";
+      ctx.shadowBlur = 3;
+      var t = names[i];
+      var maxLen = n > 12 ? 5 : 8;
+      if (t.length > maxLen) t = t.slice(0, maxLen) + "…";
+      ctx.fillText(t, R - 18, fs / 3);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 36, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#e3e6ea";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "#333333";
+    ctx.font = "bold 17px system-ui,-apple-system,'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("抽奖", cx, cy + 6);
+
+    drawPointer();
+  }
+
+  function drawPointer() {
+    var topY = cy - R;
+    ctx.beginPath();
+    ctx.moveTo(cx, topY + 26);
+    ctx.lineTo(cx - 16, topY - 14);
+    ctx.lineTo(cx + 16, topY - 14);
+    ctx.closePath();
+    ctx.fillStyle = "#e03131";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function spin() {
+    if (spinning) return;
+    names = parseNames();
+    if (names.length < 2) return;
+    spinning = true;
+    spinBtn.disabled = true;
+    winName.textContent = "…";
+
+    var n = names.length;
+    var seg = Math.PI * 2 / n;
+    var idx = Math.floor(Math.random() * n);
+    var jitter = (Math.random() - 0.5) * seg * 0.7;
+    var targetLocal = (idx + 0.5) * seg + jitter;
+    var want = -Math.PI / 2 - targetLocal;
+    var TAU = Math.PI * 2;
+    var delta = ((want - rot) % TAU + TAU) % TAU;
+    var turns = 6 + Math.floor(Math.random() * 3);
+    var from = rot, to = rot + delta + TAU * turns;
+    var dur = 4200 + Math.random() * 900;
+    var t0 = performance.now();
+
+    function step(now) {
+      var p = Math.min(1, (now - t0) / dur);
+      rot = from + (to - from) * easeOut(p);
+      draw();
+      if (p < 1) {
+        requestAnimationFrame(step);
+      } else {
+        rot = ((to % TAU) + TAU) % TAU;
+        spinning = false;
+        finish(names[idx]);
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function finish(name) {
+    winName.textContent = name;
+    history.unshift(name);
+    renderHist();
+    dlgName.textContent = name;
+    mask.classList.add("show");
+    boom();
+    if (rmWin.checked) {
+      var left = [];
+      var removed = false;
+      for (var i = 0; i < names.length; i++) {
+        if (!removed && names[i] === name) { removed = true; continue; }
+        left.push(names[i]);
+      }
+      namesIn.value = left.join("\n");
+    }
+    refresh();
+  }
+
+  function renderHist() {
+    if (!history.length) {
+      histList.innerHTML = "";
+      histEmpty.style.display = "";
+      return;
+    }
+    histEmpty.style.display = "none";
+    var html = "";
+    for (var i = 0; i < history.length && i < 30; i++) {
+      html += "<li>" + history[i].replace(/</g, "&lt;") + "</li>";
+    }
+    histList.innerHTML = html;
+  }
+
+  function boom() {
+    confetti.innerHTML = "";
+    for (var i = 0; i < 60; i++) {
+      var d = document.createElement("i");
+      d.style.left = (Math.random() * 100) + "%";
+      d.style.background = COLORS[i % COLORS.length];
+      d.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+      d.style.animationDelay = (Math.random() * 0.6) + "s";
+      d.style.opacity = "0.95";
+      confetti.appendChild(d);
+    }
+    setTimeout(function () { confetti.innerHTML = ""; }, 4200);
+  }
+
+  namesIn.addEventListener("input", refresh);
+  spinBtn.addEventListener("click", spin);
+  cv.addEventListener("click", spin);
+
+  $("demoBtn").addEventListener("click", function () {
+    namesIn.value = ["张三", "李四", "王五", "赵六", "孙七", "周八", "吴九", "郑十"].join("\n");
+    refresh();
+  });
+
+  $("resetBtn").addEventListener("click", function () {
+    namesIn.value = "";
+    history = [];
+    rot = 0;
+    winName.textContent = "—";
+    renderHist();
+    refresh();
+  });
+
+  $("closeBtn").addEventListener("click", function () { mask.classList.remove("show"); });
+  $("againBtn").addEventListener("click", function () {
+    mask.classList.remove("show");
+    setTimeout(spin, 200);
+  });
+  mask.addEventListener("click", function (e) {
+    if (e.target === mask) mask.classList.remove("show");
+  });
+
+  namesIn.value = ["苹果", "香蕉", "橙子", "西瓜", "葡萄", "芒果"].join("\n");
+  renderHist();
+  refresh();
+})();
+</script>
+</body>
+</html>

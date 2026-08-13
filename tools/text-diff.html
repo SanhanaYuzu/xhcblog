@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文本对比 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 18px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .mode-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+    .seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+    .seg button{border:none;background:var(--bg);color:var(--text-2);padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .seg button.active{background:var(--primary);color:#fff;}
+    .seg button:not(.active):hover{color:var(--primary);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+
+    .editors{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .ed-col label{display:block;font-size:13px;color:var(--text-2);font-weight:600;margin-bottom:6px;}
+    .ed-col textarea{width:100%;box-sizing:border-box;min-height:200px;resize:vertical;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:12px;font-size:14px;font-family:"SFMono-Regular",Consolas,monospace;line-height:1.6;}
+    .ed-col textarea:focus{outline:none;border-color:var(--primary);}
+
+    .legend{display:flex;gap:18px;font-size:13px;color:var(--text-3);margin-bottom:10px;flex-wrap:wrap;}
+    .legend span{display:inline-flex;align-items:center;gap:6px;}
+    .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+    .lg-add{background:rgba(45,160,90,.22);}
+    .lg-del{background:rgba(229,72,77,.22);}
+
+    .diff-table{width:100%;border-collapse:collapse;font-size:13.5px;font-family:"SFMono-Regular",Consolas,monospace;}
+    .diff-table td{padding:2px 10px;border-bottom:1px solid var(--border);vertical-align:top;white-space:pre-wrap;word-break:break-all;line-height:1.7;}
+    .diff-table .ln{color:var(--text-3);text-align:right;width:42px;user-select:none;border-right:1px solid var(--border);}
+    .diff-table .mark{width:22px;text-align:center;color:var(--text-3);user-select:none;}
+    .diff-table tr.add td.code{background:rgba(45,160,90,.14);}
+    .diff-table tr.del td.code{background:rgba(229,72,77,.14);}
+    .diff-table .mark.add{color:#2da05a;font-weight:700;}
+    .diff-table .mark.del{color:#e5484d;font-weight:700;}
+
+    .stat-bar{display:flex;gap:20px;font-size:13px;margin-bottom:12px;flex-wrap:wrap;}
+    .stat-bar b{font-weight:800;}
+    .s-add{color:#2da05a;} .s-del{color:#e5484d;}
+
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:680px){
+      .editors{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔎</span>
+      <h1>文本对比</h1>
+    </div>
+    <p class="tool-sub">粘贴两段文本，按行或按字符对比差异，新增内容绿色高亮，删除内容红色高亮。</p>
+
+    <div class="panel">
+      <div class="mode-row">
+        <div class="seg" id="modeSeg">
+          <button data-m="line" class="active">按行对比</button>
+          <button data-m="char">按字符对比</button>
+        </div>
+        <button class="btn-ghost" id="sampleBtn">填入示例</button>
+        <button class="btn-ghost" id="clearBtn">清空</button>
+      </div>
+      <div class="editors">
+        <div class="ed-col">
+          <label>原文本（旧）</label>
+          <textarea id="left" placeholder="在此粘贴原始文本…"></textarea>
+        </div>
+        <div class="ed-col">
+          <label>新文本（改后）</label>
+          <textarea id="right" placeholder="在此粘贴修改后的文本…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="resultPanel" style="display:none;">
+      <div class="stat-bar" id="statBar"></div>
+      <div class="legend">
+        <span><i class="lg-add"></i> 新增 / 修改后</span>
+        <span><i class="lg-del"></i> 删除 / 修改前</span>
+      </div>
+      <div id="diffOut"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var mode = "line";
+      var modeSeg = document.getElementById("modeSeg");
+      modeSeg.addEventListener("click", function(e){
+        var b = e.target.closest("button"); if(!b) return;
+        mode = b.dataset.m;
+        Array.prototype.forEach.call(modeSeg.querySelectorAll("button"),function(x){x.classList.toggle("active",x===b);});
+        run();
+      });
+
+      var left = document.getElementById("left");
+      var right = document.getElementById("right");
+      var resultPanel = document.getElementById("resultPanel");
+      var diffOut = document.getElementById("diffOut");
+      var statBar = document.getElementById("statBar");
+
+      // LCS 动态规划
+      function diff(a, b){
+        var n=a.length, m=b.length;
+        var dp=[];
+        for(var i=0;i<=n;i++){dp[i]=new Array(m+1).fill(0);}
+        for(var i2=n-1;i2>=0;i2--){
+          for(var j2=m-1;j2>=0;j2--){
+            if(a[i2]===b[j2]) dp[i2][j2]=dp[i2+1][j2+1]+1;
+            else dp[i2][j2]=Math.max(dp[i2+1][j2],dp[i2][j2+1]);
+          }
+        }
+        var res=[], i=0,j=0;
+        while(i<n&&j<m){
+          if(a[i]===b[j]){res.push({t:"eq",x:a[i]});i++;j++;}
+          else if(dp[i+1][j]>=dp[i][j+1]){res.push({t:"del",x:a[i]});i++;}
+          else{res.push({t:"add",x:b[j]});j++;}
+        }
+        while(i<n){res.push({t:"del",x:a[i]});i++;}
+        while(j<m){res.push({t:"add",x:b[j]});j++;}
+        return res;
+      }
+
+      function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+      function run(){
+        var la = left.value, rb = right.value;
+        var a, b;
+        if(mode==="line"){
+          a = la.split("\n"); b = rb.split("\n");
+        }else{
+          a = la.split(""); b = rb.split("");
+        }
+        var ops = diff(a, b);
+        var lnA=0, lnB=0, add=0, del=0;
+        var html = '<table class="diff-table"><tbody>';
+        for(var k=0;k<ops.length;k++){
+          var op=ops[k];
+          if(op.t==="eq"){
+            lnA++;lnB++;
+            html+='<tr><td class="ln">'+lnA+'</td><td class="mark"> </td><td class="ln">'+lnB+'</td><td class="code">'+esc(op.x)+'</td></tr>';
+          }else if(op.t==="del"){
+            lnA++;
+            del++;
+            html+='<tr class="del"><td class="ln">'+lnA+'</td><td class="mark del">−</td><td class="ln"></td><td class="code">'+esc(op.x)+'</td></tr>';
+          }else{
+            lnB++;
+            add++;
+            html+='<tr class="add"><td class="ln"></td><td class="mark add">+</td><td class="ln">'+lnB+'</td><td class="code">'+esc(op.x)+'</td></tr>';
+          }
+        }
+        html+='</tbody></table>';
+        diffOut.innerHTML = html;
+        statBar.innerHTML = '<span class="s-add">新增 <b>'+add+'</b></span><span class="s-del">删除 <b>'+del+'</b></span>';
+        resultPanel.style.display = "block";
+      }
+
+      function sample(){
+        left.value = "苹果 香蕉 橙子 葡萄\n西瓜 草莓 蓝莓\n芒果 菠萝";
+        right.value = "苹果 香蕉 橙子 葡萄\n西瓜 草莓 猕猴桃\n芒果 菠萝 荔枝";
+        run();
+      }
+
+      left.addEventListener("input", run);
+      right.addEventListener("input", run);
+      document.getElementById("sampleBtn").addEventListener("click", sample);
+      document.getElementById("clearBtn").addEventListener("click", function(){
+        left.value=""; right.value=""; resultPanel.style.display="none";
+      });
+
+      sample();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

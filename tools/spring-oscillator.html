@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>弹簧振子 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    canvas{display:block;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;}
+    .ctrl-row{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
+    .field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--text-2);min-width:130px;}
+    .field .v{font-weight:700;color:var(--primary);}
+    .field input[type=range]{accent-color:var(--primary);}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌀</span>
+      <h1>弹簧振子</h1>
+    </div>
+    <p class="tool-sub">阻尼简谐振动模拟：调节刚度、质量、阻尼与初始位移，观察位移、速度与能量的变化，右侧为相图（位移—速度）。</p>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 参数</h2>
+      <div class="ctrl-row">
+        <div class="field">刚度 k <span class="v" id="kLbl">2.0</span>
+          <input type="range" id="k" min="0.5" max="8" step="0.1" value="2">
+        </div>
+        <div class="field">质量 m <span class="v" id="mLbl">1.0</span>
+          <input type="range" id="m" min="0.5" max="5" step="0.1" value="1">
+        </div>
+        <div class="field">阻尼 c <span class="v" id="cLbl">0.10</span>
+          <input type="range" id="c" min="0" max="2" step="0.02" value="0.1">
+        </div>
+        <div class="field">初始位移 <span class="v" id="xLbl">1.0</span>
+          <input type="range" id="x0" min="0.2" max="2" step="0.1" value="1">
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="resetBtn">🔄 重置并播放</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 振动与相图</h2>
+      <canvas id="cv" height="300"></canvas>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+      var kEl=document.getElementById("k"), mEl=document.getElementById("m"), cEl=document.getElementById("c"), x0El=document.getElementById("x0");
+      var kLbl=document.getElementById("kLbl"), mLbl=document.getElementById("mLbl"), cLbl=document.getElementById("cLbl"), xLbl=document.getElementById("xLbl");
+      var x, v, last=0, raf=null;
+      function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+      function resize(){ cv.width=cv.clientWidth; }
+      window.addEventListener("resize", resize); resize();
+
+      function reset(){
+        x=parseFloat(x0El.value); v=0; last=performance.now();
+        loop();
+      }
+
+      function loop(now){
+        raf=requestAnimationFrame(loop);
+        if(!now) now=performance.now();
+        var dt=(now-last)/1000; last=now; if(dt>0.05) dt=0.05;
+        var k=parseFloat(kEl.value), m=parseFloat(mEl.value), c=parseFloat(cEl.value);
+        // 半隐式欧拉
+        var a = (-k*x - c*v)/m;
+        v += a*dt; x += v*dt;
+        draw(k,m);
+      }
+
+      function draw(k,m){
+        var W=cv.width, H=cv.height;
+        ctx.fillStyle=getCss("--bg")||"#fff"; ctx.fillRect(0,0,W,H);
+        var split=Math.min(340, W*0.5);
+        // 左：弹簧
+        var ceiling=40, massY=H/2, eqX=split*0.45, amp=80;
+        var massX=eqX + x*amp;
+        ctx.strokeStyle=getCss("--text-3")||"#999"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(20,ceiling); ctx.lineTo(20, massY); ctx.stroke();
+        // 弹簧螺旋
+        ctx.strokeStyle=getCss("--text-2")||"#555"; ctx.lineWidth=2;
+        ctx.beginPath();
+        var coils=12, sx=20, ex=massX-28;
+        ctx.moveTo(sx, massY);
+        for(var i=0;i<=coils;i++){
+          var t=i/coils, xx=sx+(ex-sx)*t, yy=massY + (i%2===0? -8:8);
+          ctx.lineTo(xx, yy);
+        }
+        ctx.lineTo(ex, massY); ctx.stroke();
+        // 质量块
+        ctx.fillStyle=getCss("--primary"); ctx.fillRect(massX-22, massY-22, 44, 44);
+        ctx.fillStyle="#fff"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("m", massX, massY+4);
+        // 平衡线
+        ctx.strokeStyle="rgba(127,127,127,.4)"; ctx.setLineDash([5,5]);
+        ctx.beginPath(); ctx.moveTo(eqX,ceiling); ctx.lineTo(eqX,H-20); ctx.stroke(); ctx.setLineDash([]);
+        // 右：相图
+        var px=split+ (W-split)/2, py=H/2;
+        ctx.strokeStyle="rgba(127,127,127,.4)"; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(split+10,py); ctx.lineTo(W-10,py); ctx.moveTo(px,20); ctx.lineTo(px,H-20); ctx.stroke();
+        ctx.fillStyle=getCss("--primary"); ctx.beginPath(); ctx.arc(px + x*amp*0.7, py - v*22, 4,0,7); ctx.fill();
+        ctx.fillStyle=getCss("--text-3")||"#999"; ctx.font="11px sans-serif"; ctx.textAlign="left";
+        ctx.fillText("相图 (位移—速度)", split+14, 22);
+        ctx.fillText("位移 x = "+x.toFixed(2), 24, 26);
+        ctx.fillText("速度 v = "+v.toFixed(2), 24, 42);
+      }
+
+      [kEl,mEl,cEl,x0El].forEach(function(el){
+        el.addEventListener("input", function(){
+          kLbl.textContent=parseFloat(kEl.value).toFixed(1);
+          mLbl.textContent=parseFloat(mEl.value).toFixed(1);
+          cLbl.textContent=parseFloat(cEl.value).toFixed(2);
+          xLbl.textContent=parseFloat(x0El.value).toFixed(1);
+        });
+      });
+      document.getElementById("resetBtn").addEventListener("click", reset);
+      reset();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

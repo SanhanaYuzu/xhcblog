@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>猜数字 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:620px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px;text-align:center;}
+    .big-num{font-size:64px;font-weight:800;color:var(--primary);line-height:1;margin:6px 0 2px;}
+    .hint{font-size:15px;color:var(--text-2);min-height:24px;margin:8px 0 16px;}
+    .hint.up{color:#e67e22;font-weight:700;}
+    .hint.down{color:#3498db;font-weight:700;}
+    .hint.win{color:#27ae60;font-weight:800;font-size:18px;}
+    .input-row{display:flex;gap:10px;justify-content:center;margin-bottom:14px;}
+    .input-row input{width:160px;box-sizing:border-box;text-align:center;font-size:22px;font-weight:700;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:12px;padding:12px;font-family:inherit;}
+    .input-row input:focus{outline:none;border-color:var(--primary);}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:12px;padding:13px 22px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:12px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;margin-top:6px;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .stats{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:10px;font-size:14px;color:var(--text-2);}
+    .stats b{color:var(--text);}
+    .range-row{font-size:13px;color:var(--text-3);margin-bottom:10px;}
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔢</span>
+      <h1>猜数字</h1>
+    </div>
+    <p class="tool-sub">系统会在指定范围内随机想一个数，根据提示用尽量少的次数猜中它！</p>
+
+    <div class="panel">
+      <div class="range-row">范围：<b id="rangeText">1 - 100</b>（可调）</div>
+      <div class="big-num" id="bigNum">?</div>
+      <div class="hint" id="hint">请输入你猜的数字</div>
+      <div class="input-row">
+        <input type="number" id="guessInput" placeholder="?" min="1">
+      </div>
+      <button class="btn-primary" id="guessBtn">猜！</button>
+      <div class="stats">
+        <span>已猜次数：<b id="cnt">0</b></span>
+        <span>用时：<b id="time">0s</b></span>
+        <span>历史最小范围：<b id="minMax">—</b></span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div style="font-size:13px;color:var(--text-3);margin-bottom:8px;">调整难度：</div>
+      <button class="btn-ghost" data-max="10" style="display:inline-block;width:auto;margin:4px;">1-10（简单）</button>
+      <button class="btn-ghost" data-max="100" style="display:inline-block;width:auto;margin:4px;">1-100（普通）</button>
+      <button class="btn-ghost" data-max="1000" style="display:inline-block;width:auto;margin:4px;">1-1000（困难）</button>
+      <br>
+      <button class="btn-ghost" id="restartBtn" style="display:inline-block;width:auto;margin-top:12px;">🔄 重新开始</button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var toastEl = $("tipToast");
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+
+      var MAX=100, target=0, count=0, start=0, timer=null, lo=1, hi=100;
+
+      function newGame(){
+        MAX = parseInt(document.querySelector(".btn-ghost[data-max].active")?document.querySelector(".btn-ghost.active").dataset.max:100) || 100;
+        lo=1; hi=MAX;
+        target = Math.floor(Math.random()*MAX)+1;
+        count=0; start=Date.now();
+        $("hint").className="hint"; $("hint").textContent="请输入你猜的数字";
+        $("bigNum").textContent="?"; $("cnt").textContent="0"; $("time").textContent="0s"; $("minMax").textContent="—";
+        $("guessInput").value=""; $("guessInput").min=1; $("guessInput").max=MAX;
+        $("rangeText").textContent="1 - "+MAX;
+        if(timer) clearInterval(timer);
+        timer=setInterval(function(){ $("time").textContent=Math.floor((Date.now()-start)/1000)+"s"; },1000);
+        $("guessInput").focus();
+      }
+
+      function guess(){
+        var v=parseInt($("guessInput").value,10);
+        if(isNaN(v)){ toast("请输入数字"); return; }
+        if(v<lo||v>hi){ toast("请在 "+lo+" - "+hi+" 范围内猜"); return; }
+        count++; $("cnt").textContent=count;
+        if(v===target){
+          $("hint").className="hint win"; $("hint").textContent="🎉 猜对了！答案就是 "+target;
+          $("bigNum").textContent=target;
+          if(timer) clearInterval(timer);
+          return;
+        }
+        if(v<target){ lo=v+1; $("hint").className="hint up"; $("hint").textContent="太小了，往大猜 ↑"; }
+        else { hi=v-1; $("hint").className="hint down"; $("hint").textContent="太大了，往小猜 ↓"; }
+        $("minMax").textContent=lo+" - "+hi;
+        $("guessInput").value=""; $("guessInput").focus();
+      }
+
+      $("guessBtn").addEventListener("click", guess);
+      $("guessInput").addEventListener("keydown", function(e){ if(e.key==="Enter") guess(); });
+      $("restartBtn").addEventListener("click", newGame);
+      document.querySelectorAll(".btn-ghost[data-max]").forEach(function(b){
+        b.addEventListener("click", function(){
+          document.querySelectorAll(".btn-ghost[data-max]").forEach(function(x){x.classList.remove("active");});
+          b.classList.add("active");
+          MAX=parseInt(b.dataset.max,10);
+          newGame();
+        });
+      });
+      // 默认选中 1-100
+      (function(){var def=document.querySelector('.btn-ghost[data-max="100"]'); if(def) def.classList.add("active");})();
+      newGame();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

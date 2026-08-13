@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UUID / ULID 生成器 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .card{padding:24px;margin-bottom:20px;}
+    .opts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+    .opts button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;}
+    .opts button:hover{background:#2c81ba;}
+    .opts button.outline{background:transparent;color:#3498db;}
+    .opts button.outline:hover{background:#3498db;color:#fff;}
+    .output-box{background:#f0f3f7;border-radius:12px;padding:20px;max-height:400px;overflow-y:auto;font-family:Consolas,monospace;font-size:14px;line-height:1.9;word-break:break-all;}
+    .output-box span{display:block;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .12s;color:#2c3e50;}
+    .output-box span:hover{background:#3498db;color:#fff;}
+    .count-bar{color:var(--text-3);font-size:13px;margin-bottom:8px;}
+    input[type="number"]{width:70px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;text-align:center;margin-left:8px;}
+    .opts label{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text-2);cursor:pointer;}
+    body.dark .output-box{background:#161b22;}
+    body.dark .output-box span{color:#d0d0d0;}
+    @media(max-width:680px){
+      .opts{gap:8px;}
+      .opts button{padding:8px 16px;font-size:13px;}
+    }
+      .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🆔 UUID / ULID 生成器</h1>
+    <p class="desc">生成各种格式的唯一标识符：UUID v4（随机）、UUID v7（时间排序）、ULID（26位字母数字），点击即复制。</p>
+    <div class="card">
+      <div class="opts">
+        <button id="genV4">生成 UUID v4</button>
+        <button id="genV7">生成 UUID v7</button>
+        <button id="genULID">生成 ULID</button>
+        <button id="genAll" class="outline">各生成 1 个</button>
+        <label>批量 <input type="number" id="batchCount" value="5" min="1" max="100"></label>
+        <button id="genBatch">批量生成</button>
+      </div>
+      <div class="count-bar" id="countBar"></div>
+      <div class="output-box" id="output"></div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>    /* app.js 把 qs/qsa/esc 包在 IIFE 内，本地定义自己的助手以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function qsa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]; }); }
+
+
+    function uuidV4(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});}
+    function uuidV7(){var ms=Date.now();var h=ms.toString(16).padStart(12,'0');var r=function(n){return Array.from({length:n},function(){return Math.random()*16|0;}).map(function(v){return v.toString(16);}).join('');};return h.slice(0,8)+'-'+h.slice(8)+'-7'+r(3)+'-'+'8'+(Math.random()*4|0).toString(16)+r(2)+'-'+r(12);}
+    function ulid(){var e='0123456789ABCDEFGHJKMNPQRSTVWXYZ';var t=Date.now().toString(32).toUpperCase().padStart(10,'0');var r=Array.from({length:16},function(){return e[Math.random()*32|0];}).join('');return t+r;}
+    var currentType='';
+    function show(list,type){currentType=type;var h=list.map(function(v){return'<span onclick="copyOne(this)" data-v="'+v+'">'+v+'</span>';}).join('');qs('#output').innerHTML=h;qs('#countBar').textContent='已生成 '+list.length+' 个 '+(type||'')+' — 点击任意一条复制';}
+    function copyOne(el){var v=el.dataset.v;if(navigator.clipboard){navigator.clipboard.writeText(v).then(function(){el.style.background='#27ae60';setTimeout(function(){el.style.background='';},600);});}}
+    function batch(n,genFn,type){var a=[];for(var i=0;i<n;i++)a.push(genFn());show(a,type);}
+    qs('#genV4').addEventListener('click',function(){batch(parseInt(qs('#batchCount').value)||1,uuidV4,'UUID v4');});
+    qs('#genV7').addEventListener('click',function(){batch(parseInt(qs('#batchCount').value)||1,uuidV7,'UUID v7');});
+    qs('#genULID').addEventListener('click',function(){batch(parseInt(qs('#batchCount').value)||1,ulid,'ULID');});
+    qs('#genAll').addEventListener('click',function(){var a=[uuidV4(),uuidV7(),ulid()];show(a,'UUID v4 / v7 / ULID');});
+    qs('#genBatch').addEventListener('click',function(){var n=parseInt(qs('#batchCount').value)||5;if(currentType==='UUID v4')batch(n,uuidV4,'UUID v4');else if(currentType==='UUID v7')batch(n,uuidV7,'UUID v7');else if(currentType==='ULID')batch(n,ulid,'ULID');else batch(n,uuidV4,'UUID v4');});
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

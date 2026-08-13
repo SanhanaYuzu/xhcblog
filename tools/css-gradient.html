@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CSS 渐变生成器 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .preview{width:100%;height:180px;border-radius:14px;margin-bottom:18px;transition:background .3s;}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .controls label{font-size:13px;font-weight:600;color:var(--text-2);}
+    .controls input[type=color]{width:44px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:2px;}
+    .controls input[type=range]{width:100px;}
+    .controls select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;}
+    .css-out{background:#f0f3f7;border-radius:10px;padding:14px;font-family:Consolas,monospace;font-size:13px;word-break:break-all;color:#2c3e50;position:relative;}
+    .css-out .copy-btn{position:absolute;top:8px;right:10px;border:0;background:#3498db;color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;}
+    body.dark .css-out{background:#161b22;color:#d0d0d0;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🌈 CSS 渐变生成器</h1>
+    <p class="desc">可视化拖拽颜色与角度，实时预览线性/径向渐变，一键复制 CSS 代码。</p>
+    <div class="card">
+      <div class="preview" id="preview"></div>
+      <div class="controls">
+        <label>类型: <select id="gradType"><option value="linear">线性</option><option value="radial">径向</option></select></label>
+        <label>角度: <input type="range" id="angle" min="0" max="360" value="90"></label><span id="angleVal" style="font-size:13px;">90°</span>
+        <label>颜色1: <input type="color" id="c1" value="#3498db"></label>
+        <label>颜色2: <input type="color" id="c2" value="#9b59b6"></label>
+        <label>颜色3: <input type="color" id="c3" value="#e74c3c"></label>
+        <label>中点: <input type="range" id="mid" min="30" max="70" value="50"></label>
+      </div>
+      <div class="css-out" id="cssOut">
+        <button class="copy-btn" id="copyCss">复制</button>
+        <code id="cssCode"></code>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    function update(){
+      var t=qs('#gradType').value,a=parseInt(qs('#angle').value),m=parseInt(qs('#mid').value);
+      var c1=qs('#c1').value,c2=qs('#c2').value,c3=qs('#c3').value;
+      qs('#angleVal').textContent=a+'°';
+      var css;
+      if(t==='linear'){css='linear-gradient('+a+'deg, '+c1+' 0%, '+c2+' '+m+'%, '+c3+' 100%)';}
+      else{css='radial-gradient(circle, '+c1+' 0%, '+c2+' '+m+'%, '+c3+' 100%)';}
+      qs('#preview').style.background=css;
+      qs('#cssCode').textContent='background: '+css+';';
+    }
+    qs('#gradType').addEventListener('change',update);
+    qs('#angle').addEventListener('input',update);
+    qs('#mid').addEventListener('input',update);
+    qs('#c1').addEventListener('input',update);
+    qs('#c2').addEventListener('input',update);
+    qs('#c3').addEventListener('input',update);
+    qs('#copyCss').addEventListener('click',function(){
+      var t=qs('#cssCode').textContent;
+      if(navigator.clipboard)navigator.clipboard.writeText(t);
+      else{var el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);}
+      var b=qs('#copyCss');b.textContent='已复制!';setTimeout(function(){b.textContent='复制';},1500);
+    });
+    update();
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

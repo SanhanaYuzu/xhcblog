@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>打砖块游戏 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .bo-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;}
+    body.dark .bo-panel{box-shadow:none;}
+
+    .bo-hud{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:14px;flex-wrap:wrap;gap:8px;}
+    .bo-hud .item{font-weight:600;color:var(--text-2);}
+    .bo-hud .item b{color:var(--primary);font-variant-numeric:tabular-nums;}
+    .bo-hud .lives{color:#ff3b30;letter-spacing:2px;}
+
+    .bo-stage{position:relative;background:#0c0f17;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+    #boCanvas{display:block;width:100%;height:auto;touch-action:none;cursor:none;}
+    .bo-overlay{
+      position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:14px;background:rgba(8,10,16,.72);color:#fff;text-align:center;padding:20px;
+    }
+    .bo-overlay.hidden{display:none;}
+    .bo-overlay h2{margin:0;font-size:28px;}
+    .bo-overlay p{margin:0;color:#c7ccd6;font-size:14px;max-width:320px;line-height:1.6;}
+
+    .bo-btns{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .bo-tip{font-size:12.5px;color:var(--text-3);margin-top:12px;text-align:center;}
+
+    @media(max-width:760px){
+      .bo-panel{padding:14px 12px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🧱</span>
+      <h1>打砖块游戏</h1>
+    </div>
+    <p class="tool-sub">移动挡板反弹小球消除所有砖块，不同颜色砖块分数不同。共 3 条命，球速随关卡递增。</p>
+
+    <div class="bo-panel">
+      <div class="bo-hud">
+        <span class="item">分数 <b id="boScore">0</b></span>
+        <span class="item">关卡 <b id="boLevel">1</b></span>
+        <span class="item">生命 <span class="lives" id="boLives">❤❤❤</span></span>
+      </div>
+      <div class="bo-stage">
+        <canvas id="boCanvas" width="480" height="600"></canvas>
+        <div class="bo-overlay" id="boOverlay">
+          <h2 id="boTitle">打砖块</h2>
+          <p id="boMsg">点击「开始游戏」，用 ← → 或 A / D 移动挡板，也可用鼠标控制。按空格暂停。</p>
+          <button class="btn primary" id="boStart">开始游戏</button>
+        </div>
+      </div>
+      <div class="bo-btns">
+        <button class="btn primary" id="boAction">▶ 开始</button>
+        <button class="btn" id="boPause" disabled>⏸ 暂停</button>
+      </div>
+      <div class="bo-tip">提示：挡板越靠边接球，小球反弹角度越大。连续击碎同色砖块可获得连击加分。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var canvas = document.getElementById("boCanvas");
+      var ctx = canvas.getContext("2d");
+      var GW = canvas.width, GH = canvas.height;
+      var scoreEl = document.getElementById("boScore"), levelEl = document.getElementById("boLevel"), livesEl = document.getElementById("boLives");
+      var overlay = document.getElementById("boOverlay"), titleEl = document.getElementById("boTitle"), msgEl = document.getElementById("boMsg");
+      var startBtn = document.getElementById("boStart"), actionBtn = document.getElementById("boAction"), pauseBtn = document.getElementById("boPause");
+
+      var ROW_COLORS = [
+        { c: "#ff3b30", p: 70 }, { c: "#ff9500", p: 60 }, { c: "#ffcc00", p: 50 },
+        { c: "#34c759", p: 40 }, { c: "#007aff", p: 30 }, { c: "#af52de", p: 20 }
+      ];
+
+      var state = "ready"; // ready | playing | paused | over | win
+      var score = 0, level = 1, lives = 3;
+      var paddle = { w: 90, h: 12, x: 0, y: GH - 28, speed: 8 };
+      var ball = { x: 0, y: 0, r: 7, vx: 0, vy: 0, speed: 5 };
+      var bricks = [];
+      var particles = [];
+      var combo = 0, lastBrickColor = "";
+      var keys = { left: false, right: false };
+      var raf = null;
+
+      function initBricks(rows) {
+        bricks = [];
+        var cols = 9, gap = 6, side = 22, top = 46;
+        var bw = (GW - side * 2 - gap * (cols - 1)) / cols;
+        var bh = 22;
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var col = ROW_COLORS[Math.min(r, ROW_COLORS.length - 1)];
+            bricks.push({
+              x: side + c * (bw + gap), y: top + r * (bh + gap),
+              w: bw, h: bh, color: col.c, points: col.p, alive: true
+            });
+          }
+        }
+      }
+
+      function resetBall() {
+        ball.x = paddle.x + paddle.w / 2;
+        ball.y = paddle.y - ball.r - 1;
+        var ang = (-Math.PI / 4) - Math.random() * (Math.PI / 2); // 向上扇形
+        ball.vx = ball.speed * Math.cos(ang);
+        ball.vy = -ball.speed * Math.sin(ang);
+      }
+
+      function newGame() {
+        score = 0; level = 1; lives = 3;
+        paddle.x = (GW - paddle.w) / 2;
+        ball.speed = 4.5;
+        initBricks(4);
+        resetBall();
+        particles = [];
+        updateHud();
+        state = "playing";
+        hideOverlay();
+        pauseBtn.disabled = false;
+        actionBtn.textContent = "🔄 重开";
+      }
+
+      function nextLevel() {
+        level++;
+        ball.speed += 0.7;
+        initBricks(Math.min(4 + level - 1, ROW_COLORS.length));
+        paddle.x = (GW - paddle.w) / 2;
+        resetBall();
+        updateHud();
+        state = "playing";
+        hideOverlay();
+      }
+
+      function updateHud() {
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        livesEl.textContent = lives > 0 ? "❤".repeat(lives) : "—";
+      }
+
+      function showOverlay(title, msg, btnText) {
+        titleEl.textContent = title; msgEl.textContent = msg;
+        startBtn.textContent = btnText || "开始游戏";
+        overlay.classList.remove("hidden");
+      }
+      function hideOverlay() { overlay.classList.add("hidden"); }
+
+      function spawnParticles(x, y, color) {
+        for (var i = 0; i < 10; i++) {
+          var a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 2.5;
+          particles.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, color: color });
+        }
+      }
+
+      function update() {
+        if (state !== "playing") return;
+        // 挡板键盘移动
+        if (keys.left) paddle.x -= paddle.speed;
+        if (keys.right) paddle.x += paddle.speed;
+        paddle.x = Math.max(0, Math.min(GW - paddle.w, paddle.x));
+
+        // 小球运动
+        ball.x += ball.vx; ball.y += ball.vy;
+
+        // 左右墙
+        if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; }
+        if (ball.x + ball.r > GW) { ball.x = GW - ball.r; ball.vx *= -1; }
+        // 顶墙
+        if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy *= -1; }
+
+        // 挡板碰撞
+        if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y + ball.r <= paddle.y + paddle.h + 8 &&
+            ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+          var hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1..1
+          var ang = hit * (Math.PI / 3); // 最大 60°
+          ball.vx = ball.speed * Math.sin(ang);
+          ball.vy = -ball.speed * Math.cos(ang);
+          ball.y = paddle.y - ball.r - 1;
+          combo = 0; lastBrickColor = "";
+        }
+
+        // 掉底
+        if (ball.y - ball.r > GH) {
+          lives--;
+          combo = 0; lastBrickColor = "";
+          updateHud();
+          if (lives <= 0) {
+            state = "over";
+            pauseBtn.disabled = true;
+            actionBtn.textContent = "▶ 开始";
+            showOverlay("游戏结束", "最终得分 " + score + "，到达第 " + level + " 关。再来一局？", "重新开始");
+            return;
+          }
+          resetBall();
+        }
+
+        // 砖块碰撞
+        for (var i = 0; i < bricks.length; i++) {
+          var b = bricks[i];
+          if (!b.alive) continue;
+          if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+              ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+            // 判定反弹方向
+            var prevX = ball.x - ball.vx, prevY = ball.y - ball.vy;
+            if (prevY <= b.y || prevY >= b.y + b.h) ball.vy *= -1;
+            else ball.vx *= -1;
+            b.alive = false;
+            // 连击
+            if (lastBrickColor === b.color) combo++; else combo = 0;
+            lastBrickColor = b.color;
+            var gained = b.points + combo * 5;
+            score += gained;
+            spawnParticles(ball.x, ball.y, b.color);
+            updateHud();
+            break;
+          }
+        }
+
+        // 通关判定
+        var remain = bricks.some(function (br) { return br.alive; });
+        if (!remain) {
+          if (level >= 6) {
+            state = "win";
+            pauseBtn.disabled = true;
+            actionBtn.textContent = "▶ 开始";
+            showOverlay("🏆 胜利！", "你清光了全部 " + level + " 关，最终得分 " + score + "。", "再玩一次");
+          } else {
+            state = "paused";
+            showOverlay("第 " + level + " 关完成！", "准备进入第 " + (level + 1) + " 关，球速将提升。", "继续");
+          }
+        }
+
+        // 粒子
+        for (var p = particles.length - 1; p >= 0; p--) {
+          var pt = particles[p];
+          pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.12; pt.life -= 0.03;
+          if (pt.life <= 0) particles.splice(p, 1);
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, GW, GH);
+        // 背景
+        ctx.fillStyle = "#0c0f17"; ctx.fillRect(0, 0, GW, GH);
+
+        // 砖块
+        for (var i = 0; i < bricks.length; i++) {
+          var b = bricks[i];
+          if (!b.alive) continue;
+          ctx.fillStyle = b.color;
+          roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+        }
+
+        // 挡板
+        ctx.fillStyle = "#5ac8fa";
+        roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 6); ctx.fill();
+
+        // 小球
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+
+        // 粒子
+        for (var p = 0; p < particles.length; p++) {
+          var pt = particles[p];
+          ctx.globalAlpha = Math.max(0, pt.life);
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x - 2, pt.y - 2, 4, 4);
+        }
+        ctx.globalAlpha = 1;
+
+        if (state === "paused" && overlay.classList.contains("hidden") === false) {
+          // overlay 已显示，无需额外绘制
+        }
+      }
+
+      function roundRect(x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function loop() {
+        update();
+        draw();
+        raf = requestAnimationFrame(loop);
+      }
+
+      // 控制
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = true;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = true;
+        if (e.key === " ") {
+          e.preventDefault();
+          if (state === "playing") togglePause();
+          else if (state === "ready" || state === "over" || state === "win") newGame();
+        }
+      });
+      document.addEventListener("keyup", function (e) {
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = false;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = false;
+      });
+
+      function pointerX(clientX) {
+        var rect = canvas.getBoundingClientRect();
+        var x = (clientX - rect.left) * (GW / rect.width);
+        return x;
+      }
+      canvas.addEventListener("mousemove", function (e) {
+        if (state !== "playing") return;
+        var x = pointerX(e.clientX);
+        paddle.x = Math.max(0, Math.min(GW - paddle.w, x - paddle.w / 2));
+      });
+      canvas.addEventListener("touchmove", function (e) {
+        if (state !== "playing") return;
+        e.preventDefault();
+        var x = pointerX(e.touches[0].clientX);
+        paddle.x = Math.max(0, Math.min(GW - paddle.w, x - paddle.w / 2));
+      }, { passive: false });
+
+      function togglePause() {
+        if (state === "playing") {
+          state = "paused";
+          pauseBtn.textContent = "▶ 继续";
+          showOverlay("已暂停", "点击继续恢复游戏。", "继续");
+        } else if (state === "paused" && titleEl.textContent === "已暂停") {
+          state = "playing";
+          pauseBtn.textContent = "⏸ 暂停";
+          hideOverlay();
+        }
+      }
+
+      actionBtn.addEventListener("click", function () {
+        if (state === "ready" || state === "over" || state === "win") newGame();
+        else if (state === "paused") { if (titleEl.textContent.indexOf("完成") >= 0) nextLevel(); else togglePause(); }
+        else if (state === "playing") newGame();
+      });
+
+      startBtn.addEventListener("click", function () {
+        var t = titleEl.textContent;
+        if (t.indexOf("完成") >= 0) nextLevel();
+        else if (t === "已暂停") togglePause();
+        else newGame();
+      });
+
+      pauseBtn.addEventListener("click", togglePause);
+
+      // 初始
+      paddle.x = (GW - paddle.w) / 2;
+      initBricks(4);
+      resetBall();
+      updateHud();
+      loop();
+    })();
+  </script>
+</body>
+</html>

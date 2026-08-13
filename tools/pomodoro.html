@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>番茄时钟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;margin-bottom:18px;}
+    .panel h2{font-size:15px;margin:0 0 16px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:15px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    /* 模式切换 */
+    .mode-tabs{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
+    .mode-tabs button{
+      border:1px solid var(--border);background:var(--bg);color:var(--text-2);border-radius:22px;
+      padding:8px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.18s;
+    }
+    .mode-tabs button:hover{border-color:var(--primary);color:var(--primary);}
+    .mode-tabs button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .mode-tabs button.active.rest{background:var(--green);border-color:var(--green);}
+
+    /* 圆形计时 */
+    .clock-wrap{display:flex;justify-content:center;margin-bottom:22px;}
+    .clock{position:relative;width:260px;height:260px;}
+    .clock svg{width:100%;height:100%;transform:rotate(-90deg);}
+    .ring-bg{fill:none;stroke:var(--border);stroke-width:12;}
+    .ring-fg{
+      fill:none;stroke:var(--primary);stroke-width:12;stroke-linecap:round;
+      transition:stroke-dashoffset .3s linear,stroke .3s;
+    }
+    .clock.rest .ring-fg{stroke:var(--green);}
+    .clock-inner{
+      position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:4px;
+    }
+    .clock-time{
+      font-size:52px;font-weight:800;letter-spacing:1px;color:var(--text);
+      font-variant-numeric:tabular-nums;line-height:1;
+      font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
+    }
+    .clock-label{font-size:13.5px;color:var(--text-3);font-weight:600;}
+    .clock-state{font-size:12px;color:var(--primary);font-weight:600;height:16px;}
+
+    /* 控制按钮 */
+    .ctrl{display:flex;gap:11px;justify-content:center;flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:11px;
+      padding:11px 26px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;min-width:130px;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .btn.small{padding:8px 15px;font-size:13.5px;font-weight:600;}
+
+    /* 番茄计数 */
+    .count-row{
+      display:flex;align-items:center;justify-content:center;gap:22px;
+      margin-top:22px;padding-top:18px;border-top:1px solid var(--border-2);flex-wrap:wrap;
+    }
+    .count-item{text-align:center;}
+    .count-item .n{font-size:24px;font-weight:800;color:var(--primary);font-variant-numeric:tabular-nums;}
+    .count-item .l{font-size:12px;color:var(--text-3);margin-top:2px;}
+    .tomatoes{font-size:19px;letter-spacing:2px;line-height:1.5;max-width:280px;word-break:break-all;}
+
+    /* 设置 */
+    .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .set-item label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+    .num-row{display:flex;align-items:center;gap:8px;}
+    .num-row button{
+      width:34px;height:34px;border:1px solid var(--border);background:var(--bg);color:var(--text-2);
+      border-radius:9px;font-size:17px;cursor:pointer;font-family:inherit;transition:.15s;flex-shrink:0;line-height:1;
+    }
+    .num-row button:hover{border-color:var(--primary);color:var(--primary);}
+    .num-row input{
+      flex:1;min-width:0;text-align:center;padding:8px 6px;border:1px solid var(--border);border-radius:9px;
+      background:var(--bg);color:var(--text);font-size:15px;font-weight:700;font-family:inherit;outline:none;
+    }
+    .num-row input:focus{border-color:var(--primary);}
+    .num-row .unit{font-size:12.5px;color:var(--text-3);flex-shrink:0;}
+    .opt-line{
+      display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13.5px;color:var(--text-2);cursor:pointer;
+    }
+    .opt-line input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;}
+    .preset-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+    .preset-row button{
+      border:1px solid var(--border);background:var(--bg);color:var(--text-2);border-radius:18px;
+      padding:5px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .preset-row button:hover{border-color:var(--primary);color:var(--primary);}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:560px){
+      .panel{padding:18px 15px;}
+      .clock{width:220px;height:220px;}
+      .clock-time{font-size:42px;}
+      .set-grid{grid-template-columns:1fr;}
+      .btn{padding:10px 20px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🍅</span>
+      <h1>番茄时钟</h1>
+    </div>
+    <p class="tool-sub">默认 25 分钟专注 + 5 分钟休息，专注结束自动切换并发出提示音。时长可自定义，番茄数本地保存。</p>
+
+    <div class="panel">
+      <div class="mode-tabs">
+        <button id="tabFocus" class="active">🎯 专注</button>
+        <button id="tabRest" class="rest">☕ 休息</button>
+      </div>
+
+      <div class="clock-wrap">
+        <div class="clock" id="clock">
+          <svg viewBox="0 0 260 260">
+            <circle class="ring-bg" cx="130" cy="130" r="115"></circle>
+            <circle class="ring-fg" id="ringFg" cx="130" cy="130" r="115"></circle>
+          </svg>
+          <div class="clock-inner">
+            <div class="clock-time" id="timeText">25:00</div>
+            <div class="clock-label" id="modeLabel">专注时间</div>
+            <div class="clock-state" id="stateText"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctrl">
+        <button class="btn primary" id="startBtn">▶ 开始</button>
+        <button class="btn" id="resetBtn">↺ 重置</button>
+        <button class="btn small" id="skipBtn">⏭ 跳过本轮</button>
+      </div>
+
+      <div class="count-row">
+        <div class="count-item">
+          <div class="n" id="tomatoCount">0</div>
+          <div class="l">今日番茄数</div>
+        </div>
+        <div class="count-item">
+          <div class="n" id="focusMin">0</div>
+          <div class="l">累计专注（分钟）</div>
+        </div>
+        <div class="tomatoes" id="tomatoIcons"></div>
+      </div>
+      <div style="text-align:center;margin-top:14px;">
+        <button class="btn small" id="clearCountBtn">清零统计</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 时长设置</h2>
+      <div class="set-grid">
+        <div class="set-item">
+          <label>专注时长</label>
+          <div class="num-row">
+            <button type="button" data-step="-1" data-t="focus">−</button>
+            <input type="number" id="focusInput" min="1" max="180" value="25">
+            <button type="button" data-step="1" data-t="focus">＋</button>
+            <span class="unit">分钟</span>
+          </div>
+        </div>
+        <div class="set-item">
+          <label>休息时长</label>
+          <div class="num-row">
+            <button type="button" data-step="-1" data-t="rest">−</button>
+            <input type="number" id="restInput" min="1" max="120" value="5">
+            <button type="button" data-step="1" data-t="rest">＋</button>
+            <span class="unit">分钟</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="preset-row">
+        <button type="button" data-preset="25,5">经典 25 / 5</button>
+        <button type="button" data-preset="50,10">深度 50 / 10</button>
+        <button type="button" data-preset="45,15">课堂 45 / 15</button>
+        <button type="button" data-preset="15,3">短冲 15 / 3</button>
+      </div>
+
+      <label class="opt-line"><input type="checkbox" id="autoNext" checked> 阶段结束后自动开始下一阶段</label>
+      <label class="opt-line"><input type="checkbox" id="soundOn" checked> 结束时播放提示音</label>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var KEY_STAT = "xhc_pomodoro_stat";
+      var KEY_CFG = "xhc_pomodoro_cfg";
+      var R = 115;
+      var CIRC = 2 * Math.PI * R;
+
+      var clock = document.getElementById("clock");
+      var ringFg = document.getElementById("ringFg");
+      var timeText = document.getElementById("timeText");
+      var modeLabel = document.getElementById("modeLabel");
+      var stateText = document.getElementById("stateText");
+      var startBtn = document.getElementById("startBtn");
+      var resetBtn = document.getElementById("resetBtn");
+      var skipBtn = document.getElementById("skipBtn");
+      var tabFocus = document.getElementById("tabFocus");
+      var tabRest = document.getElementById("tabRest");
+      var focusInput = document.getElementById("focusInput");
+      var restInput = document.getElementById("restInput");
+      var autoNext = document.getElementById("autoNext");
+      var soundOn = document.getElementById("soundOn");
+      var tomatoCount = document.getElementById("tomatoCount");
+      var focusMin = document.getElementById("focusMin");
+      var tomatoIcons = document.getElementById("tomatoIcons");
+      var toastEl = document.getElementById("tipToast");
+
+      var mode = "focus";          // focus | rest
+      var running = false;
+      var totalMs = 25 * 60000;
+      var remainMs = totalMs;
+      var endAt = 0;
+      var ticker = null;
+      var stat = { count: 0, minutes: 0, date: "" };
+
+      ringFg.style.strokeDasharray = CIRC;
+      ringFg.style.strokeDashoffset = 0;
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+      }
+
+      /* ---------- 提示音（Web Audio API） ---------- */
+      var audioCtx = null;
+      function beep(times) {
+        if (!soundOn.checked) return;
+        try {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          if (!audioCtx) audioCtx = new AC();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          var n = times || 3;
+          for (var i = 0; i < n; i++) {
+            (function (i) {
+              var t0 = audioCtx.currentTime + i * 0.42;
+              var osc = audioCtx.createOscillator();
+              var gain = audioCtx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(mode === "focus" ? 880 : 660, t0);
+              gain.gain.setValueAtTime(0.0001, t0);
+              gain.gain.exponentialRampToValueAtTime(0.28, t0 + 0.03);
+              gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(t0);
+              osc.stop(t0 + 0.36);
+            })(i);
+          }
+        } catch (e) { /* 浏览器不支持音频时静默忽略 */ }
+      }
+
+      /* ---------- 配置与统计存储 ---------- */
+      function loadCfg() {
+        try {
+          var c = JSON.parse(localStorage.getItem(KEY_CFG) || "{}");
+          if (c.focus) focusInput.value = c.focus;
+          if (c.rest) restInput.value = c.rest;
+          if (typeof c.autoNext === "boolean") autoNext.checked = c.autoNext;
+          if (typeof c.sound === "boolean") soundOn.checked = c.sound;
+        } catch (e) {}
+      }
+      function saveCfg() {
+        try {
+          localStorage.setItem(KEY_CFG, JSON.stringify({
+            focus: +focusInput.value, rest: +restInput.value,
+            autoNext: autoNext.checked, sound: soundOn.checked
+          }));
+        } catch (e) {}
+      }
+      function today() {
+        var d = new Date();
+        return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+      }
+      function loadStat() {
+        try {
+          var s = JSON.parse(localStorage.getItem(KEY_STAT) || "null");
+          if (s && s.date === today()) stat = s;
+          else stat = { count: 0, minutes: 0, date: today() };
+        } catch (e) { stat = { count: 0, minutes: 0, date: today() }; }
+      }
+      function saveStat() {
+        stat.date = today();
+        try { localStorage.setItem(KEY_STAT, JSON.stringify(stat)); } catch (e) {}
+      }
+      function renderStat() {
+        tomatoCount.textContent = stat.count;
+        focusMin.textContent = stat.minutes;
+        var n = Math.min(stat.count, 30);
+        tomatoIcons.textContent = new Array(n + 1).join("🍅") + (stat.count > 30 ? " …" : "");
+      }
+
+      /* ---------- 时长 ---------- */
+      function minutesFor(m) {
+        var v = m === "focus" ? parseInt(focusInput.value, 10) : parseInt(restInput.value, 10);
+        if (!v || v < 1) v = m === "focus" ? 25 : 5;
+        if (v > 180) v = 180;
+        return v;
+      }
+
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+      function renderClock() {
+        var s = Math.max(0, Math.ceil(remainMs / 1000));
+        var mm = Math.floor(s / 60), ss = s % 60;
+        timeText.textContent = pad(mm) + ":" + pad(ss);
+        var ratio = totalMs > 0 ? remainMs / totalMs : 0;
+        ringFg.style.strokeDashoffset = CIRC * (1 - Math.max(0, Math.min(1, ratio)));
+        document.title = (running ? (pad(mm) + ":" + pad(ss) + " · ") : "") + "番茄时钟 - XHC 博客";
+      }
+
+      function setMode(m, keepRunning) {
+        mode = m;
+        clock.classList.toggle("rest", m === "rest");
+        tabFocus.classList.toggle("active", m === "focus");
+        tabRest.classList.toggle("active", m === "rest");
+        modeLabel.textContent = m === "focus" ? "专注时间" : "休息时间";
+        totalMs = minutesFor(m) * 60000;
+        remainMs = totalMs;
+        if (!keepRunning) stop();
+        renderClock();
+      }
+
+      function tick() {
+        remainMs = endAt - Date.now();
+        if (remainMs <= 0) {
+          remainMs = 0;
+          renderClock();
+          finish();
+          return;
+        }
+        renderClock();
+      }
+
+      function start() {
+        if (running) return;
+        if (remainMs <= 0) remainMs = totalMs;
+        running = true;
+        endAt = Date.now() + remainMs;
+        clearInterval(ticker);
+        ticker = setInterval(tick, 200);
+        startBtn.textContent = "⏸ 暂停";
+        stateText.textContent = mode === "focus" ? "专注中…" : "休息中…";
+        // 首次交互时解锁音频上下文
+        try {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC && !audioCtx) audioCtx = new AC();
+          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+        } catch (e) {}
+      }
+
+      function pause() {
+        if (!running) return;
+        running = false;
+        remainMs = Math.max(0, endAt - Date.now());
+        clearInterval(ticker);
+        startBtn.textContent = "▶ 继续";
+        stateText.textContent = "已暂停";
+        renderClock();
+      }
+
+      function stop() {
+        running = false;
+        clearInterval(ticker);
+        startBtn.textContent = "▶ 开始";
+        stateText.textContent = "";
+        document.title = "番茄时钟 - XHC 博客";
+      }
+
+      function finish() {
+        clearInterval(ticker);
+        running = false;
+        beep(3);
+
+        if (mode === "focus") {
+          stat.count += 1;
+          stat.minutes += minutesFor("focus");
+          saveStat();
+          renderStat();
+          toast("🎉 专注完成！第 " + stat.count + " 个番茄，去休息一下吧");
+          setMode("rest", true);
+        } else {
+          toast("☕ 休息结束，开始新一轮专注吧");
+          setMode("focus", true);
+        }
+
+        stop();
+        renderClock();
+        if (autoNext.checked) start();
+      }
+
+      /* ---------- 事件 ---------- */
+      startBtn.addEventListener("click", function () { running ? pause() : start(); });
+      resetBtn.addEventListener("click", function () {
+        stop();
+        totalMs = minutesFor(mode) * 60000;
+        remainMs = totalMs;
+        renderClock();
+        toast("已重置");
+      });
+      skipBtn.addEventListener("click", function () {
+        stop();
+        setMode(mode === "focus" ? "rest" : "focus");
+        toast("已跳过，切换到" + (mode === "focus" ? "专注" : "休息"));
+      });
+      tabFocus.addEventListener("click", function () { setMode("focus"); });
+      tabRest.addEventListener("click", function () { setMode("rest"); });
+
+      Array.prototype.forEach.call(document.querySelectorAll(".num-row button"), function (b) {
+        b.addEventListener("click", function () {
+          var input = b.dataset.t === "focus" ? focusInput : restInput;
+          var v = parseInt(input.value, 10) || 1;
+          v += parseInt(b.dataset.step, 10);
+          var max = b.dataset.t === "focus" ? 180 : 120;
+          input.value = Math.max(1, Math.min(max, v));
+          onDurationChange();
+        });
+      });
+      function onDurationChange() {
+        saveCfg();
+        if (!running) {
+          totalMs = minutesFor(mode) * 60000;
+          remainMs = totalMs;
+          renderClock();
+        }
+      }
+      focusInput.addEventListener("change", onDurationChange);
+      restInput.addEventListener("change", onDurationChange);
+      focusInput.addEventListener("input", onDurationChange);
+      restInput.addEventListener("input", onDurationChange);
+
+      Array.prototype.forEach.call(document.querySelectorAll(".preset-row button"), function (b) {
+        b.addEventListener("click", function () {
+          var p = b.dataset.preset.split(",");
+          focusInput.value = p[0];
+          restInput.value = p[1];
+          onDurationChange();
+          toast("已应用预设 " + p[0] + " / " + p[1] + " 分钟");
+        });
+      });
+
+      autoNext.addEventListener("change", saveCfg);
+      soundOn.addEventListener("change", function () {
+        saveCfg();
+        if (soundOn.checked) beep(1);
+      });
+
+      document.getElementById("clearCountBtn").addEventListener("click", function () {
+        stat = { count: 0, minutes: 0, date: today() };
+        saveStat();
+        renderStat();
+        toast("统计已清零");
+      });
+
+      // 空格键开始/暂停
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          running ? pause() : start();
+        }
+      });
+
+      function boot() {
+        loadCfg();
+        loadStat();
+        renderStat();
+        setMode("focus");
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

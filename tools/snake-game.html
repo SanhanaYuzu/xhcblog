@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>贪吃蛇 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.game-wrap{max-width:520px;margin:0 auto;padding:28px 0 48px;text-align:center;}
+.game-wrap h1{margin-bottom:4px;font-size:22px;}
+.game-info{display:flex;justify-content:center;gap:24px;margin:14px 0;font-size:15px;}
+.game-info span{background:var(--card);border:1px solid var(--border);padding:6px 18px;border-radius:8px;}
+#snakeCanvas{display:block;margin:0 auto;border:2px solid var(--border);border-radius:8px;background:#1a1a2e;max-width:100%;}
+.btn-group{display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap;}
+.hint-text{color:var(--text-3);font-size:13px;margin-top:12px;}
+body.dark #snakeCanvas{border-color:#444;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="game-wrap">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+<h1>🐍 贪吃蛇</h1>
+<div class="game-info"><span>分数：<strong id="sScore">0</strong></span><span>最高分：<strong id="sBest">0</strong></span></div>
+<canvas id="snakeCanvas" width="400" height="400"></canvas>
+<div class="btn-group"><button class="btn btn-primary" id="sStart">开始游戏</button><button class="btn btn-outline" id="sPause">暂停</button></div>
+<p class="hint-text">使用 ↑ ↓ ← → 方向键或 W A S D 控制方向</p>
+</main>
+<footer class="footer"><div class="container">© <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+(function(){
+var cvs=document.getElementById('snakeCanvas'),ctx=cvs.getContext('2d');
+var S=20,COLS=20,ROWS=20,score=0,best=parseInt(localStorage.getItem('snakeBest')||'0');
+document.getElementById('sBest').textContent=best;
+var snake=[],dir={x:1,y:0},nextDir={x:1,y:0},food=null,running=false,paused=false,timer=null;
+
+function init(){snake=[{x:5,y:10},{x:4,y:10},{x:3,y:10}];dir={x:1,y:0};nextDir={x:1,y:0};score=0;updateScore();placeFood();draw();}
+function placeFood(){do{food={x:Math.floor(Math.random()*COLS),y:Math.floor(Math.random()*ROWS)};}while(snake.some(function(s){return s.x===food.x&&s.y===food.y;}));}
+function updateScore(){document.getElementById('sScore').textContent=score;if(score>best){best=score;localStorage.setItem('snakeBest',best);document.getElementById('sBest').textContent=best;}}
+function draw(){ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,cvs.width,cvs.height);
+if(food){ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.arc(food.x*S+S/2,food.y*S+S/2,S/2-2,0,Math.PI*2);ctx.fill();}
+snake.forEach(function(s,i){ctx.fillStyle=i===0?'#2ecc71':'#27ae60';ctx.fillRect(s.x*S+1,s.y*S+1,S-2,S-2);});
+}
+function step(){
+if(!running||paused)return;
+dir=Object.assign({},nextDir);
+var head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some(function(s){return s.x===head.x&&s.y===head.y;})){
+running=false;clearInterval(timer);alert('Game Over！得分：'+score);init();return;}
+snake.unshift(head);
+if(head.x===food.x&&head.y===food.y){score+=10;updateScore();placeFood();}else{snake.pop();}
+draw();
+}
+
+document.getElementById('sStart').onclick=function(){if(running){clearInterval(timer);init();}running=true;paused=false;init();timer=setInterval(step,120);};
+document.getElementById('sPause').onclick=function(){if(!running)return;paused=!paused;this.textContent=paused?'继续':'暂停';};
+
+document.addEventListener('keydown',function(e){
+var map={ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0},KeyW:{x:0,y:-1},KeyS:{x:0,y:1},KeyA:{x:-1,y:0},KeyD:{x:1,y:0}};
+var d=map[e.code];if(d){
+if(!(d.x===-dir.x&&d.y===-dir.y))nextDir=d;
+e.preventDefault();
+}});
+init();
+})();
+</script>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt=""></a></div>
+</body>
+</html>

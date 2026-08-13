@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>单位换算 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:20px;}
+
+    /* 分类标签页 */
+    .cat-tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+    .cat-tabs button{
+      border:1px solid var(--border);background:var(--bg);color:var(--text-2);border-radius:22px;
+      padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.18s;
+    }
+    .cat-tabs button:hover{border-color:var(--primary);color:var(--primary);}
+    .cat-tabs button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+    /* 常用快捷 */
+    .quick-row{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:11px 13px;background:var(--bg);border:1px dashed var(--border);border-radius:11px;margin-bottom:16px;
+    }
+    .quick-row .lb{font-size:12.5px;color:var(--text-3);flex-shrink:0;}
+    .quick-row button{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:16px;
+      padding:4px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .quick-row button:hover{border-color:var(--primary);color:var(--primary);}
+
+    /* 单位行 */
+    .unit-list{display:flex;flex-direction:column;gap:9px;}
+    .unit-row{
+      display:flex;align-items:center;gap:12px;
+      border:1px solid var(--border);border-radius:11px;padding:10px 14px;
+      background:var(--bg);transition:.15s;
+    }
+    .unit-row:focus-within{border-color:var(--primary);background:var(--card);box-shadow:0 0 0 3px var(--primary-soft);}
+    .unit-row.active{border-color:var(--primary);}
+    .unit-row .name{
+      width:112px;flex-shrink:0;font-size:13.5px;font-weight:600;color:var(--text);
+      display:flex;flex-direction:column;line-height:1.35;
+    }
+    .unit-row .name .sym{font-size:11.5px;color:var(--text-3);font-weight:500;font-family:Consolas,monospace;}
+    .unit-row input{
+      flex:1;min-width:0;border:0;background:transparent;outline:none;
+      font-size:16px;font-weight:600;color:var(--text);text-align:right;
+      font-family:"SFMono-Regular",Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums;
+    }
+    .unit-row input::placeholder{color:var(--text-3);font-weight:400;}
+    .unit-row .copy{
+      border:1px solid var(--border);background:var(--card);color:var(--text-3);border-radius:7px;
+      padding:4px 9px;font-size:11.5px;cursor:pointer;font-family:inherit;transition:.15s;flex-shrink:0;
+    }
+    .unit-row .copy:hover{border-color:var(--primary);color:var(--primary);}
+
+    .foot-row{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-2);flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .hint{font-size:12.5px;color:var(--text-3);margin-left:auto;align-self:center;}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:560px){
+      .panel{padding:16px 13px;}
+      .cat-tabs button{padding:8px 15px;font-size:13.5px;}
+      .unit-row{padding:9px 11px;gap:8px;}
+      .unit-row .name{width:86px;font-size:12.5px;}
+      .unit-row input{font-size:14.5px;}
+      .unit-row .copy{display:none;}
+      .hint{margin-left:0;width:100%;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📏</span>
+      <h1>单位换算</h1>
+    </div>
+    <p class="tool-sub">支持长度、重量、温度、体积四大类常用单位。在任意一个输入框中键入数值，其余单位会同步换算，双向互通。</p>
+
+    <div class="panel">
+      <div class="cat-tabs" id="catTabs"></div>
+      <div class="quick-row" id="quickRow">
+        <span class="lb">常用单位：</span>
+      </div>
+      <div class="unit-list" id="unitList"></div>
+
+      <div class="foot-row">
+        <button class="btn" id="clearBtn">🗑️ 清空</button>
+        <button class="btn" id="oneBtn">1️⃣ 填入 1</button>
+        <span class="hint" id="baseHint"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      /* ---------- 单位定义 ----------
+         普通量纲：factor = 1 个该单位等于多少个基准单位
+         温度：使用 toBase / fromBase 函数（基准为摄氏度）
+      ------------------------------- */
+      var CATS = [
+        {
+          key: "length", name: "📐 长度", base: "米（m）",
+          units: [
+            { n: "毫米", s: "mm", f: 0.001 },
+            { n: "厘米", s: "cm", f: 0.01 },
+            { n: "分米", s: "dm", f: 0.1 },
+            { n: "米", s: "m", f: 1 },
+            { n: "千米", s: "km", f: 1000 },
+            { n: "市尺", s: "市尺", f: 1 / 3 },
+            { n: "市里", s: "里", f: 500 },
+            { n: "英寸", s: "in", f: 0.0254 },
+            { n: "英尺", s: "ft", f: 0.3048 },
+            { n: "码", s: "yd", f: 0.9144 },
+            { n: "英里", s: "mi", f: 1609.344 },
+            { n: "海里", s: "nmi", f: 1852 }
+          ],
+          quick: ["cm", "m", "km", "in", "ft", "mi"]
+        },
+        {
+          key: "weight", name: "⚖️ 重量", base: "千克（kg）",
+          units: [
+            { n: "毫克", s: "mg", f: 0.000001 },
+            { n: "克", s: "g", f: 0.001 },
+            { n: "千克", s: "kg", f: 1 },
+            { n: "吨", s: "t", f: 1000 },
+            { n: "市斤", s: "斤", f: 0.5 },
+            { n: "两", s: "两", f: 0.05 },
+            { n: "盎司", s: "oz", f: 0.028349523125 },
+            { n: "磅", s: "lb", f: 0.45359237 },
+            { n: "英石", s: "st", f: 6.35029318 },
+            { n: "克拉", s: "ct", f: 0.0002 }
+          ],
+          quick: ["g", "kg", "斤", "lb", "oz", "t"]
+        },
+        {
+          key: "temp", name: "🌡️ 温度", base: "摄氏度（°C）", isTemp: true,
+          units: [
+            { n: "摄氏度", s: "°C", toBase: function (v) { return v; }, fromBase: function (v) { return v; } },
+            { n: "华氏度", s: "°F", toBase: function (v) { return (v - 32) * 5 / 9; }, fromBase: function (v) { return v * 9 / 5 + 32; } },
+            { n: "开尔文", s: "K", toBase: function (v) { return v - 273.15; }, fromBase: function (v) { return v + 273.15; } },
+            { n: "兰氏度", s: "°R", toBase: function (v) { return (v - 491.67) * 5 / 9; }, fromBase: function (v) { return (v + 273.15) * 9 / 5; } },
+            { n: "列氏度", s: "°Ré", toBase: function (v) { return v * 5 / 4; }, fromBase: function (v) { return v * 4 / 5; } }
+          ],
+          quick: ["°C", "°F", "K"]
+        },
+        {
+          key: "volume", name: "🧪 体积", base: "升（L）",
+          units: [
+            { n: "毫升", s: "mL", f: 0.001 },
+            { n: "升", s: "L", f: 1 },
+            { n: "立方厘米", s: "cm³", f: 0.001 },
+            { n: "立方米", s: "m³", f: 1000 },
+            { n: "立方英尺", s: "ft³", f: 28.316846592 },
+            { n: "加仑（美）", s: "gal", f: 3.785411784 },
+            { n: "加仑（英）", s: "gal(UK)", f: 4.54609 },
+            { n: "夸脱（美）", s: "qt", f: 0.946352946 },
+            { n: "品脱（美）", s: "pt", f: 0.473176473 },
+            { n: "液量盎司（美）", s: "fl oz", f: 0.0295735295625 }
+          ],
+          quick: ["mL", "L", "m³", "gal"]
+        }
+      ];
+
+      var catTabs = document.getElementById("catTabs");
+      var quickRow = document.getElementById("quickRow");
+      var unitList = document.getElementById("unitList");
+      var baseHint = document.getElementById("baseHint");
+      var toastEl = document.getElementById("tipToast");
+
+      var current = CATS[0];
+      var inputs = [];
+      var lock = false;
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1600);
+      }
+
+      /* ---------- 数值格式化 ---------- */
+      function fmt(v) {
+        if (!isFinite(v)) return "";
+        if (v === 0) return "0";
+        var abs = Math.abs(v);
+        if (abs >= 1e15 || abs < 1e-9) return v.toExponential(6).replace(/e([+-])(\d)$/, "e$10$2");
+        var out = abs >= 1e6 ? v.toPrecision(12) : v.toFixed(abs < 1 ? 10 : 8);
+        if (out.indexOf("e") !== -1) return out;
+        out = out.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+        return out;
+      }
+
+      /* ---------- 换算 ---------- */
+      function toBase(u, v) { return current.isTemp ? u.toBase(v) : v * u.f; }
+      function fromBase(u, v) { return current.isTemp ? u.fromBase(v) : v / u.f; }
+
+      function convertFrom(index) {
+        if (lock) return;
+        var src = inputs[index];
+        var raw = src.value.trim();
+        if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
+          lock = true;
+          inputs.forEach(function (inp, i) { if (i !== index) inp.value = ""; });
+          lock = false;
+          return;
+        }
+        var v = parseFloat(raw);
+        if (isNaN(v)) return;
+        var base = toBase(current.units[index], v);
+        lock = true;
+        inputs.forEach(function (inp, i) {
+          if (i === index) return;
+          inp.value = fmt(fromBase(current.units[i], base));
+        });
+        lock = false;
+      }
+
+      /* ---------- 复制 ---------- */
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            resolve();
+          } catch (e) { reject(e); }
+        });
+      }
+
+      /* ---------- 渲染 ---------- */
+      function renderTabs() {
+        catTabs.innerHTML = "";
+        CATS.forEach(function (c) {
+          var b = document.createElement("button");
+          b.textContent = c.name;
+          b.className = c.key === current.key ? "active" : "";
+          b.addEventListener("click", function () {
+            current = c;
+            renderTabs();
+            renderUnits();
+            renderQuick();
+          });
+          catTabs.appendChild(b);
+        });
+        baseHint.textContent = "基准单位：" + current.base;
+      }
+
+      function renderQuick() {
+        quickRow.innerHTML = '<span class="lb">常用单位：</span>';
+        current.quick.forEach(function (sym) {
+          var idx = -1;
+          current.units.forEach(function (u, i) { if (u.s === sym) idx = i; });
+          if (idx < 0) return;
+          var b = document.createElement("button");
+          b.textContent = current.units[idx].n + " " + sym;
+          b.addEventListener("click", function () {
+            var inp = inputs[idx];
+            inp.focus();
+            inp.select();
+            highlight(idx);
+          });
+          quickRow.appendChild(b);
+        });
+      }
+
+      function highlight(idx) {
+        Array.prototype.forEach.call(unitList.children, function (row, i) {
+          row.classList.toggle("active", i === idx);
+        });
+      }
+
+      function renderUnits() {
+        unitList.innerHTML = "";
+        inputs = [];
+        current.units.forEach(function (u, i) {
+          var row = document.createElement("div");
+          row.className = "unit-row";
+
+          var name = document.createElement("div");
+          name.className = "name";
+          name.innerHTML = "<span>" + u.n + "</span><span class='sym'>" + u.s + "</span>";
+
+          var inp = document.createElement("input");
+          inp.type = "text";
+          inp.inputMode = "decimal";
+          inp.placeholder = "0";
+          inp.autocomplete = "off";
+          inp.addEventListener("input", function () {
+            inp.value = inp.value.replace(/[^\d.eE+-]/g, "");
+            convertFrom(i);
+            highlight(i);
+          });
+          inp.addEventListener("focus", function () { highlight(i); });
+          inp.addEventListener("keydown", function (e) { if (e.key === "Enter") e.stopPropagation(); });
+
+          var copy = document.createElement("button");
+          copy.className = "copy";
+          copy.textContent = "复制";
+          copy.addEventListener("click", function () {
+            if (!inp.value) { toast("该单位暂无数值"); return; }
+            copyText(inp.value).then(function () { toast("已复制 " + inp.value + " " + u.s); })
+              .catch(function () { toast("复制失败"); });
+          });
+
+          row.appendChild(name);
+          row.appendChild(inp);
+          row.appendChild(copy);
+          unitList.appendChild(row);
+          inputs.push(inp);
+        });
+      }
+
+      document.getElementById("clearBtn").addEventListener("click", function () {
+        lock = true;
+        inputs.forEach(function (i) { i.value = ""; });
+        lock = false;
+        highlight(-1);
+        toast("已清空");
+      });
+      document.getElementById("oneBtn").addEventListener("click", function () {
+        var idx = 0;
+        current.units.forEach(function (u, i) {
+          if (!current.isTemp && u.f === 1) idx = i;
+        });
+        inputs[idx].value = "1";
+        convertFrom(idx);
+        highlight(idx);
+        inputs[idx].focus();
+      });
+
+      function boot() {
+        renderTabs();
+        renderUnits();
+        renderQuick();
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

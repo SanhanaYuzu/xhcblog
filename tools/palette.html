@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>调色板生成器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:860px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    input[type=text]{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .swatches{display:flex;gap:0;flex-wrap:wrap;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;}
+    .sw{height:90px;flex:1;min-width:90px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;cursor:pointer;position:relative;transition:transform .1s;}
+    .sw:hover{transform:scale(1.03);z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.18);}
+    .sw code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:rgba(0,0,0,.32);color:#fff;padding:2px 7px;border-radius:6px;}
+    .scheme-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+    .tab{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+    .tab.on{border-color:var(--primary);color:var(--primary);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🎨</span>
+      <div>
+        <h1>调色板生成器</h1>
+        <p class="tool-sub">基于 HSL 色彩理论生成配色方案，点击色块即可复制色值</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 基准颜色与方案</h2>
+      <div class="row">
+        <label class="field">基准颜色 <input type="text" id="base" value="#4f8cff" style="width:110px;"></label>
+        <label class="field">色块数
+          <select id="count">
+            <option>4</option><option selected>5</option><option>6</option><option>7</option>
+          </select>
+        </label>
+        <button class="btn-ghost" id="random">🎲 随机基准色</button>
+      </div>
+      <div class="scheme-tabs" id="tabs">
+        <button class="tab on" data-s="mono">单色</button>
+        <button class="tab" data-s="analog">邻近</button>
+        <button class="tab" data-s="comp">互补</button>
+        <button class="tab" data-s="triad">三角</button>
+        <button class="tab" data-s="tetra">四角</button>
+        <button class="tab" data-s="hue">全色相</button>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <div class="note">单色（同色不同亮度）、邻近（色相 ±30°）、互补（±180°）、三角（±120°）、四角（±90°/180°）、全色相（按数量均分 360°）。点击任意色块复制 HEX。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      document.getElementById("year").textContent=new Date().getFullYear();
+      var base=document.getElementById("base"), count=document.getElementById("count");
+      var random=document.getElementById("random"), tabs=document.getElementById("tabs");
+      var swatches=document.getElementById("swatches");
+      var scheme="mono";
+
+      function hexToHsl(hex){
+        hex=hex.replace("#","");
+        if(hex.length===3) hex=hex.split("").map(function(c){return c+c;}).join("");
+        var r=parseInt(hex.slice(0,2),16)/255, g=parseInt(hex.slice(2,4),16)/255, b=parseInt(hex.slice(4,6),16)/255;
+        var max=Math.max(r,g,b),min=Math.min(r,g,b),h,s,l=(max+min)/2;
+        if(max===min){h=s=0;}else{
+          var d=max-min;
+          s=l>0.5? d/(2-max-min): d/(max+min);
+          if(max===r) h=(g-b)/d+(g<b?6:0);
+          else if(max===g) h=(b-r)/d+2;
+          else h=(r-g)/d+4;
+          h/=6;
+        }
+        return {h:h*360,s:s*100,l:l*100};
+      }
+      function hslToHex(h,s,l){
+        h=((h%360)+360)%360; s=Math.max(0,Math.min(100,s))/100; l=Math.max(0,Math.min(100,l))/100;
+        var c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2, r,g,b;
+        if(h<60){r=c;g=x;b=0;}else if(h<120){r=x;g=c;b=0;}else if(h<180){r=0;g=c;b=x;}
+        else if(h<240){r=0;g=x;b=c;}else if(h<300){r=x;g=0;b=c;}else{r=c;g=0;b=x;}
+        var to=function(v){var n=Math.round((v+m)*255).toString(16);return n.length<2?"0"+n:n;};
+        return "#"+to(r)+to(g)+to(b);
+      }
+      function pad2(n){return n.length<2?"0"+n:n;}
+
+      function build(){
+        var hsl;
+        try{ hsl=hexToHsl(base.value); }catch(e){ hsl={h:210,s:80,l:60}; }
+        var n=parseInt(count.value,10)||5;
+        var cols=[];
+        if(scheme==="mono"){
+          for(var i=0;i<n;i++){ var l=Math.round(20+(70*i/(n-1||1))); cols.push(hslToHex(hsl.h,hsl.s,l)); }
+        } else if(scheme==="hue"){
+          for(var j=0;j<n;j++){ cols.push(hslToHex(360*j/n,hsl.s,hsl.l)); }
+        } else {
+          var offsets={analog:[-30,0,30],comp:[0,180],triad:[0,120,240],tetra:[0,90,180,270]}[scheme]||[0];
+          var arr=[];
+          offsets.forEach(function(off){ arr.push(hslToHex(hsl.h+off,hsl.s,hsl.l)); });
+          // 补足到 n 个
+          while(arr.length<n){
+            var off = arr.length*40;
+            var l2 = Math.max(20, Math.min(80, hsl.l + (arr.length%2?8:-8)));
+            arr.push(hslToHex(hsl.h+off, hsl.s, l2));
+          }
+          cols=arr.slice(0,n);
+        }
+        swatches.innerHTML="";
+        cols.forEach(function(c){
+          var d=document.createElement("div");
+          d.className="sw"; d.style.background=c;
+          var code=document.createElement("code"); code.textContent=c.toUpperCase();
+          d.appendChild(code);
+          d.title="点击复制 "+c.toUpperCase();
+          d.onclick=function(){ copy(c.toUpperCase()); };
+          swatches.appendChild(d);
+        });
+      }
+      function copy(t){
+        if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast("已复制 "+t);},function(){fallback(t);});}else fallback(t);
+      }
+      function toast(m){ var t=document.createElement("div"); t.textContent=m; t.style.cssText="position:fixed;left:50%;top:20px;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:14px;"; document.body.appendChild(t); setTimeout(function(){document.body.removeChild(t);},1400); }
+      function fallback(t){ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");} document.body.removeChild(ta); }
+
+      base.addEventListener("input",build);
+      count.addEventListener("change",build);
+      random.onclick=function(){ var h=Math.floor(Math.random()*360); base.value=hslToHex(h,70,55); build(); };
+      tabs.querySelectorAll(".tab").forEach(function(b){
+        b.onclick=function(){ tabs.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); scheme=b.dataset.s; build(); };
+      });
+      build();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

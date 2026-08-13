@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>身份证号解析 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .input-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+    .input-row input{padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:Consolas,monospace;flex:1;min-width:220px;background:var(--bg);color:var(--text-1);letter-spacing:2px;}
+    .input-row input:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    .input-row button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;}
+    .input-row button:hover{background:#2c81ba;}
+    .result{display:none;}
+    .result table{width:100%;border-collapse:collapse;font-size:14px;}
+    .result td{padding:10px 14px;border-bottom:1px solid var(--border);}
+    .result td:first-child{font-weight:600;color:#3498db;width:120px;white-space:nowrap;}
+    .result .valid{color:#27ae60;font-weight:700;}
+    .result .invalid{color:#c0392b;font-weight:700;}
+    #err{color:#c0392b;font-size:13px;margin-top:6px;display:none;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🪪 身份证号解析</h1>
+    <p class="desc">解析 18 位中国居民身份证号码，显示籍贯、生日、性别、校验码（纯本地计算，不上传数据）。</p>
+    <div class="card">
+      <div class="input-row">
+        <input id="idInput" type="text" placeholder="请输入 18 位身份证号码" maxlength="18">
+        <button id="parseBtn">解析</button>
+      </div>
+      <div id="err"></div>
+      <div class="result" id="result">
+        <table>
+          <tr><td>校验状态</td><td id="rValid"></td></tr>
+          <tr><td>籍贯</td><td id="rRegion"></td></tr>
+          <tr><td>出生日期</td><td id="rBirth"></td></tr>
+          <tr><td>年龄</td><td id="rAge"></td></tr>
+          <tr><td>性别</td><td id="rGender"></td></tr>
+          <tr><td>星座</td><td id="rZodiac"></td></tr>
+          <tr><td>生肖</td><td id="rShengxiao"></td></tr>
+          <tr><td>号码</td><td id="rId" style="font-family:Consolas;"></td></tr>
+        </table>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    var regions={11:'北京市',12:'天津市',13:'河北省',14:'山西省',15:'内蒙古自治区',21:'辽宁省',22:'吉林省',23:'黑龙江省',31:'上海市',32:'江苏省',33:'浙江省',34:'安徽省',35:'福建省',36:'江西省',37:'山东省',41:'河南省',42:'湖北省',43:'湖南省',44:'广东省',45:'广西壮族自治区',46:'海南省',50:'重庆市',51:'四川省',52:'贵州省',53:'云南省',54:'西藏自治区',61:'陕西省',62:'甘肃省',63:'青海省',64:'宁夏回族自治区',65:'新疆维吾尔自治区',81:'香港特别行政区',83:'台湾地区'};
+    var zodiac=['摩羯','水瓶','双鱼','白羊','金牛','双子','巨蟹','狮子','处女','天秤','天蝎','射手'];
+    var sx=['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+
+    function parse(){
+      var err=qs('#err'),res=qs('#result');
+      err.style.display='none';res.style.display='none';
+      var id=qs('#idInput').value.trim();
+      if(!/^\d{17}[\dXx]$/.test(id)){err.style.display='block';err.textContent='格式错误：请输入 18 位数字（末位可为 X）';return;}
+      // 校验码
+      var w=[7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2],check='10X98765432';
+      var sum=0;for(var i=0;i<17;i++)sum+=parseInt(id[i])*w[i];
+      var valid=check[sum%11]===id[17].toUpperCase();
+      qs('#rValid').innerHTML=valid?'<span class="valid">✅ 校验通过</span>':'<span class="invalid">❌ 校验失败</span>';
+      qs('#rValid').className=valid?'valid':'invalid';
+
+      var code=parseInt(id.slice(0,2));
+      qs('#rRegion').textContent=(regions[code]||'未知')+' ('+id.slice(0,6)+')';
+
+      var y=parseInt(id.slice(6,10)),m=parseInt(id.slice(10,12)),d=parseInt(id.slice(12,14));
+      var birth=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      qs('#rBirth').textContent=birth;
+
+      var today=new Date(),age=today.getFullYear()-y;
+      if(today.getMonth()+1<m||(today.getMonth()+1===m&&today.getDate()<d))age--;
+      qs('#rAge').textContent=age+' 岁';
+
+      var g=parseInt(id[16])%2===0?'女 ♀':'男 ♂';
+      qs('#rGender').textContent=g;
+
+      // 星座
+      var zd=zodiac[m-1];if(d>21&&m===2||d>20&&m===4||d>21&&m===6||d>23&&m===8||d>24&&m===10||d>22&&m===12) zd=zodiac[m%12];
+      qs('#rZodiac').textContent=zd+'座';
+
+      qs('#rShengxiao').textContent=sx[(y-4)%12];
+      qs('#rId').textContent=id.slice(0,3)+'****'+id.slice(14);
+      res.style.display='';
+    }
+
+    qs('#parseBtn').addEventListener('click',parse);
+    qs('#idInput').addEventListener('keydown',function(e){if(e.key==='Enter')parse();});
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>网络测速 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:600px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:32px 24px;margin-bottom:20px;text-align:center;}
+    .speed-display{font-size:64px;font-weight:800;color:#3498db;margin:20px 0;transition:color .3s;}
+    .speed-unit{font-size:20px;color:var(--text-3);margin-bottom:6px;}
+    .sub-info{font-size:13px;color:var(--text-3);margin-top:8px;}
+    .gauge{width:160px;height:160px;border-radius:50%;border:8px solid #e0e5ec;margin:0 auto 20px;position:relative;display:flex;align-items:center;justify-content:center;transition:border-color .3s;}
+    #startBtn{padding:12px 40px;font-size:16px;}
+    .progress{height:4px;background:#e0e5ec;border-radius:2px;margin-top:16px;overflow:hidden;display:none;}
+    .progress-inner{height:100%;background:#3498db;width:0;transition:width .3s;}
+    #log{font-size:12px;color:var(--text-3);margin-top:10px;}
+    body.dark .gauge{border-color:#2a3340;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🚀 网络测速</h1>
+    <p class="desc">通过多次请求测试文件估算你的下载带宽与延迟（消耗约 5MB 流量）。</p>
+    <div class="card">
+      <div class="gauge" id="gauge"><span id="gaugeLabel" style="font-size:13px;color:var(--text-2);">待测试</span></div>
+      <button class="btn btn-primary" id="startBtn">开始测速</button>
+      <div class="progress" id="progress"><div class="progress-inner" id="progressBar"></div></div>
+      <div id="log"></div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    var testUrl='https://www.google.com/images/phd/px.gif'; // 1×1 pixel for latency
+    var TEST_SIZES=[256*1024,512*1024,1024*1024,2*1024*1024];
+    // 用 PageSpeed 或其他大文件测速，用 HTTP Archive 的资源
+    var SPEED_URLS=[
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/512px-Wikipedia-logo-v2.svg',
+    ];
+
+    async function test(){
+      var btn=qs('#startBtn'),gauge=qs('#gauge'),gl=qs('#gaugeLabel');
+      var prog=qs('#progress'),pb=qs('#progressBar'),log=qs('#log');
+      btn.disabled=true;prog.style.display='block';log.textContent='测试中…';
+
+      // Latency test
+      gl.textContent='测延迟';pb.style.width='10%';
+      var latencies=[];
+      for(var i=0;i<5;i++){
+        var t0=performance.now();
+        try{await fetch(testUrl+'?t='+Date.now(),{mode:'no-cors',cache:'no-store'});}catch(e){}
+        latencies.push(performance.now()-t0);
+      }
+      var avgLat=latencies.reduce(function(a,b){return a+b;},0)/latencies.length;
+      log.textContent='延迟: '+Math.round(avgLat)+' ms';
+
+      // Speed test
+      gl.textContent='测速中';pb.style.width='40%';
+      var totalBytes=0,totalTime=0;
+      for(var i=0;i<SPEED_URLS.length;i++){
+        try{
+          var st=performance.now();
+          var r=await fetch(SPEED_URLS[i],{cache:'no-store'});
+          var buf=await r.arrayBuffer();
+          totalBytes+=buf.byteLength;
+          totalTime+=performance.now()-st;
+        }catch(e){}
+        pb.style.width=(40+55*(i+1)/SPEED_URLS.length)+'%';
+      }
+      pb.style.width='100%';
+      var speedMbps=totalTime>0?(totalBytes*8/totalTime/1000000):0;
+      var speedLabel=speedMbps>0.1?speedMbps.toFixed(1)+' Mbps':(totalBytes*8/1000/totalTime).toFixed(0)+' Kbps';
+      log.textContent='延迟: '+Math.round(avgLat)+' ms | 下载: '+speedLabel+' | '+((totalBytes/1024/1024).toFixed(1))+' MB';
+
+      gauge.innerHTML='<div><span style="font-size:48px;font-weight:800;color:#27ae60;">'+speedLabel+'</span></div>';
+      gl.textContent='下载速度';
+      btn.disabled=false;prog.style.display='none';
+    }
+
+    qs('#startBtn').addEventListener('click',test);
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

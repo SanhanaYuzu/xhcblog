@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本地便签 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:860px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    .notes-list{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+    .note-tab{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-2);font-size:13px;cursor:pointer;}
+    .note-tab.active{border-color:var(--primary);color:var(--primary);font-weight:700;}
+    .note-tab .del{color:var(--text-3);font-weight:700;}
+    .note-tab .del:hover{color:#e74c3c;}
+    textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:14px;font-size:15px;font-family:inherit;box-sizing:border-box;resize:vertical;min-height:260px;line-height:1.7;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    input[type=text]{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;flex:1;min-width:160px;}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .stat{font-size:12.5px;color:var(--text-3);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📝</span>
+      <div>
+        <h1>本地便签</h1>
+        <p class="tool-sub">多便签本地保存，自动持久化，刷新不丢</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 便签</h2>
+      <div class="notes-list" id="tabs"></div>
+      <div class="row">
+        <input type="text" id="title" placeholder="便签标题">
+        <button class="btn-ghost" id="newBtn">＋ 新建</button>
+      </div>
+      <textarea id="body" placeholder="在此输入内容，自动保存…"></textarea>
+      <div class="stat" id="stat" style="margin-top:8px"></div>
+      <div class="btns" style="margin-top:12px">
+        <button class="btn-ghost" id="downBtn">💾 下载 .txt</button>
+        <button class="btn-ghost" id="copyBtn">📋 复制</button>
+        <button class="btn-ghost" id="delBtn">🗑️ 删除当前</button>
+      </div>
+      <div class="note">数据仅保存在本浏览器（localStorage），不上传服务器。清除浏览器数据会丢失，重要内容请下载备份。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var KEY="xhc_notes_v1";
+      var tabs=document.getElementById("tabs"), titleEl=document.getElementById("title"), bodyEl=document.getElementById("body"), stat=document.getElementById("stat");
+      var notes=[];
+      try{ var raw=localStorage.getItem(KEY); if(raw) notes=JSON.parse(raw); }catch(e){ notes=[]; }
+      if(!notes.length) notes=[{id:Date.now(),title:"便签 1",body:""}];
+      var cur=notes[0].id;
+
+      function save(){ try{ localStorage.setItem(KEY, JSON.stringify(notes)); }catch(e){ toast("保存失败：存储已满"); } }
+      function render(){
+        tabs.innerHTML="";
+        notes.forEach(function(n){
+          var t=document.createElement("div");
+          t.className="note-tab"+(n.id===cur?" active":"");
+          t.innerHTML="<span class='t'>"+(n.title||"未命名")+"</span>";
+          var del=document.createElement("span"); del.className="del"; del.textContent="×";
+          del.onclick=function(e){ e.stopPropagation(); delNote(n.id); };
+          t.appendChild(del);
+          t.onclick=function(){ switchTo(n.id); };
+          tabs.appendChild(t);
+        });
+      }
+      function switchTo(id){ cur=id; var n=get(); titleEl.value=n.title; bodyEl.value=n.body; updateStat(); }
+      function get(){ return notes.filter(function(n){return n.id===cur;})[0]; }
+      function updateStat(){ var b=bodyEl.value; stat.textContent="字数 "+b.length+" · 行数 "+((b.match(/\n/g)||[]).length+1)+" · "+(b? "已自动保存":"未输入"); }
+
+      function delNote(id){
+        if(notes.length<=1){ toast("至少保留一个便签"); return; }
+        notes=notes.filter(function(n){return n.id!==id;});
+        if(cur===id) cur=notes[0].id;
+        save(); render(); switchTo(cur);
+      }
+      function newNote(){
+        var n={id:Date.now(),title:"便签 "+(notes.length+1),body:""};
+        notes.push(n); cur=n.id; save(); render(); switchTo(cur);
+      }
+      function toast(m){ var t=document.createElement("div"); t.textContent=m; t.style.cssText="position:fixed;left:50%;top:20px;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:14px;"; document.body.appendChild(t); setTimeout(function(){document.body.removeChild(t);},1400); }
+      function copy(t){ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast("已复制");},function(){fallback(t);});} else fallback(t); }
+      function fallback(t){ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");} document.body.removeChild(ta); }
+
+      titleEl.oninput=function(){ get().title=titleEl.value; save(); render(); };
+      bodyEl.oninput=function(){ get().body=bodyEl.value; save(); updateStat(); };
+      document.getElementById("newBtn").onclick=newNote;
+      document.getElementById("copyBtn").onclick=function(){ copy(titleEl.value+"\n"+bodyEl.value); };
+      document.getElementById("delBtn").onclick=function(){ delNote(cur); };
+      document.getElementById("downBtn").onclick=function(){
+        var n=get(); var a=document.createElement("a"); a.download=(n.title||"note")+".txt"; a.href=URL.createObjectURL(new Blob([n.body],{type:"text/plain;charset=utf-8"})); a.click();
+      };
+
+      render(); switchTo(cur);
+      document.getElementById("year").textContent=new Date().getFullYear();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

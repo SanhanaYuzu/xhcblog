@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HTML 实体编解码 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .card{padding:24px;margin-bottom:20px;}
+    .row2{display:flex;gap:20px;}
+    .col{flex:1;display:flex;flex-direction:column;}
+    .col label{font-weight:700;font-size:14px;color:#3498db;margin-bottom:8px;}
+    .col textarea{flex:1;min-height:160px;padding:14px;border:1px solid var(--border);border-radius:12px;font-family:Consolas,monospace;font-size:14px;resize:vertical;background:var(--bg);color:var(--text-1);box-sizing:border-box;}
+    .col textarea:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    .opts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+    .opts button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;}
+    .opts button:hover{background:#2c81ba;}
+    .opts button.outline{background:transparent;color:#3498db;}
+    .opts button.outline:hover{background:#3498db;color:#fff;}
+    .opts label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer;}
+    .hint{font-size:12px;color:var(--text-3);margin-top:4px;}
+    @media(max-width:680px){.row2{flex-direction:column;}}
+      .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>📝 HTML 实体编解码</h1>
+    <p class="desc">在普通文本与 HTML 实体（如 &amp;amp; &amp;lt; &amp;#20013;）之间双向转换，适合网页开发与富文本转义。</p>
+    <div class="card">
+      <div class="opts">
+        <button id="btnMinEncode">→ 最小编码（&amp; &lt; &gt; &quot; &apos;）</button>
+        <button id="btnFullEncode">→ 全部编码（含中文转为 &amp;#xxxxx;）</button>
+        <button id="btnDecode" class="outline">← 解码实体</button>
+        <label><input type="checkbox" id="showNamed"> 保持命名实体</label>
+      </div>
+      <div class="row2">
+        <div class="col">
+          <label>原文</label>
+          <textarea id="src" placeholder="在此输入普通文本…"></textarea>
+          <div class="hint" id="srcLen">字符数：0</div>
+        </div>
+        <div class="col">
+          <label>实体结果</label>
+          <textarea id="dst" placeholder="编码结果会出现在这里…"></textarea>
+          <div class="hint" id="dstLen">字符数：0</div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>    /* app.js 把 qs/qsa/esc 包在 IIFE 内，本地定义自己的助手以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function qsa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]; }); }
+
+
+    var src=qs('#src'),dst=qs('#dst');
+    function minEncode(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+    function fullEncode(s){
+      return s.replace(/[^ -~]/g,function(c){return'&#'+c.charCodeAt(0)+';';}).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+    }
+    function decodeEntities(s){
+      var txt=document.createElement('textarea');
+      txt.innerHTML=s;
+      return txt.value;
+    }
+    function updateLen(){qs('#srcLen').textContent='字符数：'+src.value.length;qs('#dstLen').textContent='字符数：'+dst.value.length;}
+    src.addEventListener('input',updateLen);
+    dst.addEventListener('input',updateLen);
+    function doEncode(full){
+      var s=src.value;
+      if(!s)return;
+      dst.value=full?fullEncode(s):minEncode(s);
+      var named=qs('#showNamed').checked;
+      if(named&&!full){
+        var map={'&apos;':"'",'&quot;':'"','&lt;':'<','&gt;':'>','&amp;':'&'};
+        dst.value=dst.value.replace(/&(?:amp|lt|gt|quot|apos);/g,function(m){return map[m]||m;});
+      }
+      updateLen();
+    }
+    qs('#btnMinEncode').addEventListener('click',function(){doEncode(false);});
+    qs('#btnFullEncode').addEventListener('click',function(){doEncode(true);});
+    qs('#btnDecode').addEventListener('click',function(){
+      var s=dst.value||src.value;
+      if(!s)return;
+      src.value=decodeEntities(s);
+      updateLen();
+    });
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

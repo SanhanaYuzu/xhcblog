@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>计算器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:780px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .calc-layout{display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    /* 显示屏 */
+    .screen{
+      background:var(--bg);border:1px solid var(--border);border-radius:13px;
+      padding:16px 18px;margin-bottom:14px;text-align:right;overflow:hidden;
+    }
+    .screen .expr{
+      font-size:15px;color:var(--text-3);min-height:22px;line-height:1.5;
+      word-break:break-all;font-variant-numeric:tabular-nums;
+      font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
+    }
+    .screen .result{
+      font-size:38px;font-weight:800;color:var(--text);line-height:1.25;margin-top:4px;
+      word-break:break-all;font-variant-numeric:tabular-nums;
+      font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
+    }
+    .screen.error .result{color:#e5484d;font-size:26px;}
+
+    /* 按钮网格 */
+    .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+    .key{
+      border:1px solid var(--border);background:var(--bg);color:var(--text);
+      border-radius:13px;height:58px;font-size:20px;font-weight:600;cursor:pointer;
+      font-family:inherit;transition:.12s;user-select:none;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .key:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);}
+    .key:active,.key.press{transform:scale(.95);}
+    .key.op{color:var(--primary);font-weight:700;}
+    .key.fn{background:var(--card);color:var(--text-2);font-size:16px;font-weight:700;}
+    .key.fn:hover{color:#e5484d;border-color:#e5484d;background:rgba(229,72,77,.07);}
+    .key.eq{background:var(--primary);border-color:var(--primary);color:#fff;font-size:22px;}
+    .key.eq:hover{background:var(--primary-dark);color:#fff;}
+
+    /* 历史 */
+    .hist-list{display:flex;flex-direction:column;gap:8px;max-height:388px;overflow:auto;}
+    .hist-item{
+      background:var(--bg);border:1px solid var(--border);border-radius:10px;
+      padding:9px 12px;cursor:pointer;transition:.15s;text-align:right;
+    }
+    .hist-item:hover{border-color:var(--primary);}
+    .hist-item .e{
+      font-size:12px;color:var(--text-3);word-break:break-all;
+      font-family:"SFMono-Regular",Consolas,monospace;
+    }
+    .hist-item .r{
+      font-size:16px;font-weight:700;color:var(--text);margin-top:2px;word-break:break-all;
+      font-family:"SFMono-Regular",Consolas,monospace;
+    }
+    .hist-empty{color:var(--text-3);font-size:13px;text-align:center;padding:26px 0;line-height:1.8;}
+    .hist-foot{margin-top:12px;}
+    .btn-mini{
+      width:100%;border:1px solid var(--border);background:var(--card);color:var(--text-2);
+      border-radius:9px;padding:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn-mini:hover{border-color:#e5484d;color:#e5484d;}
+
+    .kb-tip{
+      font-size:12px;color:var(--text-3);margin-top:14px;line-height:1.8;
+      padding:10px 13px;background:var(--bg);border:1px dashed var(--border);border-radius:10px;
+    }
+    .kb-tip kbd{
+      display:inline-block;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;
+      border-radius:5px;background:var(--card);font-size:11px;font-family:Consolas,monospace;color:var(--text-2);
+    }
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:720px){
+      .calc-layout{grid-template-columns:1fr;}
+      .hist-list{max-height:200px;}
+      .screen .result{font-size:32px;}
+      .key{height:54px;font-size:19px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🧮</span>
+      <h1>计算器</h1>
+    </div>
+    <p class="tool-sub">支持四则运算、百分比与正负号切换，输入时实时预览结果，可直接使用键盘操作，自动保留最近计算历史。</p>
+
+    <div class="calc-layout">
+      <!-- 计算主体 -->
+      <div class="panel">
+        <div class="screen" id="screen">
+          <div class="expr" id="exprLine">0</div>
+          <div class="result" id="resultLine">0</div>
+        </div>
+
+        <div class="keys" id="keys">
+          <button class="key fn" data-k="C">C</button>
+          <button class="key fn" data-k="DEL">DEL</button>
+          <button class="key op" data-k="%">%</button>
+          <button class="key op" data-k="÷">÷</button>
+
+          <button class="key" data-k="7">7</button>
+          <button class="key" data-k="8">8</button>
+          <button class="key" data-k="9">9</button>
+          <button class="key op" data-k="×">×</button>
+
+          <button class="key" data-k="4">4</button>
+          <button class="key" data-k="5">5</button>
+          <button class="key" data-k="6">6</button>
+          <button class="key op" data-k="-">−</button>
+
+          <button class="key" data-k="1">1</button>
+          <button class="key" data-k="2">2</button>
+          <button class="key" data-k="3">3</button>
+          <button class="key op" data-k="+">+</button>
+
+          <button class="key" data-k="±">±</button>
+          <button class="key" data-k="0">0</button>
+          <button class="key" data-k=".">.</button>
+          <button class="key eq" data-k="=">=</button>
+        </div>
+
+        <div class="kb-tip">
+          键盘支持：<kbd>0-9</kbd> 数字 · <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> 运算 ·
+          <kbd>.</kbd> 小数点 · <kbd>Enter</kbd> 等于 · <kbd>Backspace</kbd> 退格 · <kbd>Esc</kbd> 清除
+        </div>
+      </div>
+
+      <!-- 历史记录 -->
+      <div class="panel">
+        <h2><span class="bar"></span> 历史记录</h2>
+        <div class="hist-list" id="histList"></div>
+        <div class="hist-empty" id="histEmpty">暂无计算记录<br>算一笔试试吧</div>
+        <div class="hist-foot">
+          <button class="btn-mini" id="clearHist">🗑️ 清空历史</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var KEY = "xhc_calc_history";
+      var MAX_HIST = 20;
+
+      var exprLine = document.getElementById("exprLine");
+      var resultLine = document.getElementById("resultLine");
+      var screen = document.getElementById("screen");
+      var histList = document.getElementById("histList");
+      var histEmpty = document.getElementById("histEmpty");
+      var toastEl = document.getElementById("tipToast");
+
+      var expr = "";        // 当前表达式，运算符使用 + - × ÷
+      var justEqual = false;
+      var history = [];
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1700);
+      }
+
+      var OPS = "+-×÷";
+      function isOp(c) { return OPS.indexOf(c) !== -1; }
+
+      /* ---------- 表达式求值（词法分析 + 调度场算法，不使用 eval） ---------- */
+      function tokenize(s) {
+        var tokens = [], num = "";
+        for (var i = 0; i < s.length; i++) {
+          var c = s.charAt(i);
+          if (c >= "0" && c <= "9" || c === ".") {
+            num += c;
+            continue;
+          }
+          if (isOp(c)) {
+            // 处理负号开头的数值（表达式首位或紧跟运算符）
+            if (c === "-" && num === "" && (tokens.length === 0 || typeof tokens[tokens.length - 1] === "string")) {
+              num = "-";
+              continue;
+            }
+            if (num !== "" && num !== "-") { tokens.push(parseFloat(num)); }
+            num = "";
+            tokens.push(c);
+            continue;
+          }
+          return null; // 非法字符
+        }
+        if (num !== "" && num !== "-") tokens.push(parseFloat(num));
+        return tokens;
+      }
+
+      function evaluate(s) {
+        if (!s) return { ok: false, empty: true };
+        var tokens = tokenize(s);
+        if (!tokens || !tokens.length) return { ok: false };
+
+        // 尾部是运算符则忽略，用于实时预览
+        while (tokens.length && typeof tokens[tokens.length - 1] === "string") tokens.pop();
+        if (!tokens.length) return { ok: false, empty: true };
+
+        var prec = { "+": 1, "-": 1, "×": 2, "÷": 2 };
+        var out = [], ops = [];
+        for (var i = 0; i < tokens.length; i++) {
+          var t = tokens[i];
+          if (typeof t === "number") {
+            if (isNaN(t)) return { ok: false };
+            out.push(t);
+          } else {
+            while (ops.length && prec[ops[ops.length - 1]] >= prec[t]) out.push(ops.pop());
+            ops.push(t);
+          }
+        }
+        while (ops.length) out.push(ops.pop());
+
+        var stack = [];
+        for (var j = 0; j < out.length; j++) {
+          var v = out[j];
+          if (typeof v === "number") { stack.push(v); continue; }
+          if (stack.length < 2) return { ok: false };
+          var b = stack.pop(), a = stack.pop();
+          var r;
+          if (v === "+") r = a + b;
+          else if (v === "-") r = a - b;
+          else if (v === "×") r = a * b;
+          else {
+            if (b === 0) return { ok: false, divZero: true };
+            r = a / b;
+          }
+          stack.push(r);
+        }
+        if (stack.length !== 1 || !isFinite(stack[0])) return { ok: false };
+        return { ok: true, value: stack[0] };
+      }
+
+      function fmtNum(v) {
+        if (!isFinite(v)) return "错误";
+        if (Number.isInteger(v) && Math.abs(v) < 1e15) return String(v);
+        var abs = Math.abs(v);
+        if (abs >= 1e15 || (abs < 1e-9 && abs > 0)) return v.toExponential(8);
+        var s = v.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+        return s;
+      }
+
+      /* ---------- 渲染 ---------- */
+      function render() {
+        exprLine.textContent = expr || "0";
+        var res = evaluate(expr);
+        screen.classList.remove("error");
+        if (res.empty) { resultLine.textContent = "0"; return; }
+        if (res.divZero) { screen.classList.add("error"); resultLine.textContent = "除数不能为 0"; return; }
+        if (!res.ok) { screen.classList.add("error"); resultLine.textContent = "表达式错误"; return; }
+        resultLine.textContent = fmtNum(res.value);
+      }
+
+      /* ---------- 输入处理 ---------- */
+      function lastChar() { return expr.charAt(expr.length - 1); }
+
+      function currentNumber() {
+        var i = expr.length - 1;
+        while (i >= 0 && !isOp(expr.charAt(i))) i--;
+        // 允许负号作为数值一部分
+        if (i >= 0 && expr.charAt(i) === "-" && (i === 0 || isOp(expr.charAt(i - 1)))) i--;
+        return { start: i + 1, text: expr.slice(i + 1) };
+      }
+
+      function inputDigit(d) {
+        if (justEqual) { expr = ""; justEqual = false; }
+        var cur = currentNumber().text;
+        if (cur === "0") expr = expr.slice(0, -1) + d;      // 去掉前导 0
+        else if (cur === "-0") expr = expr.slice(0, -1) + d;
+        else expr += d;
+        render();
+      }
+
+      function inputDot() {
+        if (justEqual) { expr = ""; justEqual = false; }
+        var cur = currentNumber().text;
+        if (cur.indexOf(".") !== -1) return;
+        if (cur === "" || cur === "-") expr += "0.";
+        else expr += ".";
+        render();
+      }
+
+      function inputOp(op) {
+        justEqual = false;
+        if (expr === "") {
+          if (op === "-") { expr = "-"; render(); }
+          return;
+        }
+        if (isOp(lastChar())) {
+          // 连续运算符：替换（保留「数字 × -3」这类负数写法）
+          var prev = expr.charAt(expr.length - 2);
+          if (op === "-" && !isOp(prev) && lastChar() !== "-") { expr += op; render(); return; }
+          expr = expr.slice(0, -1) + op;
+        } else {
+          expr += op;
+        }
+        render();
+      }
+
+      function toggleSign() {
+        if (justEqual) justEqual = false;
+        var cur = currentNumber();
+        if (cur.text === "") {
+          expr += "-";
+        } else if (cur.text.charAt(0) === "-") {
+          expr = expr.slice(0, cur.start) + cur.text.slice(1);
+        } else {
+          expr = expr.slice(0, cur.start) + "-" + cur.text;
+        }
+        render();
+      }
+
+      function percent() {
+        var cur = currentNumber();
+        if (cur.text === "" || cur.text === "-") { toast("请先输入数字"); return; }
+        var v = parseFloat(cur.text);
+        if (isNaN(v)) return;
+        expr = expr.slice(0, cur.start) + fmtNum(v / 100);
+        justEqual = false;
+        render();
+      }
+
+      function backspace() {
+        if (justEqual) { justEqual = false; }
+        expr = expr.slice(0, -1);
+        render();
+      }
+
+      function clearAll() {
+        expr = "";
+        justEqual = false;
+        render();
+      }
+
+      function equal() {
+        if (!expr) return;
+        var res = evaluate(expr);
+        if (res.divZero) { screen.classList.add("error"); resultLine.textContent = "除数不能为 0"; return; }
+        if (!res.ok) { screen.classList.add("error"); resultLine.textContent = "表达式错误"; return; }
+        var text = fmtNum(res.value);
+        pushHistory(expr, text);
+        expr = text;
+        justEqual = true;
+        exprLine.textContent = "";
+        resultLine.textContent = text;
+        screen.classList.remove("error");
+      }
+
+      /* ---------- 历史 ---------- */
+      function loadHistory() {
+        try {
+          var raw = localStorage.getItem(KEY);
+          history = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(history)) history = [];
+        } catch (e) { history = []; }
+      }
+      function saveHistory() {
+        try { localStorage.setItem(KEY, JSON.stringify(history)); } catch (e) {}
+      }
+      function pushHistory(e, r) {
+        history.unshift({ e: e, r: r });
+        if (history.length > MAX_HIST) history = history.slice(0, MAX_HIST);
+        saveHistory();
+        renderHistory();
+      }
+      function renderHistory() {
+        histList.innerHTML = "";
+        histEmpty.style.display = history.length ? "none" : "block";
+        history.forEach(function (h) {
+          var item = document.createElement("div");
+          item.className = "hist-item";
+          item.title = "点击使用该结果继续计算";
+
+          var e = document.createElement("div");
+          e.className = "e";
+          e.textContent = h.e + " =";
+
+          var r = document.createElement("div");
+          r.className = "r";
+          r.textContent = h.r;
+
+          item.appendChild(e);
+          item.appendChild(r);
+          item.addEventListener("click", function () {
+            expr = h.r;
+            justEqual = true;
+            render();
+            toast("已载入结果 " + h.r);
+          });
+          histList.appendChild(item);
+        });
+      }
+
+      /* ---------- 按键绑定 ---------- */
+      function handle(k) {
+        if (k >= "0" && k <= "9") inputDigit(k);
+        else if (k === ".") inputDot();
+        else if (k === "+" || k === "-" || k === "×" || k === "÷") inputOp(k);
+        else if (k === "=") equal();
+        else if (k === "C") clearAll();
+        else if (k === "DEL") backspace();
+        else if (k === "±") toggleSign();
+        else if (k === "%") percent();
+      }
+
+      Array.prototype.forEach.call(document.querySelectorAll(".key"), function (btn) {
+        btn.addEventListener("click", function () { handle(btn.dataset.k); });
+      });
+
+      function flash(k) {
+        var btn = document.querySelector('.key[data-k="' + k + '"]');
+        if (!btn) return;
+        btn.classList.add("press");
+        setTimeout(function () { btn.classList.remove("press"); }, 110);
+      }
+
+      document.addEventListener("keydown", function (e) {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        var k = e.key, mapped = null;
+        if (k >= "0" && k <= "9") mapped = k;
+        else if (k === ".") mapped = ".";
+        else if (k === "+") mapped = "+";
+        else if (k === "-") mapped = "-";
+        else if (k === "*" || k === "x" || k === "X") mapped = "×";
+        else if (k === "/") mapped = "÷";
+        else if (k === "Enter" || k === "=") mapped = "=";
+        else if (k === "Backspace") mapped = "DEL";
+        else if (k === "Escape" || k === "c" || k === "C") mapped = "C";
+        else if (k === "%") mapped = "%";
+        if (!mapped) return;
+        e.preventDefault();
+        flash(mapped);
+        handle(mapped);
+      });
+
+      document.getElementById("clearHist").addEventListener("click", function () {
+        if (!history.length) { toast("历史已是空的"); return; }
+        history = [];
+        saveHistory();
+        renderHistory();
+        toast("历史记录已清空");
+      });
+
+      function boot() {
+        loadHistory();
+        renderHistory();
+        render();
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

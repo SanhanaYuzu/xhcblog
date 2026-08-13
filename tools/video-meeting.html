@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频会议 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png?v=20260812">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap">
+  <style>
+    /* ===== 该工具为全屏深色应用，隐藏博客默认外壳 ===== */
+    body.tm-page{background:#0c1322;color:#e6ecf5;overflow:hidden;
+      font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",
+                   "Noto Sans CJK SC","Source Han Sans SC","WenQuanYi Micro Hei",
+                   -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+    /* force same font on form/control elements which often reset to user-agent serif */
+    body.tm-page input, body.tm-page select, body.tm-page button, body.tm-page textarea{
+      font-family:inherit;}
+    body.tm-page .header,
+    body.tm-page .footer,
+    body.tm-page .watermark,
+    body.tm-page .page-loader{display:none !important;}
+
+    :root{
+      --tm-bg:#0c1322;
+      --tm-panel:#16203a;
+      --tm-panel-2:#1d2a47;
+      --tm-line:#27365a;
+      --tm-blue:#3370ff;
+      --tm-blue-d:#245bef;
+      --tm-text:#e6ecf5;
+      --tm-sub:#9fb0cc;
+      --tm-red:#f5484b;
+      --tm-green:#2bd07b;
+    }
+    *{box-sizing:border-box;}
+    button{font-family:inherit;cursor:pointer;}
+    input,select{font-family:inherit;}
+
+    /* ============ 预加入（设备检测）页 ============ */
+    .tm-prejoin{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(1200px 700px at 70% -10%,#1b2c52 0%,transparent 60%),
+                 radial-gradient(900px 600px at 0% 110%,#14233f 0%,transparent 55%),
+                 var(--tm-bg);
+      padding:24px;overflow:auto;
+    }
+    .pj-card{
+      width:min(940px,100%);background:rgba(20,30,54,.72);border:1px solid var(--tm-line);
+      border-radius:18px;padding:30px 34px;backdrop-filter:blur(8px);
+      box-shadow:0 24px 70px rgba(0,0,0,.45);
+    }
+    .pj-top{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+    .pj-logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#3370ff,#7aa2ff);
+      display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex-shrink:0;}
+    .pj-top h1{font-size:22px;margin:0;font-weight:800;letter-spacing:.5px;}
+    .pj-top .pj-tag{margin-left:auto;font-size:12px;color:var(--tm-sub);}
+    .pj-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:26px;}
+    @media(max-width:760px){.pj-grid{grid-template-columns:1fr;}.pj-card{padding:22px;}}
+
+    /* 左侧摄像头预览 */
+    .pj-preview{position:relative;aspect-ratio:16/10;background:#0a1020;border-radius:14px;overflow:hidden;
+      border:1px solid var(--tm-line);display:flex;align-items:center;justify-content:center;}
+    .pj-preview video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+    .pj-preview .pj-avatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#3370ff,#55b0ff);
+      color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;}
+    .pj-preview .pj-overlay-name{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.5);
+      padding:4px 10px;border-radius:8px;font-size:13px;}
+    .pj-preview .pj-camoff{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+      color:var(--tm-sub);font-size:14px;background:#0a1020;}
+    .pj-preview.off video{display:none;}
+    .pj-preview.off .pj-camoff{display:flex;}
+    .pj-preview .pj-floortag{position:absolute;right:10px;top:10px;font-size:11px;color:#cdd9ef;
+      background:rgba(0,0,0,.45);padding:3px 8px;border-radius:7px;}
+    /* 摄像头/麦克风开启遮罩 — 浏览器要求 getUserMedia 必须有用户手势 */
+    .pj-enable{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:14px;cursor:pointer;background:rgba(8,14,28,.55);backdrop-filter:blur(2px);transition:.18s;z-index:2;}
+    .pj-enable:hover{background:rgba(20,38,72,.7);}
+    .pj-enable:active{background:rgba(30,52,100,.85);}
+    .pj-enable[hidden]{display:none !important;}
+    .pj-enable .pj-en-ico{width:62px;height:62px;border-radius:50%;
+      background:linear-gradient(135deg,#3370ff,#7aa2ff);display:flex;align-items:center;justify-content:center;
+      color:#fff;box-shadow:0 8px 24px rgba(51,112,255,.4);}
+    .pj-enable .pj-en-txt{font-size:15px;font-weight:700;color:#fff;}
+    .pj-enable .pj-en-sub{font-size:12px;color:var(--tm-sub);max-width:280px;text-align:center;line-height:1.55;}
+    .pj-enable.error .pj-en-ico{background:linear-gradient(135deg,#f5484b,#ff9a9c);box-shadow:0 8px 24px rgba(245,72,75,.4);}
+    .pj-enable.error .pj-en-txt{color:#ffd1d2;}
+
+    .pj-devices{margin-top:14px;display:flex;flex-direction:column;gap:10px;}
+    .pj-dev-row{display:flex;align-items:center;gap:10px;}
+    .pj-dev-row label{width:74px;font-size:13px;color:var(--tm-sub);flex-shrink:0;}
+    .pj-dev-row select{flex:1;background:var(--tm-panel);border:1px solid var(--tm-line);color:var(--tm-text);
+      border-radius:9px;padding:8px 10px;font-size:13px;outline:none;}
+    .pj-dev-row select:focus{border-color:var(--tm-blue);}
+    .pj-mic-meter{height:6px;border-radius:4px;background:var(--tm-panel);overflow:hidden;flex:1;}
+    .pj-mic-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2bd07b,#3370ff);transition:width .08s;}
+
+    /* 右侧表单 */
+    .pj-tabs{display:flex;gap:8px;margin-bottom:18px;}
+    .pj-tab{flex:1;padding:11px 0;text-align:center;border:1px solid var(--tm-line);border-radius:11px;
+      background:var(--tm-panel);color:var(--tm-sub);font-size:14px;font-weight:600;transition:.15s;}
+    .pj-tab.active{background:var(--tm-blue);border-color:var(--tm-blue);color:#fff;}
+    .pj-field{margin-bottom:14px;}
+    .pj-field label{display:block;font-size:13px;color:var(--tm-sub);margin-bottom:7px;}
+    .pj-field input{width:100%;background:var(--tm-panel);border:1px solid var(--tm-line);color:var(--tm-text);
+      border-radius:11px;padding:12px 14px;font-size:15px;outline:none;transition:.15s;}
+    .pj-field input:focus{border-color:var(--tm-blue);box-shadow:0 0 0 3px rgba(51,112,255,.18);}
+    .pj-toggles{display:flex;gap:10px;margin:6px 0 18px;}
+    .pj-toggle{flex:1;display:flex;align-items:center;gap:10px;background:var(--tm-panel);border:1px solid var(--tm-line);
+      border-radius:11px;padding:11px 14px;cursor:pointer;user-select:none;transition:.15s;}
+    .pj-toggle:hover{border-color:var(--tm-blue);}
+    .pj-toggle .tg-ico{width:38px;height:38px;border-radius:10px;background:var(--tm-panel-2);display:flex;
+      align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+    .pj-toggle.off .tg-ico{background:#3a2030;color:#ff7a7d;}
+    .pj-toggle .tg-txt b{display:block;font-size:14px;}
+    .pj-toggle .tg-txt span{font-size:12px;color:var(--tm-sub);}
+    .pj-join{width:100%;background:var(--tm-blue);border:0;color:#fff;font-size:16px;font-weight:700;
+      padding:14px;border-radius:12px;transition:.15s;}
+    .pj-join:hover{background:var(--tm-blue-d);}
+    .pj-hint{font-size:12px;color:var(--tm-sub);margin-top:12px;line-height:1.6;}
+    .pj-hint code{background:var(--tm-panel);padding:1px 6px;border-radius:5px;border:1px solid var(--tm-line);}
+    .pj-back{position:fixed;left:18px;top:16px;color:var(--tm-sub);font-size:13px;z-index:5;}
+    .pj-back:hover{color:#fff;}
+
+    /* ============ 会议中页面 ============ */
+    .tm-meeting{position:fixed;inset:0;display:none;flex-direction:column;background:var(--tm-bg);}
+    .tm-meeting.live{display:flex;}
+
+    .tm-top{height:52px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 18px;
+      background:linear-gradient(180deg,rgba(15,24,44,.96),rgba(15,24,44,.6));border-bottom:1px solid var(--tm-line);}
+    .tm-mid-box{display:flex;align-items:center;gap:8px;}
+    .tm-mid{font-size:14px;font-weight:700;cursor:pointer;
+      /* 默认 letter-spacing 会让 CJK 字符与后续数字黏在一起，按字符族分别设置 */
+      font-feature-settings:"tnum" 1,"kern" 1;}
+    .tm-mid .num{letter-spacing:.5px;font-variant-numeric:tabular-nums;}
+    .tm-mid:hover{color:#fff;}
+    .tm-mid .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tm-green);margin-right:6px;}
+    .tm-timer{font-size:13px;color:var(--tm-sub);font-variant-numeric:tabular-nums;}
+    .tm-top .spacer{flex:1;}
+    .tm-net{display:flex;align-items:center;gap:5px;color:var(--tm-sub);font-size:12px;}
+    .tm-net .bars{display:flex;align-items:flex-end;gap:2px;height:14px;}
+    .tm-net .bars i{width:3px;background:var(--tm-green);border-radius:1px;}
+    .tm-net .bars i:nth-child(1){height:5px;}
+    .tm-net .bars i:nth-child(2){height:8px;}
+    .tm-net .bars i:nth-child(3){height:11px;}
+    .tm-net .bars i:nth-child(4){height:14px;}
+    .tm-rec{display:none;align-items:center;gap:6px;color:#ff8a8c;font-size:12px;font-weight:600;}
+    .tm-rec.on{display:flex;}
+    .tm-rec .rdot{width:9px;height:9px;border-radius:50%;background:var(--tm-red);animation:tmblink 1.1s infinite;}
+    @keyframes tmblink{50%{opacity:.25;}}
+    .tm-iconbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--tm-line);background:var(--tm-panel);
+      color:var(--tm-text);display:flex;align-items:center;justify-content:center;}
+    .tm-iconbtn:hover{border-color:var(--tm-blue);color:#fff;}
+
+    .tm-stage{flex:1;position:relative;overflow:hidden;padding:18px;}
+    .tm-grid{position:absolute;inset:18px;display:grid;gap:14px;align-content:center;justify-content:center;}
+    .tm-grid.speaker{grid-template-columns:1fr;}
+
+    .tm-tile{position:relative;background:#0a1224;border:2px solid transparent;border-radius:14px;overflow:hidden;
+      min-height:120px;display:flex;align-items:center;justify-content:center;}
+    .tm-tile.speaking{border-color:var(--tm-green);box-shadow:0 0 0 3px rgba(43,208,123,.25);}
+    .tm-tile video{width:100%;height:100%;object-fit:cover;}
+    .tm-tile .tile-avatar{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#3370ff,#55b0ff);
+      color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;}
+    .tm-tile .tile-camoff{position:absolute;left:0;right:0;bottom:38px;text-align:center;color:var(--tm-sub);font-size:12px;}
+    .tm-tile .tile-name{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:8px;
+      font-size:13px;display:flex;align-items:center;gap:6px;max-width:80%;}
+    .tm-tile .tile-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tm-tile .tile-mic{width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;
+      justify-content:center;color:#fff;flex-shrink:0;}
+    .tm-tile .tile-mic.muted{background:var(--tm-red);}
+    .tm-tile .tile-host{position:absolute;right:10px;top:10px;background:var(--tm-blue);color:#fff;font-size:11px;
+      padding:2px 8px;border-radius:7px;}
+
+    /* 底部控制条 */
+    .tm-bar{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+      background:rgba(18,28,50,.92);border:1px solid var(--tm-line);border-radius:18px;padding:10px 14px;
+      box-shadow:0 14px 40px rgba(0,0,0,.5);backdrop-filter:blur(6px);}
+    .tm-ctrl{display:flex;flex-direction:column;align-items:center;gap:5px;background:transparent;border:0;
+      color:var(--tm-text);min-width:58px;padding:4px 6px;border-radius:12px;transition:.15s;}
+    .tm-ctrl:hover{background:rgba(255,255,255,.06);}
+    .tm-ctrl .c-ico{width:42px;height:42px;border-radius:50%;background:var(--tm-panel-2);display:flex;align-items:center;
+      justify-content:center;color:#fff;}
+    .tm-ctrl .c-lbl{font-size:11.5px;color:var(--tm-sub);}
+    .tm-ctrl.off .c-ico{background:#f5484b;}
+    .tm-ctrl.off .c-lbl{color:#ff9a9c;}
+    .tm-ctrl.lit .c-ico{background:var(--tm-blue);}
+    .tm-sep{width:1px;height:40px;background:var(--tm-line);margin:0 4px;}
+    .tm-leave{display:flex;flex-direction:column;align-items:center;gap:5px;background:transparent;border:0;color:#fff;padding:4px 6px;border-radius:12px;min-width:62px;}
+    .tm-leave .c-ico{width:42px;height:42px;border-radius:50%;background:var(--tm-red);display:flex;align-items:center;justify-content:center;}
+    .tm-leave:hover .c-ico{background:#d83a3d;}
+    .tm-leave .c-lbl{font-size:11.5px;color:#ff9a9c;}
+
+    /* 右侧面板 */
+    .tm-panel{position:absolute;top:0;right:0;bottom:0;width:330px;background:var(--tm-panel);border-left:1px solid var(--tm-line);
+      display:none;flex-direction:column;z-index:6;box-shadow:-10px 0 40px rgba(0,0,0,.4);}
+    .tm-panel.open{display:flex;}
+    .tm-panel-head{height:50px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--tm-line);
+      font-weight:700;font-size:15px;}
+    .tm-panel-head .close{margin-left:auto;background:transparent;border:0;color:var(--tm-sub);font-size:20px;}
+    .tm-mem-list{flex:1;overflow:auto;padding:10px 12px;}
+    .tm-mem{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;}
+    .tm-mem:hover{background:rgba(255,255,255,.04);}
+    .tm-mem .m-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3370ff,#55b0ff);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+    .tm-mem .m-name{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tm-mem .m-ico{color:var(--tm-sub);display:flex;align-items:center;}
+    .tm-mem .m-ico.muted{color:var(--tm-red);}
+    .tm-chat{flex:1;display:flex;flex-direction:column;min-height:0;}
+    .tm-chat-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
+    .tm-msg{display:flex;flex-direction:column;gap:3px;max-width:85%;}
+    .tm-msg.me{align-self:flex-end;align-items:flex-end;}
+    .tm-msg .m-author{font-size:11px;color:var(--tm-sub);}
+    .tm-msg .m-bubble{background:var(--tm-panel-2);padding:8px 12px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word;}
+    .tm-msg.me .m-bubble{background:var(--tm-blue);}
+    .tm-chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--tm-line);}
+    .tm-chat-input input{flex:1;background:var(--tm-bg);border:1px solid var(--tm-line);color:var(--tm-text);
+      border-radius:10px;padding:10px 12px;font-size:14px;outline:none;}
+    .tm-chat-input input:focus{border-color:var(--tm-blue);}
+    .tm-chat-input button{background:var(--tm-blue);border:0;color:#fff;border-radius:10px;padding:0 16px;font-weight:600;}
+    .tm-chat-input button:disabled{opacity:.45;cursor:not-allowed;}
+
+    /* 弹窗（邀请 / 设备 / 更多） */
+    .tm-modal-mask{position:fixed;inset:0;background:rgba(4,8,16,.7);display:none;align-items:center;justify-content:center;z-index:20;padding:20px;}
+    .tm-modal-mask.open{display:flex;}
+    .tm-modal{width:min(460px,100%);background:var(--tm-panel);border:1px solid var(--tm-line);border-radius:16px;
+      padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.5);}
+    .tm-modal h3{margin:0 0 6px;font-size:17px;}
+    .tm-modal p{margin:0 0 14px;font-size:13px;color:var(--tm-sub);line-height:1.6;}
+    .tm-modal textarea{width:100%;height:110px;background:var(--tm-bg);border:1px solid var(--tm-line);color:var(--tm-text);
+      border-radius:10px;padding:10px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical;outline:none;}
+    .tm-modal .row{display:flex;gap:10px;margin-top:14px;}
+    .tm-modal .row button{flex:1;border:0;border-radius:11px;padding:11px;font-size:14px;font-weight:700;}
+    .tm-btn-pri{background:var(--tm-blue);color:#fff;}
+    .tm-btn-pri:hover{background:var(--tm-blue-d);}
+    .tm-btn-ghost{background:var(--tm-panel-2);color:var(--tm-text);border:1px solid var(--tm-line)!important;}
+    .tm-codebox{background:var(--tm-bg);border:1px solid var(--tm-line);border-radius:10px;padding:10px;font-size:12px;
+      word-break:break-all;color:var(--tm-sub);max-height:120px;overflow:auto;margin-top:8px;}
+    .tm-menulist{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+    .tm-menulist button{display:flex;align-items:center;gap:10px;background:transparent;border:0;color:var(--tm-text);
+      padding:11px 12px;border-radius:10px;font-size:14px;text-align:left;}
+    .tm-menulist button:hover{background:rgba(255,255,255,.06);}
+    .tm-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;
+      padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:40;}
+    .tm-toast.show{opacity:1;}
+  </style>
+</head>
+<body class="tm-page">
+
+  <a class="pj-back" href="../tools.html">← 返回工具箱</a>
+
+  <!-- ===================== 预加入页 ===================== -->
+  <div class="tm-prejoin" id="prejoin">
+    <div class="pj-card">
+      <div class="pj-top">
+        <div class="pj-logo">🎥</div>
+        <h1>视频会议</h1>
+        <span class="pj-tag">界面参考 腾讯会议</span>
+      </div>
+
+      <div class="pj-grid">
+        <!-- 左：摄像头预览 + 设备 -->
+        <div>
+          <div class="pj-preview" id="pjPreview">
+            <video id="pjVideo" autoplay playsinline muted></video>
+            <div class="pj-avatar" id="pjAvatar">我</div>
+            <div class="pj-camoff">摄像头已关闭</div>
+            <div class="pj-overlay-name" id="pjNameTag">我</div>
+            <div class="pj-floortag">设备检测</div>
+            <!-- 摄像头开启遮罩：必须由用户点击触发，否则浏览器会拒绝 getUserMedia -->
+            <button type="button" class="pj-enable" id="pjEnable" title="点击开启摄像头与麦克风">
+              <div class="pj-en-ico"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+              <div class="pj-en-txt">点击开启摄像头与麦克风</div>
+              <div class="pj-en-sub">浏览器要求授权后才能使用，首次使用请在弹窗中点击「允许」</div>
+            </button>
+          </div>
+
+          <div class="pj-devices">
+            <div class="pj-dev-row">
+              <label>摄像头</label>
+              <select id="pjCamSel"></select>
+            </div>
+            <div class="pj-dev-row">
+              <label>麦克风</label>
+              <select id="pjMicSel"></select>
+            </div>
+            <div class="pj-dev-row">
+              <label>扬声器</label>
+              <select id="pjSpkSel"></select>
+            </div>
+            <div class="pj-dev-row">
+              <label>麦克风试听</label>
+              <div class="pj-mic-meter"><i id="pjMicBar"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：表单 -->
+        <div>
+          <div class="pj-tabs">
+            <button class="pj-tab active" id="tabJoin" type="button" onclick="TM.switchTab('join')">加入会议</button>
+            <button class="pj-tab" id="tabQuick" type="button" onclick="TM.switchTab('quick')">快速会议</button>
+          </div>
+
+          <!-- 加入会议 -->
+          <div id="joinPane">
+            <div class="pj-field">
+              <label>会议号</label>
+              <input id="joinId" inputmode="numeric" maxlength="11" placeholder="请输入 9–11 位会议号">
+            </div>
+            <div class="pj-field">
+              <label>你的昵称</label>
+              <input id="joinName" placeholder="例如：小明" maxlength="20">
+            </div>
+          </div>
+
+          <!-- 快速会议 -->
+          <div id="quickPane" style="display:none;">
+            <div class="pj-field">
+              <label>你的昵称</label>
+              <input id="quickName" placeholder="例如：主持人" maxlength="20">
+            </div>
+            <p class="pj-hint">快速会议将自动生成会议号并成为主持人。若已部署信令服务器，好友输入同一会议号即可自动进入同一会议室；若未部署则自动回落为手动复制码模式。</p>
+          </div>
+
+          <div class="pj-toggles">
+            <div class="pj-toggle" id="tgCam" onclick="TM.togglePreCam()">
+              <div class="tg-ico" id="tgCamIco"></div>
+              <div class="tg-txt"><b>摄像头</b><span id="tgCamTxt">开启</span></div>
+            </div>
+            <div class="pj-toggle" id="tgMic" onclick="TM.togglePreMic()">
+              <div class="tg-ico" id="tgMicIco"></div>
+              <div class="tg-txt"><b>麦克风</b><span id="tgMicTxt">开启</span></div>
+            </div>
+          </div>
+
+          <button class="pj-join" id="joinBtn" type="button" onclick="TM.enterMeeting()">加入会议</button>
+          <p class="pj-hint">提示：首次使用需在浏览器弹窗中允许<code>摄像头</code>与<code>麦克风</code>权限。本工具为点对点加密通话，无需注册。</p>
+          <p class="pj-hint" style="margin-top:14px;">信令服务器（可选，留空则自动使用当前站点）：<br>
+            <input id="signalUrl" style="width:100%;margin-top:6px;background:var(--tm-panel);border:1px solid var(--tm-line);color:var(--tm-text);border-radius:9px;padding:8px 10px;font-size:12px;outline:none;" placeholder="ws://或wss://主机/ws"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 会议中页 ===================== -->
+  <div class="tm-meeting" id="meeting">
+    <div class="tm-top">
+      <div class="tm-mid-box">
+        <span class="tm-mid" id="meetId" title="点击复制会议号">会议号：—</span>
+      </div>
+      <button class="tm-iconbtn" id="btnCopyId" title="复制会议号" onclick="TM.copyMeetId()"></button>
+      <button class="tm-iconbtn" id="btnInvite" title="邀请" onclick="TM.openInvite()"></button>
+      <span class="tm-timer" id="meetTimer">00:00</span>
+      <div class="spacer"></div>
+      <div class="tm-rec" id="recBadge"><span class="rdot"></span>录制中</div>
+      <div class="tm-net" title="网络良好">
+        <div class="bars"><i></i><i></i><i></i><i></i></div>
+        <span>良好</span>
+      </div>
+      <button class="tm-iconbtn" id="btnFull" title="全屏" onclick="TM.toggleFull()"></button>
+    </div>
+
+    <div class="tm-stage" id="stage">
+      <div class="tm-grid" id="grid"></div>
+
+      <!-- 控制条 -->
+      <div class="tm-bar" id="bar">
+        <button class="tm-ctrl" id="ctrlMic" onclick="TM.toggleMic()"></button>
+        <button class="tm-ctrl" id="ctrlCam" onclick="TM.toggleCam()"></button>
+        <button class="tm-ctrl" id="ctrlShare" onclick="TM.toggleShare()"></button>
+        <button class="tm-ctrl" id="ctrlMem" onclick="TM.togglePanel('mem')"></button>
+        <button class="tm-ctrl" id="ctrlChat" onclick="TM.togglePanel('chat')"></button>
+        <button class="tm-ctrl" id="ctrlLayout" onclick="TM.toggleLayout()"></button>
+        <button class="tm-ctrl" id="ctrlRec" onclick="TM.toggleRec()"></button>
+        <button class="tm-ctrl" id="ctrlMore" onclick="TM.openMore()"></button>
+        <div class="tm-sep"></div>
+        <button class="tm-leave" onclick="TM.leave()">
+          <div class="c-ico" id="leaveIco"></div>
+          <div class="c-lbl">离开</div>
+        </button>
+      </div>
+
+      <!-- 右侧面板 -->
+      <div class="tm-panel" id="panel">
+        <div class="tm-panel-head">
+          <span id="panelTitle">成员</span>
+          <button class="close" onclick="TM.closePanel()">✕</button>
+        </div>
+        <div id="memView">
+          <div class="tm-mem-list" id="memList"></div>
+        </div>
+        <div id="chatView" style="display:none;flex:1;min-height:0;">
+          <div class="tm-chat">
+            <div class="tm-chat-list" id="chatList"></div>
+            <div class="tm-chat-input">
+              <input id="chatInput" placeholder="输入消息，回车发送" onkeydown="if(event.key==='Enter')TM.sendChat()">
+              <button id="chatSend" onclick="TM.sendChat()">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 邀请 / 弹窗（点对点连接） -->
+  <div class="tm-modal-mask" id="inviteMask">
+    <div class="tm-modal">
+      <h3 id="invTitle">邀请参会</h3>
+      <p id="invDesc"></p>
+      <div id="invOut" style="display:none;">
+        <div class="tm-codebox" id="invCodeOut"></div>
+        <div class="row">
+          <button class="tm-btn-ghost" onclick="TM.closeInvite()">关闭</button>
+          <button class="tm-btn-pri" onclick="TM.copyInvite()">复制邀请码</button>
+        </div>
+        <p class="pj-hint" style="margin-top:14px;">对方把「应答码」发回给你后，粘贴到下面并点击「接通」即可开始视频通话：</p>
+        <textarea id="invAnswerIn" placeholder="粘贴对方发回的应答码"></textarea>
+        <div class="row">
+          <button class="tm-btn-pri" onclick="TM.hostAcceptAnswer()">接通</button>
+        </div>
+      </div>
+      <div id="invIn" style="display:none;">
+        <textarea id="invCodeIn" placeholder="将对方发来的邀请码 / 应答码粘贴到这里"></textarea>
+        <div class="row">
+          <button class="tm-btn-ghost" onclick="TM.closeInvite()">取消</button>
+          <button class="tm-btn-pri" id="invActionBtn" onclick="TM.doInviteAction()">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 更多菜单 -->
+  <div class="tm-modal-mask" id="moreMask">
+    <div class="tm-modal" style="width:min(320px,100%);">
+      <h3>更多</h3>
+      <div class="tm-menulist">
+        <button onclick="TM.toggleFull()">⛶ 全屏模式</button>
+        <button onclick="TM.copyMeetId()">🔗 复制会议号</button>
+        <button onclick="TM.openInvite()">👥 邀请好友</button>
+      </div>
+      <div class="row"><button class="tm-btn-ghost" style="flex:1;" onclick="TM.closeMore()">关闭</button></div>
+    </div>
+  </div>
+
+  <div class="tm-toast" id="toast"></div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    var ICON = {
+      mic:'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>',
+      micOff:'<path d="M1 1l22 22"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>',
+      cam:'<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',
+      camOff:'<path d="M1 1l22 22"/><path d="M16 16H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9.5 5h5a2 2 0 0 1 2 2v5m-6 4 6 5V7"/><path d="M21 7v2a7 7 0 0 1-.1 1.2"/>',
+      screen:'<path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M18 8l-5-5 5-5"/>',
+      people:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      chat:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+      layout:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+      rec:'<circle cx="12" cy="12" r="6"/>',
+      more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+      leave:'<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.07 8.18 2 2 0 0 1 5 6h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 13.91z"/>',
+      copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+      full:'<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>',
+      invite:'<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>'
+    };
+    function svg(name,size){
+      size = size || 22;
+      var paths = ICON[name] || '';
+      return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+paths+'</svg>';
+    }
+
+    var TM = window.TM = {};
+    var STUN = { iceServers:[{urls:'stun:stun.l.google.com:19302'}] };
+
+    // 状态
+    var state = {
+      tab:'join',
+      camOn:true, micOn:true,
+      role:null,            // 'host' | 'guest'
+      meetId:null,
+      selfName:'我',
+      localStream:null,
+      screenStream:null,
+      ws:null,              // WebSocket 信令连接
+      signalMode:null,      // 'auto' | 'manual' | 'connecting'
+      selfId:null,
+      peers:{},             // id -> {pc, name, stream, muted, camOn, audioEl, dc}
+      sharing:false,
+      recording:false,
+      layout:'gallery',
+      startTime:0,
+      timer:null,
+      audioCtx:null, analyser:null, micData:null,
+      hostOffer:null
+    };
+    var $ = function(id){ return document.getElementById(id); };
+
+    /* ---------- 工具函数 ---------- */
+    function toast(msg){
+      var t = $('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+    }
+    function randId(){ var s=''; for(var i=0;i<10;i++) s+=Math.floor(Math.random()*10); return s; }
+    function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+    /* ---------- 预加入：设备预览 ---------- */
+    // 隐藏「点击开启」遮罩
+    function hideEnable(){ var el=$('pjEnable'); if(el) el.hidden = true; }
+    // 显示遮罩（失败重试时附带错误信息）
+    function showEnable(errMsg){
+      var el=$('pjEnable');
+      if(!el) return;
+      el.hidden = false;
+      if(errMsg){
+        el.classList.add('error');
+        el.querySelector('.pj-en-txt').textContent = '授权失败，点击重试';
+        el.querySelector('.pj-en-sub').textContent = (errMsg||'') + '（若已拒绝，请在地址栏左侧的权限图标处重新允许，再点此重试）';
+      }else{
+        el.classList.remove('error');
+        el.querySelector('.pj-en-txt').textContent = '点击开启摄像头与麦克风';
+        el.querySelector('.pj-en-sub').textContent = '浏览器要求授权后才能使用，首次使用请在弹窗中点击「允许」';
+      }
+    }
+
+    function startPreview(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        showEnable('当前环境不支持摄像头（需 HTTPS 或 localhost）');
+        toast('当前环境不支持摄像头（需 HTTPS 或 localhost）');
+        return;
+      }
+      // 调用前先隐藏遮罩，避免点击态与加载态混淆
+      var en=$('pjEnable'); if(en) en.hidden=true;
+      var constraints = {
+        video: state.camOn ? {width:{ideal:1280},height:{ideal:720}} : false,
+        audio: state.micOn ? true : false
+      };
+      navigator.mediaDevices.getUserMedia(constraints).then(function(stream){
+        state.localStream = stream;
+        var v = $('pjVideo'); v.srcObject = stream; v.play().catch(function(){});
+        applyCamState();
+        fillDevices();
+        startMicMeter();
+        hideEnable();
+      }).catch(function(err){
+        var msg = (err&&err.message)?err.message:(err&&err.name?err.name:String(err));
+        toast('无法开启设备：'+msg);
+        // 保留开关状态以便重试；仅在设备完全不可用时才强制关闭
+        if(err && err.name==='NotFoundError'){ state.camOn=false; state.micOn=false; applyCamState(); applyToggles(); }
+        showEnable(msg);
+      });
+    }
+
+    // 由用户点击遮罩触发（满足浏览器的「用户手势」要求）
+    TM.enableDevices = function(){
+      // 若用户把摄像头/麦克风开关关了，点击开启时仍应请求权限，否则进不去设备
+      var wasOff = !state.camOn && !state.micOn;
+      if(wasOff){ state.camOn=true; state.micOn=true; applyToggles(); }
+      startPreview();
+    };
+
+    function fillDevices(){
+      navigator.mediaDevices.enumerateDevices().then(function(devs){
+        var cams = devs.filter(function(d){return d.kind==='videoinput';});
+        var mics = devs.filter(function(d){return d.kind==='audioinput';});
+        var spks = devs.filter(function(d){return d.kind==='audiooutput';});
+        function opt(list,sel){ return list.map(function(d,i){ return '<option value="'+d.deviceId+'">'+(d.label||('设备 '+(i+1)))+'</option>'; }).join(''); }
+        $('pjCamSel').innerHTML = opt(cams);
+        $('pjMicSel').innerHTML = opt(mics);
+        $('pjSpkSel').innerHTML = opt(spks);
+        if(state.localStream){
+          var vt = state.localStream.getVideoTracks()[0];
+          var at = state.localStream.getAudioTracks()[0];
+          if(vt) $('pjCamSel').value = vt.getSettings().deviceId||'';
+          if(at) $('pjMicSel').value = at.getSettings().deviceId||'';
+        }
+      });
+    }
+
+    // 页面加载时调用：仅枚举设备填充下拉框（无需用户手势，但 labels 此刻为空，授权后 by fillDevices 刷新）
+    function listDevices(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices){ return; }
+      navigator.mediaDevices.enumerateDevices().then(function(devs){
+        var cams = devs.filter(function(d){return d.kind==='videoinput';});
+        var mics = devs.filter(function(d){return d.kind==='audioinput';});
+        var spks = devs.filter(function(d){return d.kind==='audiooutput';});
+        function opt(list,kind){ return list.map(function(d,i){ return '<option value="'+d.deviceId+'">'+(d.label||('设备 '+(i+1)))+'</option>'; }).join(''); }
+        $('pjCamSel').innerHTML = opt(cams);
+        $('pjMicSel').innerHTML = opt(mics);
+        $('pjSpkSel').innerHTML = opt(spks);
+      }).catch(function(){});
+    }
+
+    function startMicMeter(){
+      try{
+        // 关闭上一次可能残留的 AudioContext / 分析器，避免反复开关摄像头时堆积多个上下文导致浏览器报错（上下文有数量上限）
+        if(state.audioCtx){ try{ state.audioCtx.close(); }catch(e){} }
+        state.audioCtx=null; state.analyser=null; state.micData=null;
+        var Ctx = window.AudioContext || window.webkitAudioContext; if(!Ctx) return;
+        state.audioCtx = new Ctx();
+        var src = state.audioCtx.createMediaStreamSource(state.localStream);
+        state.analyser = state.audioCtx.createAnalyser(); state.analyser.fftSize = 512;
+        src.connect(state.analyser);
+        state.micData = new Uint8Array(state.analyser.frequencyBinCount);
+        loopMeter();
+      }catch(e){}
+    }
+    function loopMeter(){
+      if(!state.analyser) return;
+      state.analyser.getByteTimeDomainData(state.micData);
+      var sum=0; for(var i=0;i<state.micData.length;i++){ var v=(state.micData[i]-128)/128; sum+=v*v; }
+      var rms = Math.sqrt(sum/state.micData.length);
+      $('pjMicBar').style.width = Math.min(100, rms*220) + '%';
+      requestAnimationFrame(loopMeter);
+    }
+
+    /* 切换预加入时的摄像头/麦克风 */
+    function restartPreview(){
+      if(state.localStream){ state.localStream.getTracks().forEach(function(t){t.stop();}); state.localStream=null; }
+      startPreview();
+    }
+    TM.togglePreCam = function(){
+      state.camOn = !state.camOn; applyCamState(); applyToggles();
+      // 若已有权限则实时切换轨道
+      if(state.localStream){
+        var vt = state.localStream.getVideoTracks()[0];
+        if(state.camOn && !vt){ restartPreview(); }
+        else if(vt){ vt.enabled = state.camOn; }
+      }
+    };
+    TM.togglePreMic = function(){
+      state.micOn = !state.micOn; applyToggles();
+      if(state.localStream){
+        var at = state.localStream.getAudioTracks()[0];
+        if(state.micOn && !at){ restartPreview(); }
+        else if(at){ at.enabled = state.micOn; }
+      }
+    };
+    function applyCamState(){
+      $('pjPreview').classList.toggle('off', !state.camOn);
+      updateAvatar();
+    }
+    // 摄像头有实时画面时隐藏「我」占位头像，避免压在视频上
+    function updateAvatar(){
+      var vt = state.localStream && state.localStream.getVideoTracks()[0];
+      var hasVid = !!(vt && state.camOn && vt.readyState==='live' && vt.enabled);
+      $('pjAvatar').style.display = hasVid ? 'none' : 'flex';
+    }
+    function applyToggles(){
+      $('tgCam').classList.toggle('off', !state.camOn);
+      $('tgCamIco').innerHTML = svg(state.camOn?'cam':'camOff',20);
+      $('tgCamTxt').textContent = state.camOn?'开启':'关闭';
+      $('tgMic').classList.toggle('off', !state.micOn);
+      $('tgMicIco').innerHTML = svg(state.micOn?'mic':'micOff',20);
+      $('tgMicTxt').textContent = state.micOn?'开启':'关闭';
+    }
+
+    TM.switchTab = function(t){
+      state.tab = t;
+      $('tabJoin').classList.toggle('active', t==='join');
+      $('tabQuick').classList.toggle('active', t==='quick');
+      $('joinPane').style.display = t==='join'?'block':'none';
+      $('quickPane').style.display = t==='quick'?'block':'none';
+      $('joinBtn').textContent = t==='join'?'加入会议':'发起会议';
+    };
+
+    // 预加入设备切换
+    $('pjCamSel').addEventListener('change', function(){
+      if(!state.localStream) return;
+      var v = state.localStream.getVideoTracks()[0];
+      if(v) v.stop();
+      navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:this.value}}}).then(function(s){
+        var nt = s.getVideoTracks()[0]; nt.enabled = state.camOn;
+        state.localStream.removeTrack(v); state.localStream.addTrack(nt);
+        $('pjVideo').srcObject = state.localStream; applyCamState();
+        replaceVideoTrack(nt);
+      }).catch(function(){ toast('切换摄像头失败'); });
+    });
+    $('pjMicSel').addEventListener('change', function(){
+      if(!state.localStream) return;
+      var a = state.localStream.getAudioTracks()[0];
+      if(a) a.stop();
+      navigator.mediaDevices.getUserMedia({audio:{deviceId:{exact:this.value}}}).then(function(s){
+        var nt = s.getAudioTracks()[0]; nt.enabled = state.micOn;
+        state.localStream.removeTrack(a); state.localStream.addTrack(nt);
+        sendState();
+      }).catch(function(){ toast('切换麦克风失败'); });
+    });
+    $('pjSpkSel').addEventListener('change', function(){
+      var val = this.value;
+      var v = $('pjVideo'); if(v.setSinkId) try{ v.setSinkId(val); }catch(e){}
+      // 远端音频元素在会议中创建，逐个切换输出设备
+      Object.keys(state.peers).forEach(function(id){
+        var p = state.peers[id];
+        if(p.audioEl && p.audioEl.setSinkId){ try{ p.audioEl.setSinkId(val); }catch(e){} }
+      });
+    });
+
+    /* ---------- 进入会议 ---------- */
+    TM.enterMeeting = function(){
+      var name;
+      if(state.tab==='join'){
+        var id = ($('joinId').value||'').replace(/\D/g,'');
+        name = ($('joinName').value||'').trim();
+        if(id.length<9){ toast('请输入至少 9 位会议号'); return; }
+        if(!name){ toast('请填写昵称'); return; }
+        state.role='guest'; state.meetId=id;
+      } else {
+        name = ($('quickName').value||'').trim();
+        if(!name){ toast('请填写昵称'); return; }
+        state.role='host'; state.meetId=randId();
+      }
+      // 记忆信令服务器地址
+      var su = ($('signalUrl') && $('signalUrl').value || '').trim();
+      if(su){ localStorage.setItem('tmSignalUrl', su); } else { localStorage.removeItem('tmSignalUrl'); }
+      state.selfName = name;
+      $('pjNameTag').textContent = name;
+      $('pjAvatar').textContent = (name[0]||'我');
+
+      $('prejoin').style.display='none';
+      $('meeting').classList.add('live');
+
+      // 确保本地流含当前 cam/mic 设置
+      if(state.localStream){
+        state.localStream.getVideoTracks().forEach(function(t){t.enabled=state.camOn;});
+        state.localStream.getAudioTracks().forEach(function(t){t.enabled=state.micOn;});
+      }
+
+      $('meetId').innerHTML = '会议号：<span class="num">' + (state.meetId||'—') + '</span>';
+      // 控制条图标
+      paintControls();
+      // 本人画面
+      addTile('self', state.selfName, true);
+      if(state.localStream) setTileVideo('self', state.localStream, true);
+      setTileMic('self', !state.micOn);
+      renderMembers();
+      startTimer();
+
+      // 连接信令服务器（自动协商；连不上则回落手动复制码模式）
+      connectSignal();
+    };
+
+    /* ---------- 计时器 ---------- */
+    function startTimer(){
+      state.startTime = Date.now();
+      state.timer = setInterval(function(){
+        var s = Math.floor((Date.now()-state.startTime)/1000);
+        var m = String(Math.floor(s/60)).padStart(2,'0');
+        var ss = String(s%60).padStart(2,'0');
+        $('meetTimer').textContent = m+':'+ss;
+      },1000);
+    }
+
+    /* ---------- 视频网格 ---------- */
+    function addTile(id, name, isSelf){
+      if($('tile-'+id)) return $('tile-'+id);
+      var grid = $('grid');
+      var tile = document.createElement('div');
+      tile.className='tm-tile'; tile.id='tile-'+id;
+      tile.innerHTML =
+        '<video autoplay playsinline '+(isSelf?'muted':'')+'></video>'+
+        '<div class="tile-avatar">'+esc((name||'?')[0]||'?')+'</div>'+
+        '<div class="tile-camoff">摄像头已关闭</div>'+
+        '<div class="tile-host" style="display:none">主持人</div>'+
+        '<div class="tile-name"><span class="tile-mic"></span><span class="nm">'+esc(name)+'</span></div>';
+      grid.appendChild(tile);
+      layoutGrid();
+      return tile;
+    }
+    function layoutGrid(){
+      var n = $('grid').children.length;
+      var cols = n<=1?1 : n<=4?2 : n<=9?3 : 4;
+      if(state.layout==='speaker' && n>1){ $('grid').classList.add('speaker'); }
+      else { $('grid').classList.remove('speaker'); $('grid').style.gridTemplateColumns='repeat('+cols+',minmax(220px,1fr))'; }
+    }
+    function setTileVideo(id, stream, isSelf){
+      var tile = $('tile-'+id); if(!tile) return;
+      var v = tile.querySelector('video');
+      v.srcObject = stream;
+      if(isSelf){ v.style.transform='scaleX(-1)'; }
+      v.play();
+      var hasVideo = stream.getVideoTracks().some(function(t){return t.readyState==='live' && t.enabled;});
+      tile.classList.toggle('off', !hasVideo);
+      tile.querySelector('.tile-avatar').style.display = hasVideo?'none':'flex';
+      tile.querySelector('.tile-camoff').style.display = hasVideo?'none':'block';
+    }
+    function setTileMic(id, muted){
+      var tile=$('tile-'+id); if(!tile) return;
+      var m=tile.querySelector('.tile-mic');
+      m.classList.toggle('muted', muted);
+      m.innerHTML = svg(muted?'micOff':'mic',13);
+    }
+    function setTileName(id,name){ var t=$('tile-'+id); if(t) t.querySelector('.nm').textContent=name; }
+    function removeTile(id){ var t=$('tile-'+id); if(t) t.remove(); layoutGrid(); }
+
+    /* ---------- 控制条图标 ---------- */
+    function paintControls(){
+      $('ctrlMic').innerHTML = svg(state.micOn?'mic':'micOff',22)+'<span class="c-lbl">'+(state.micOn?'静音':'取消静音')+'</span>';
+      $('ctrlMic').classList.toggle('off', !state.micOn);
+      $('ctrlCam').innerHTML = svg(state.camOn?'cam':'camOff',22)+'<span class="c-lbl">'+(state.camOn?'停止视频':'开启视频')+'</span>';
+      $('ctrlCam').classList.toggle('off', !state.camOn);
+      $('ctrlShare').innerHTML = svg('screen',22)+'<span class="c-lbl">'+(state.sharing?'停止共享':'共享屏幕')+'</span>';
+      $('ctrlShare').classList.toggle('lit', state.sharing);
+      $('ctrlMem').innerHTML = svg('people',22)+'<span class="c-lbl">成员</span>';
+      $('ctrlChat').innerHTML = svg('chat',22)+'<span class="c-lbl">聊天</span>';
+      $('ctrlLayout').innerHTML = svg('layout',22)+'<span class="c-lbl">'+(state.layout==='speaker'?'宫格':'演讲者')+'</span>';
+      $('ctrlRec').innerHTML = svg('rec',22)+'<span class="c-lbl">'+(state.recording?'停止录制':'录制')+'</span>';
+      $('ctrlRec').classList.toggle('lit', state.recording);
+      $('ctrlMore').innerHTML = svg('more',22)+'<span class="c-lbl">更多</span>';
+      $('leaveIco').innerHTML = svg('leave',20);
+      $('btnCopyId').innerHTML = svg('copy',18);
+      $('btnInvite').innerHTML = svg('invite',18);
+      $('btnFull').innerHTML = svg('full',18);
+    }
+
+    TM.toggleMic = function(){
+      state.micOn=!state.micOn;
+      if(state.localStream) state.localStream.getAudioTracks().forEach(function(t){t.enabled=state.micOn;});
+      paintControls(); setTileMic('self', !state.micOn); renderMembers(); sendState();
+    };
+    TM.toggleCam = function(){
+      state.camOn=!state.camOn;
+      if(state.localStream) state.localStream.getVideoTracks().forEach(function(t){t.enabled=state.camOn;});
+      applyCamState(); paintControls();
+      var tile=$('tile-self'); if(tile){
+        tile.querySelector('.tile-avatar').style.display = state.camOn?'none':'flex';
+        tile.querySelector('.tile-camoff').style.display = state.camOn?'none':'block';
+      }
+      renderMembers(); sendState();
+    };
+    TM.toggleLayout = function(){
+      state.layout = state.layout==='gallery'?'speaker':'gallery';
+      paintControls(); layoutGrid();
+    };
+    TM.toggleRec = function(){
+      state.recording=!state.recording;
+      $('recBadge').classList.toggle('on', state.recording);
+      paintControls(); toast(state.recording?'开始录制':'录制已停止');
+    };
+    TM.toggleFull = function(){
+      var el=$('meeting');
+      if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); }
+      else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+    };
+
+    /* ---------- 屏幕共享 ---------- */
+    TM.toggleShare = function(){
+      if(state.sharing){ stopShare(); return; }
+      if(!navigator.mediaDevices.getDisplayMedia){ toast('当前浏览器不支持屏幕共享'); return; }
+      navigator.mediaDevices.getDisplayMedia({video:true,audio:false}).then(function(s){
+        state.screenStream=s; state.sharing=true;
+        var track=s.getVideoTracks()[0];
+        setTileVideo('self', s, true);
+        // 屏幕共享不应镜像（摄像头才需要镜像），去掉翻转移除 → 对你自己显示的共享画面不再左右颠倒
+        var sv=$('tile-self'); if(sv){ var svv=sv.querySelector('video'); if(svv) svv.style.transform='none'; }
+        if(state.localStream) replaceVideoTrack(track);
+        track.onended=function(){ stopShare(); };
+        paintControls(); toast('正在共享屏幕');
+      }).catch(function(){ toast('已取消共享'); });
+    };
+    function stopShare(){
+      state.sharing=false;
+      if(state.screenStream){ state.screenStream.getTracks().forEach(function(t){t.stop();}); state.screenStream=null; }
+      if(state.localStream){ setTileVideo('self', state.localStream, true); replaceVideoTrack(state.localStream.getVideoTracks()[0]); }
+      paintControls();
+    }
+    function replaceVideoTrack(newTrack){
+      Object.keys(state.peers).forEach(function(id){
+        var p=state.peers[id]; if(!p.pc) return;
+        var sender = p.pc.getSenders().find(function(s){ return s.track && s.track.kind==='video'; });
+        if(sender) sender.replaceTrack(newTrack);
+      });
+    }
+
+    /* ---------- 成员 / 聊天 面板 ---------- */
+    function renderMembers(){
+      var list=$('memList'); var html='';
+      html += memRow('self', state.selfName, !state.micOn, state.camOn, state.role==='host');
+      Object.keys(state.peers).forEach(function(id){
+        var p=state.peers[id]; html += memRow(id, p.name, p.muted, p.camOn, false);
+      });
+      list.innerHTML=html;
+    }
+    function memRow(id,name,muted,camOn,isHost){
+      return '<div class="tm-mem">'+
+        '<div class="m-av">'+esc((name||'?')[0]||'?')+'</div>'+
+        '<div class="m-name">'+esc(name)+(isHost?'（我·主持人）':'')+'</div>'+
+        '<div class="m-ico '+(muted?'muted':'')+'">'+(svg(muted?'micOff':'mic',16))+'</div>'+
+        '</div>';
+    }
+    TM.togglePanel = function(which){
+      var p=$('panel'); var open = p.classList.contains('open') && $('panel').dataset.view===which;
+      if(open){ p.classList.remove('open'); return; }
+      p.classList.add('open'); p.dataset.view=which;
+      $('memView').style.display = which==='mem'?'block':'none';
+      $('chatView').style.display = which==='chat'?'flex':'none';
+      $('panelTitle').textContent = which==='mem'?'成员（'+(Object.keys(state.peers).length+1)+'）':'聊天';
+      if(which==='chat'){ setTimeout(function(){$('chatInput').focus();},50); }
+    };
+    TM.closePanel = function(){ $('panel').classList.remove('open'); };
+
+    function addChat(author, text, me){
+      var box=$('chatList');
+      var el=document.createElement('div'); el.className='tm-msg'+(me?' me':'');
+      el.innerHTML='<div class="m-author">'+esc(author)+'</div><div class="m-bubble">'+esc(text)+'</div>';
+      box.appendChild(el); box.scrollTop=box.scrollHeight;
+    }
+    TM.sendChat = function(){
+      var inp=$('chatInput'); var t=(inp.value||'').trim(); if(!t) return;
+      addChat(state.selfName, t, true); inp.value='';
+      if(state.ws && state.ws.readyState===WebSocket.OPEN){ state.ws.send(JSON.stringify({type:'chat', text:t})); }
+      else { broadcastData({type:'chat', name:state.selfName, text:t}); }
+    };
+
+    /* ---------- 弹窗通用 ---------- */
+    function closeAllModal(){ $('inviteMask').classList.remove('open'); $('moreMask').classList.remove('open'); }
+
+    TM.openMore = function(){ $('moreMask').classList.add('open'); };
+    TM.closeMore = function(){ $('moreMask').classList.remove('open'); };
+
+    /* ---------- 邀请 / 点对点连接 ---------- */
+    TM.openInvite = function(){
+      if(state.signalMode==='auto'){
+        $('invTitle').textContent='邀请参会';
+        $('invDesc').textContent='把会议号或下方链接发给好友，对方在「加入会议」输入同一会议号即可自动进入同一会议室。';
+        $('invOut').style.display='block'; $('invIn').style.display='none';
+        var link = location.origin + location.pathname + '?room=' + encodeURIComponent(state.meetId);
+        $('invCodeOut').textContent = '会议号：' + state.meetId + '\n会议链接：' + link;
+      } else if(state.role==='host'){
+        $('invTitle').textContent='邀请好友（手动模式）';
+        $('invDesc').textContent='复制下面邀请码发给好友，对方粘贴后生成应答码发回给你即可接通（点对点）。';
+        $('invOut').style.display='block'; $('invIn').style.display='none';
+        $('invCodeOut').textContent = state.hostOffer ? state.hostOffer : '（正在生成邀请码，请稍候…）';
+      } else {
+        $('invTitle').textContent='连接到会议（手动模式）';
+        $('invDesc').textContent='粘贴主持人发给你的邀请码，点击「生成应答」后会得到一段应答码，把它发回主持人即可接通。';
+        $('invOut').style.display='none'; $('invIn').style.display='block';
+        $('invActionBtn').textContent='生成应答';
+      }
+      $('inviteMask').classList.add('open');
+    };
+    TM.closeInvite = function(){ $('inviteMask').classList.remove('open'); };
+    TM.copyInvite = function(){
+      var t=$('invCodeOut').textContent; if(!t) return;
+      copyText(t); toast('已复制');
+    };
+    TM.doInviteAction = function(){
+      if(state.signalMode==='auto'){ TM.closeInvite(); return; }
+      var code=($('invCodeIn').value||'').trim();
+      if(!code){ toast('请先粘贴主持人的邀请码'); return; }
+      try{
+        var offer=JSON.parse(code);
+        onSignal('manual', {kind:'offer', sdp:offer});
+        toast('正在生成应答码…');
+      }catch(e){ toast('邀请码格式不正确（需为 JSON）'); }
+    };
+
+    function waitForIce(pc){
+      return new Promise(function(res){
+        if(pc.iceGatheringState==='complete') return res();
+        function chk(){ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange',chk); res(); } }
+        pc.addEventListener('icegatheringstatechange', chk);
+        setTimeout(res, 2500);
+      });
+    }
+
+    function ensurePeer(id, name){
+      if(!state.peers[id]){
+        state.peers[id] = { id:id, name:name||'对方', pc:null, stream:null, muted:false, camOn:true, audioEl:null, dc:null };
+      } else if(name && state.peers[id].name==='对方'){ state.peers[id].name = name; }
+      return state.peers[id];
+    }
+    // 取（或创建）与某 peer 的 RTCPeerConnection；自动挂轨、ICE、远端音频
+    function getOrCreatePC(id, name){
+      var p = ensurePeer(id, name);
+      if(p.pc) return p.pc;
+      var pc = new RTCPeerConnection(STUN);
+      p.pc = pc;
+      pc.onicecandidate = function(e){ if(e.candidate) sendSignal(id, {kind:'ice', candidate:e.candidate}); };
+      pc.ondatachannel = function(e){ p.dc=e.channel; setupDataChannel(e.channel); };
+      pc.ontrack = function(e){
+        var pp = state.peers[id]; if(!pp) return;
+        pp.stream = e.streams[0];
+        setTileVideo(id, e.streams[0], false);
+        // 对方视频格子里的 <video> 必须静音，否则远端音频会被播放两次（独立 audio 元素负责出声）
+        var tv=$('tile-'+id); if(tv){ var pv=tv.querySelector('video'); if(pv) pv.muted=true; }
+        if(pp.audioEl) pp.audioEl.srcObject = e.streams[0];
+        else {
+          var a=document.createElement('audio'); a.autoplay=true; a.muted=false; a.srcObject=e.streams[0];
+          var spk=$('pjSpkSel'); if(spk && spk.value && a.setSinkId){ try{a.setSinkId(spk.value);}catch(_){} }
+          pp.audioEl=a; document.body.appendChild(a);
+        }
+        renderMembers();
+      };
+      pc.onconnectionstatechange = function(){
+        if(pc.connectionState==='connected'){ toast((p.name||'对方')+' 已连接'); }
+        else if(pc.connectionState==='failed'){ toast((p.name||'对方')+' 连接失败，请检查网络'); }
+      };
+      if(state.localStream) state.localStream.getTracks().forEach(function(t){ pc.addTrack(t, state.localStream); });
+      return pc;
+    }
+    // 由后加入者向已有 peer 发起 offer（避免双方同时 offer 造成 glare）
+    function createOfferTo(id, name){
+      var p = state.peers[id] || ensurePeer(id, name);
+      var pc = getOrCreatePC(id, name);
+      if(state.signalMode==='manual'){ var dc=pc.createDataChannel('ctrl'); p.dc=dc; setupDataChannel(dc); }
+      pc.createOffer().then(function(o){ return pc.setLocalDescription(o); })
+        .then(function(){ return waitForIce(pc); })
+        .then(function(){ sendSignal(id, {kind:'offer', sdp:pc.localDescription}); })
+        .catch(function(e){ toast('协商失败：'+(e&&e.message?e.message:e)); });
+    }
+    function onSignal(from, data){
+      if(data.kind==='offer'){
+        var pc = getOrCreatePC(from, (state.peers[from]&&state.peers[from].name)||'对方');
+        pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+          .then(function(){ return pc.createAnswer(); })
+          .then(function(a){ return pc.setLocalDescription(a); })
+          .then(function(){ return waitForIce(pc); })
+          .then(function(){ sendSignal(from, {kind:'answer', sdp:pc.localDescription}); })
+          .catch(function(){ toast('应答失败'); });
+      } else if(data.kind==='answer'){
+        var pc = state.peers[from] && state.peers[from].pc;
+        if(pc) pc.setRemoteDescription(new RTCSessionDescription(data.sdp)).catch(function(){});
+      } else if(data.kind==='ice'){
+        var pc2 = state.peers[from] && state.peers[from].pc;
+        if(pc2) pc2.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(function(){});
+      }
+    }
+    function sendSignal(toId, data){
+      if(state.ws && state.ws.readyState===WebSocket.OPEN){
+        state.ws.send(JSON.stringify({type:'signal', to:toId, data:data}));
+      } else {
+        manualSignal(toId, data);   // 离线兜底：手动复制码
+      }
+    }
+    // 离线（无信令服务器）时的手动复制码流程
+    function manualSignal(toId, data){
+      if(data.kind==='offer'){
+        state.hostOffer = JSON.stringify(data.sdp);
+        if($('inviteMask').classList.contains('open')) $('invCodeOut').textContent = state.hostOffer;
+      } else if(data.kind==='answer'){
+        var ans = JSON.stringify(data.sdp); state.hostOffer = ans;
+        $('invTitle').textContent='把这段应答码发回主持人';
+        $('invDesc').textContent='复制下面内容发送给主持人，对方粘贴后即可接通。';
+        $('invIn').style.display='none'; $('invOut').style.display='block';
+        $('invCodeOut').textContent = ans;
+        $('invActionBtn').textContent='完成';
+      }
+    }
+
+    function setupDataChannel(dc){
+      dc.onopen=function(){ sendState(); addChat('系统','已连接到点对点加密通道'); };
+      dc.onmessage=function(ev){
+        try{ var m=JSON.parse(ev.data);
+          if(m.type==='chat'){ addChat(m.name, m.text, false); }
+          else if(m.type==='state'){
+            var pid = findPeerByDc(dc);
+            if(pid && state.peers[pid]){ var pp=state.peers[pid]; pp.muted=!m.mic; pp.camOn=m.cam; setTileMic(pid, !m.mic); renderMembers(); }
+          }
+        }catch(e){}
+      };
+    }
+    function findPeerByDc(dc){
+      var found=null;
+      Object.keys(state.peers).forEach(function(id){ if(state.peers[id].dc===dc) found=id; });
+      return found;
+    }
+    function broadcastData(obj){
+      Object.keys(state.peers).forEach(function(id){
+        var p=state.peers[id];
+        if(p.dc && p.dc.readyState==='open') p.dc.send(JSON.stringify(obj));
+      });
+    }
+    function sendState(){
+      if(state.ws && state.ws.readyState===WebSocket.OPEN){
+        state.ws.send(JSON.stringify({type:'state', mic:state.micOn, cam:state.camOn}));
+      } else { broadcastData({type:'state', name:state.selfName, mic:state.micOn, cam:state.camOn}); }
+    }
+
+    /* ---------- 信令服务器连接（WebRTC 自动协商，多人网格） ---------- */
+    function signalUrl(){
+      var ov = localStorage.getItem('tmSignalUrl');
+      if(ov) return ov;
+      var proto = location.protocol==='https:' ? 'wss://' : 'ws://';
+      return proto + location.host + '/ws';
+    }
+    function connectSignal(){
+      var WS = window.WebSocket || window.MozWebSocket;
+      if(!WS){ enterManualMode(); return; }
+      state.signalMode='connecting';
+      var ws;
+      try{ ws = new WS(signalUrl()); }catch(e){ enterManualMode(); return; }
+      state.ws = ws;
+      var done=false;
+      var to = setTimeout(function(){ if(!done){ try{ws.close();}catch(e){} } }, 4000);
+      ws.onopen = function(){
+        done=true; clearTimeout(to); state.signalMode='auto';
+        ws.send(JSON.stringify({type:'join', room:state.meetId, name:state.selfName}));
+        sendState();   // 通知房间内其他成员自己的初始麦克风/摄像头状态
+        toast('已连接信令服务器');
+      };
+      ws.onmessage = function(ev){
+        var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+        if(m.type==='welcome'){ state.selfId=m.id; }
+        else if(m.type==='joined'){ state.selfId=m.you; (m.peers||[]).forEach(function(p){ ensurePeer(p.id,p.name); if(!$('tile-'+p.id)) addTile(p.id,p.name,false); createOfferTo(p.id,p.name); }); }
+        else if(m.type==='peer-joined'){ ensurePeer(m.id,m.name); if(!$('tile-'+m.id)) addTile(m.id,m.name,false); renderMembers(); sendState(); }
+        else if(m.type==='signal'){ onSignal(m.from, m.data); }
+        else if(m.type==='chat'){ addChat(m.name, m.text, false); }
+        else if(m.type==='state'){ var p=state.peers[m.from]; if(p){ p.muted=!m.mic; p.camOn=m.cam; setTileMic(m.from, !m.mic); renderMembers(); } }
+        else if(m.type==='bye'){ removePeer(m.from); }
+      };
+      ws.onclose = function(){ if(state.signalMode==='connecting'){ enterManualMode(); } };
+      ws.onerror = function(){ try{ws.close();}catch(e){} };
+    }
+    function enterManualMode(){
+      if(state.signalMode==='manual') return;
+      state.signalMode='manual'; state.ws=null;
+      toast('未连接信令服务器，已切换为手动复制码模式');
+      if(state.role==='host'){ createOfferTo('manual','对方'); }
+      else { toast('请点击顶部「邀请」粘贴主持人的邀请码'); }
+    }
+    function removePeer(id){
+      var p=state.peers[id]; if(!p) return;
+      if(p.pc){ try{p.pc.close();}catch(e){} }
+      if(p.audioEl){ p.audioEl.remove(); }
+      removeTile(id);
+      delete state.peers[id];
+      renderMembers();
+      toast((p.name||'对方')+' 已离开会议');
+    }
+
+    TM.hostAcceptAnswer = function(){
+      var code=($('invAnswerIn').value||'').trim();
+      if(!code){ toast('请先粘贴对方的应答码'); return; }
+      try{ var ans=JSON.parse(code); onSignal('manual', {kind:'answer', sdp:ans}); toast('已接受应答，正在接通…'); }
+      catch(e){ toast('应答码格式不正确'); }
+    };
+
+    TM.copyMeetId = function(){
+      var txt=state.meetId||'';
+      copyText(txt); toast('会议号已复制：'+txt);
+    };
+
+    /* ---------- 离开 ---------- */
+    TM.leave = function(){
+      Object.keys(state.peers).forEach(function(id){ removePeer(id); });
+      if(state.ws){ try{state.ws.close();}catch(e){} state.ws=null; }
+      state.signalMode=null; state.selfId=null;
+      if(state.localStream){ state.localStream.getTracks().forEach(function(t){t.stop();}); state.localStream=null; }
+      if(state.screenStream){ state.screenStream.getTracks().forEach(function(t){t.stop();}); state.screenStream=null; }
+      if(state.audioCtx){ try{state.audioCtx.close();}catch(e){} state.audioCtx=null; }
+      state.analyser=null; state.micData=null;
+      clearInterval(state.timer);
+      $('grid').innerHTML=''; $('chatList').innerHTML=''; $('panel').classList.remove('open');
+      state.sharing=false; state.recording=false; state.hostOffer=null;
+      $('recBadge').classList.remove('on');
+      $('meeting').classList.remove('live');
+      $('prejoin').style.display='flex';
+      restartPreview();
+      toast('已离开会议');
+    };
+
+    /* ---------- 复制文本 ---------- */
+    function copyText(t){
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(function(){fallbackCopy(t);}); }
+      else fallbackCopy(t);
+    }
+    function fallbackCopy(t){ var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+      try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); }
+
+    /* 点击遮罩关闭弹窗 */
+    [$('inviteMask'),$('moreMask')].forEach(function(m){
+      m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('open'); });
+    });
+
+    /* ---------- 初始化 ---------- */
+    applyToggles(); applyCamState(); paintControls();
+    TM.switchTab('join');
+    // 预填信令服务器地址（上次记忆的值）
+    if($('signalUrl')){ try{ $('signalUrl').value = localStorage.getItem('tmSignalUrl')||''; }catch(e){} }
+    // 支持通过链接直接带入会议号：...?room=123456789
+    try{
+      var rp = new URLSearchParams(location.search).get('room');
+      if(rp){ TM.switchTab('join'); if($('joinId')) $('joinId').value = rp; }
+    }catch(e){}
+    // 页面加载只枚举设备（无需用户手势）；getUserMedia 必须由用户点击遮罩触发，
+    // 否则 Chrome/Edge/Firefox/Safari 会因缺少用户手势而直接拒绝权限请求。
+    listDevices();
+    var enBtn = $('pjEnable');
+    if(enBtn) enBtn.addEventListener('click', function(e){ e.preventDefault(); TM.enableDevices(); });
+    window.addEventListener('beforeunload', function(){ if(state.localStream) state.localStream.getTracks().forEach(function(t){t.stop();}); });
+  })();
+  </script>
+</body>
+</html>

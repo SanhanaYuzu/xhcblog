@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电路模拟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:1000px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .ct-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;}
+    body.dark .panel{box-shadow:none;}
+
+    .ct-field{margin-bottom:16px;}
+    .ct-field .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+    .ct-field label{font-size:13px;font-weight:600;color:var(--text-2);}
+    .ct-field .val{font-size:13px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums;}
+    .ct-field input[type=range]{width:100%;accent-color:var(--primary);}
+
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;flex:1;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .btn.on{background:#34c759;border-color:#34c759;color:#fff;}
+    .btn.on:hover{background:#2aa84a;color:#fff;}
+
+    .ct-btns{display:flex;gap:10px;margin-top:6px;}
+
+    .ct-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;}
+    .ct-stat{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg);text-align:center;}
+    .ct-stat .k{font-size:11.5px;color:var(--text-3);}
+    .ct-stat .v{font-size:16px;font-weight:700;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums;}
+
+    .ct-canvas-wrap{background:var(--bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+    #ctCanvas{display:block;width:100%;height:420px;}
+
+    .ct-legend{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.6;}
+    .ct-legend b{color:var(--text-2);}
+
+    @media(max-width:760px){
+      .ct-grid{grid-template-columns:1fr;}
+      .panel{padding:18px 15px;}
+      #ctCanvas{height:340px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔌</span>
+      <h1>电路模拟</h1>
+    </div>
+    <p class="tool-sub">拨动开关控制电路通断，实时观察灯泡亮灭、电流大小与电子流动。符合欧姆定律 I = U / R。</p>
+
+    <div class="ct-grid">
+      <div class="panel">
+        <div class="ct-field">
+          <div class="row"><label>电源电压 U</label><span class="val" id="uVal">6.0 V</span></div>
+          <input type="range" id="uRange" min="0" max="12" step="0.1" value="6">
+        </div>
+        <div class="ct-field">
+          <div class="row"><label>总电阻 R</label><span class="val" id="rVal">5.0 Ω</span></div>
+          <input type="range" id="rRange" min="1" max="20" step="0.5" value="5">
+        </div>
+
+        <div class="ct-btns">
+          <button class="btn on" id="switchBtn">🔛 开关：闭合</button>
+          <button class="btn" id="resetBtn">↺ 重置</button>
+        </div>
+
+        <div class="ct-stats">
+          <div class="ct-stat"><div class="k">电流 I</div><div class="v" id="stI">—</div></div>
+          <div class="ct-stat"><div class="k">功率 P</div><div class="v" id="stP">—</div></div>
+          <div class="ct-stat"><div class="k">灯泡</div><div class="v" id="stBulb">—</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="ct-canvas-wrap">
+          <canvas id="ctCanvas"></canvas>
+        </div>
+        <div class="ct-legend">
+          电路说明：<b>🔋 电池</b> 提供电压　<b>🔘 开关</b> 控制通断　<b>💡 灯泡</b> 亮度随功率变化　<b style="color:#34c759">●</b> 电子沿导线流动，速度正比于电流。<br>
+          闭合开关且有电压时电路导通，灯泡点亮；断开或电压为 0 时电流为零，灯泡熄灭。
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var canvas = document.getElementById("ctCanvas");
+      var ctx = canvas.getContext("2d");
+      var uRange = document.getElementById("uRange"), rRange = document.getElementById("rRange");
+      var uVal = document.getElementById("uVal"), rVal = document.getElementById("rVal");
+      var switchBtn = document.getElementById("switchBtn"), resetBtn = document.getElementById("resetBtn");
+      var stI = document.getElementById("stI"), stP = document.getElementById("stP"), stBulb = document.getElementById("stBulb");
+
+      var DPR = window.devicePixelRatio || 1;
+      var W = 0, H = 0;
+      var state = { U: 6, R: 5, closed: true };
+      var electrons = [];
+      var ELECTRON_COUNT = 30;
+      var flow = 0;          // 当前电子流动相位
+      var rafId = null;
+
+      function fit() {
+        W = canvas.clientWidth; H = canvas.clientHeight;
+        canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      // 计算回路几何
+      function geom() {
+        var padX = 70, padY = 70;
+        var left = padX, right = W - padX, top = padY, bottom = H - padY;
+        var midX = W / 2;
+        return { left: left, right: right, top: top, bottom: bottom, midX: midX };
+      }
+
+      function current() {
+        if (!state.closed || state.U <= 0) return 0;
+        return state.U / state.R;
+      }
+
+      // 沿矩形回路周长取点，s ∈ [0,1) 顺时针
+      function perimeterPoint(s) {
+        var g = geom();
+        var topLen = g.right - g.left;
+        var sideLen = g.bottom - g.top;
+        var total = 2 * topLen + 2 * sideLen;
+        var d = (s % 1 + 1) % 1 * total;
+        // TL -> TR (top)
+        if (d <= topLen) return { x: g.left + d, y: g.top };
+        d -= topLen;
+        // TR -> BR (right)
+        if (d <= sideLen) return { x: g.right, y: g.top + d };
+        d -= sideLen;
+        // BR -> BL (bottom)
+        if (d <= topLen) return { x: g.right - d, y: g.bottom };
+        d -= topLen;
+        // BL -> TL (left)
+        return { x: g.left, y: g.bottom - d };
+      }
+
+      function computeElectrons() {
+        electrons = [];
+        for (var i = 0; i < ELECTRON_COUNT; i++) electrons.push(i / ELECTRON_COUNT);
+      }
+
+      function drawWire(g) {
+        ctx.strokeStyle = "rgba(150,160,180,0.85)";
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        // 左竖线
+        ctx.moveTo(g.left, g.top); ctx.lineTo(g.left, g.bottom);
+        // 下横线
+        ctx.lineTo(g.right, g.bottom);
+        // 右竖线
+        ctx.lineTo(g.right, g.top);
+        // 上横线（开关处留缺口）
+        var gap = 26;
+        var gx1 = g.midX - gap, gx2 = g.midX + gap;
+        ctx.moveTo(g.left, g.top);
+        ctx.lineTo(gx1, g.top);
+        ctx.moveTo(gx2, g.top);
+        ctx.lineTo(g.right, g.top);
+        ctx.stroke();
+
+        // 开关
+        if (state.closed) {
+          // 闭合：直接连接缺口
+          ctx.strokeStyle = "#ff9500";
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(gx1, g.top); ctx.lineTo(gx2, g.top);
+          ctx.stroke();
+        } else {
+          // 断开：杠杆翘起
+          ctx.strokeStyle = "#ff3b30";
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(gx1, g.top);
+          ctx.lineTo(g.midX + gap * 0.9, g.top - 22);
+          ctx.stroke();
+          // 两端接点
+          ctx.fillStyle = "#ff3b30";
+          ctx.beginPath(); ctx.arc(gx1, g.top, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(gx2, g.top, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      function drawBattery(g) {
+        var x = g.left, y = (g.top + g.bottom) / 2;
+        ctx.strokeStyle = "#444c5e";
+        ctx.lineWidth = 3;
+        // 长线（+）
+        ctx.beginPath(); ctx.moveTo(x - 14, y - 12); ctx.lineTo(x - 14, y + 12); ctx.stroke();
+        // 短线（-）
+        ctx.beginPath(); ctx.moveTo(x - 4, y - 7); ctx.lineTo(x - 4, y + 7); ctx.stroke();
+        ctx.fillStyle = "rgba(140,150,170,0.9)";
+        ctx.font = "13px sans-serif";
+        ctx.fillText("+", x - 26, y - 14);
+        ctx.fillText("−", x + 6, y + 20);
+      }
+
+      function drawBulb(g, brightness) {
+        var x = g.right, y = (g.top + g.bottom) / 2;
+        // 光晕
+        if (brightness > 0.01) {
+          var r = 46 + 26 * brightness;
+          var grd = ctx.createRadialGradient(x, y, 2, x, y, r);
+          grd.addColorStop(0, "rgba(255,236,150," + (0.85 * brightness) + ")");
+          grd.addColorStop(0.5, "rgba(255,200,60," + (0.35 * brightness) + ")");
+          grd.addColorStop(1, "rgba(255,200,60,0)");
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        }
+        // 灯泡本体
+        ctx.fillStyle = brightness > 0.05 ? "#fff3b0" : "#cfd6e2";
+        ctx.strokeStyle = "#8a93a6";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // 灯丝
+        ctx.strokeStyle = brightness > 0.05 ? "#ff8a00" : "#9aa3b5";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 7, y + 6); ctx.lineTo(x - 3, y - 4); ctx.lineTo(x + 3, y + 4); ctx.lineTo(x + 7, y - 6);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(140,150,170,0.9)";
+        ctx.font = "12px sans-serif";
+        ctx.fillText("💡", x + 22, y - 16);
+      }
+
+      function drawElectrons() {
+        var I = current();
+        if (I <= 0) return;
+        ctx.fillStyle = "#34c759";
+        for (var i = 0; i < electrons.length; i++) {
+          var p = perimeterPoint(electrons[i] + flow);
+          ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, W, H);
+        var g = geom();
+        // 背景板
+        ctx.fillStyle = "rgba(245,247,250,0.6)";
+        if (document.body.classList.contains("dark")) ctx.fillStyle = "rgba(30,34,42,0.5)";
+        ctx.fillRect(0, 0, W, H);
+        drawWire(g);
+        drawBattery(g);
+        var I = current();
+        var P = state.U * I;
+        var brightness = Math.max(0, Math.min(1, P / 144)); // 12V/1Ω = 144W 为满亮
+        drawBulb(g, brightness);
+        drawElectrons();
+      }
+
+      function updateStats() {
+        var I = current();
+        var P = state.U * I;
+        stI.textContent = I.toFixed(2) + " A";
+        stP.textContent = P.toFixed(1) + " W";
+        if (I > 0) {
+          stBulb.textContent = "💡 亮";
+          stBulb.style.color = "#ff8a00";
+        } else {
+          stBulb.textContent = "🌑 灭";
+          stBulb.style.color = "";
+        }
+      }
+
+      function loop() {
+        var I = current();
+        if (I > 0) {
+          flow += 0.0015 + I * 0.0009; // 速度正比于电流
+          if (flow > 1) flow -= 1;
+        }
+        render();
+        rafId = requestAnimationFrame(loop);
+      }
+
+      function readParams() {
+        state.U = parseFloat(uRange.value);
+        state.R = parseFloat(rRange.value);
+        uVal.textContent = state.U.toFixed(1) + " V";
+        rVal.textContent = state.R.toFixed(1) + " Ω";
+      }
+
+      [uRange, rRange].forEach(function (el) {
+        el.addEventListener("input", function () { readParams(); updateStats(); });
+      });
+
+      switchBtn.addEventListener("click", function () {
+        state.closed = !state.closed;
+        if (state.closed) {
+          switchBtn.textContent = "🔛 开关：闭合";
+          switchBtn.classList.add("on");
+        } else {
+          switchBtn.textContent = "🔴 开关：断开";
+          switchBtn.classList.remove("on");
+        }
+        updateStats();
+      });
+
+      resetBtn.addEventListener("click", function () {
+        uRange.value = 6; rRange.value = 5; state.closed = true;
+        switchBtn.textContent = "🔛 开关：闭合";
+        switchBtn.classList.add("on");
+        readParams(); updateStats();
+      });
+
+      window.addEventListener("resize", function () { fit(); render(); });
+
+      fit(); computeElectrons(); readParams(); updateStats(); render();
+      rafId = requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

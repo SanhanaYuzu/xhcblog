@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>像素画板 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+    .toolbar input[type=color]{width:40px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:2px;}
+    .toolbar button,.toolbar select{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-1);transition:.12s;}
+    .toolbar button.active,.toolbar button:hover{border-color:#3498db;background:#e8f4fd;color:#3498db;}
+    .toolbar button.danger:hover{background:#fee;border-color:#c0392b;color:#c0392b;}
+    canvas{display:block;margin:0 auto;image-rendering:pixelated;border:2px solid var(--border);border-radius:8px;cursor:crosshair;}
+    body.dark canvas{border-color:rgba(255,255,255,.15);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🎨 像素画板</h1>
+    <p class="desc">点击格子绘制像素图案，支持擦除、清空、导出 PNG。用网格创作你的独特点阵艺术。</p>
+    <div class="card">
+      <div class="toolbar">
+        <input type="color" id="pixColor" value="#3498db" title="画笔颜色">
+        <select id="gridSize"><option value="8">8×8</option><option value="16" selected>16×16</option><option value="20">20×20</option><option value="24">24×24</option><option value="32">32×32</option></select>
+        <button id="drawMode" class="active">画笔</button>
+        <button id="eraseMode">擦除</button>
+        <button id="clearBtn" class="danger">清空</button>
+        <button id="exportBtn">导出 PNG</button>
+      </div>
+      <canvas id="pixCanvas"></canvas>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    var canvas=qs('#pixCanvas'),ctx=canvas.getContext('2d');
+    var size=16,erase=false,data=[];
+    function init(){
+      size=parseInt(qs('#gridSize').value);
+      data=[];for(var r=0;r<size;r++){data[r]=[];for(var c=0;c<size;c++)data[r][c]=null;}
+      redraw();
+    }
+    function redraw(){
+      var cs=Math.min(28,Math.floor((Math.min(600,window.innerWidth-60)-2)/size));
+      var w=size*cs+2,h=size*cs+2;
+      canvas.width=w;canvas.height=h;canvas.style.width=w+'px';canvas.style.height=h+'px';
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+      for(var r=0;r<size;r++)for(var c=0;c<size;c++){
+        ctx.fillStyle=data[r][c]||'#fff';
+        ctx.fillRect(1+c*cs,1+r*cs,cs-1,cs-1);
+      }
+      ctx.strokeStyle='rgba(0,0,0,.08)';
+      for(var i=0;i<=size;i++){ctx.beginPath();ctx.moveTo(1+i*cs,1);ctx.lineTo(1+i*cs,1+size*cs);ctx.stroke();}
+      for(var i=0;i<=size;i++){ctx.beginPath();ctx.moveTo(1,1+i*cs);ctx.lineTo(1+size*cs,1+i*cs);ctx.stroke();}
+    }
+    canvas.addEventListener('click',function(e){
+      var rect=canvas.getBoundingClientRect();
+      var x=e.clientX-rect.left,y=e.clientY-rect.top;
+      var cs=(canvas.width-2)/size;
+      var c=Math.floor((x-1)/cs),r=Math.floor((y-1)/cs);
+      if(r<0||r>=size||c<0||c>=size)return;
+      data[r][c]=erase?null:qs('#pixColor').value;
+      redraw();
+    });
+    qs('#drawMode').addEventListener('click',function(){erase=false;this.classList.add('active');qs('#eraseMode').classList.remove('active');});
+    qs('#eraseMode').addEventListener('click',function(){erase=true;this.classList.add('active');qs('#drawMode').classList.remove('active');});
+    qs('#clearBtn').addEventListener('click',init);
+    qs('#gridSize').addEventListener('change',init);
+    qs('#exportBtn').addEventListener('click',function(){
+      var a=document.createElement('a');a.download='pixel-art.png';a.href=canvas.toDataURL('image/png');a.click();
+    });
+    init();
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>账户设置 - XHC 博客</title>
+  <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="index.html">
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:760px;padding:32px 0;">
+    <h1 style="margin-bottom:8px;">账户设置</h1>
+    <div id="settingsNote" class="note"></div>
+    <form id="settingsForm" class="card" style="padding:24px;">
+      <div class="form-row avatar-row">
+        <img id="avatarPreview" class="avatar-lg" src="assets/images/xhc-96x96.png?v=20260812" alt="头像">
+        <div>
+          <label class="btn btn-outline" for="avatarInput">上传头像</label>
+          <input id="avatarInput" type="file" accept="image/*" hidden>
+          <div class="hint">支持 jpg/png，建议正方形，≤2MB</div>
+        </div>
+      </div>
+      <label>用户名（唯一，用于展示）</label>
+      <input id="setUsername" type="text" placeholder="用户名">
+      <label>昵称</label>
+      <input id="setDisplayName" type="text" placeholder="昵称">
+      <label>简介</label>
+      <textarea id="setBio" rows="3" placeholder="一句话介绍自己"></textarea>
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
+      <label>修改密码（留空表示不修改）</label>
+      <input id="setPwd" type="password" placeholder="新密码（至少 6 位）">
+      <div class="row" style="margin-top:18px;">
+        <button type="submit" class="btn btn-primary" id="saveSettings">保存设置</button>
+      </div>
+    </form>
+
+    <div class="card" style="margin-top:28px;padding:24px;">
+      <h2 style="margin-bottom:6px;">偏好设置</h2>
+      <p class="hint">界面动效包括：卡片悬停浮起、标题渐变流动、加载动画、提示气泡过渡等。</p>
+      <label class="switch-row">
+        <span>开启动效</span>
+        <span class="switch"><input type="checkbox" id="motionToggle"><span class="slider"></span></span>
+      </label>
+    </div>
+
+    <div class="card" style="margin-top:28px;padding:24px;">
+      <h2 style="margin-bottom:6px;">友情链接</h2>
+      <p class="hint">我们推荐的站点：</p>
+      <div class="friend-link">
+        <a href="https://onyes5634.github.io/" target="_blank" rel="noopener noreferrer" class="friend-link-url">https://onyes5634.github.io/</a>
+        <button type="button" class="btn btn-primary" id="friendJump" onclick="window.open('https://onyes5634.github.io/','_blank','noopener')">一键跳转</button>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border);">
+      <h2 style="color:#d23f3f;font-size:18px;">危险区域</h2>
+      <p class="hint">注销账号将永久删除你的资料、你发布的文章与评论，且不可恢复。</p>
+      <button class="btn btn-danger" id="deleteAccountBtn">注销账号</button>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

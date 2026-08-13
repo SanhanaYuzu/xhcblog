@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文本去重排序 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:860px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 13px;font-size:14px;font-family:ui-monospace,Menlo,Consolas,monospace;box-sizing:border-box;resize:vertical;min-height:160px;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .stats{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--text-2);margin-top:10px;}
+    .stats b{color:var(--primary);font-size:15px;}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔤</span>
+      <div>
+        <h1>文本去重 / 排序</h1>
+        <p class="tool-sub">多行文本去重、排序、去空行、去首尾空格，实时统计行数</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 原始文本（每行一条）</h2>
+      <textarea id="src" placeholder="粘贴多行文本，例如日志、名单、关键词……">banana
+apple
+banana
+  cherry
+apple
+date
+date</textarea>
+      <div class="row" style="margin-top:12px;">
+        <label class="field"><input type="checkbox" id="dedup" checked> 去重</label>
+        <label class="field"><input type="checkbox" id="trim" checked> 去首尾空格</label>
+        <label class="field"><input type="checkbox" id="dropEmpty" checked> 去空行</label>
+        <label class="field"><input type="checkbox" id="sort"> 排序</label>
+        <label class="field"><input type="checkbox" id="desc"> 倒序</label>
+        <label class="field"><input type="checkbox" id="caseSensitive"> 区分大小写</label>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="run">处理</button>
+        <button class="btn-ghost" id="copy">📋 复制结果</button>
+        <button class="btn-ghost" id="clear">清空</button>
+      </div>
+      <div class="stats">
+        <span>原始：<b id="cSrc">0</b> 行</span>
+        <span>结果：<b id="cOut">0</b> 行</span>
+        <span>去重移除：<b id="cDup">0</b> 条</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 处理结果</h2>
+      <textarea id="dst" readonly placeholder="处理后的文本将显示在这里"></textarea>
+      <div class="note">所有处理均在浏览器本地完成，文本不会上传服务器。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var src=document.getElementById("src"), dst=document.getElementById("dst");
+      var dedup=document.getElementById("dedup"), trim=document.getElementById("trim");
+      var dropEmpty=document.getElementById("dropEmpty"), sort=document.getElementById("sort");
+      var desc=document.getElementById("desc"), caseSensitive=document.getElementById("caseSensitive");
+      var run=document.getElementById("run"), copy=document.getElementById("copy"), clear=document.getElementById("clear");
+      var cSrc=document.getElementById("cSrc"), cOut=document.getElementById("cOut"), cDup=document.getElementById("cDup");
+      document.getElementById("year").textContent=new Date().getFullYear();
+
+      function process(){
+        var lines=src.value.split("\n");
+        cSrc.textContent=lines.length;
+        var arr=lines.slice();
+        if(trim.checked) arr=arr.map(function(s){return s.replace(/^\s+|\s+$/g,"");});
+        if(dropEmpty.checked) arr=arr.filter(function(s){return s.length>0;});
+        var before=arr.length;
+        if(dedup.checked){
+          var seen={}; var out=[];
+          arr.forEach(function(s){
+            var k=caseSensitive.checked?s:s.toLowerCase();
+            if(!seen[k]){ seen[k]=1; out.push(s); }
+          });
+          arr=out;
+        }
+        cDup.textContent=before-arr.length;
+        if(sort.checked){
+          arr=arr.slice().sort(function(a,b){
+            return caseSensitive.checked ? (a<b?-1:a>b?1:0) : a.toLowerCase().localeCompare(b.toLowerCase());
+          });
+          if(desc.checked) arr.reverse();
+        }
+        dst.value=arr.join("\n");
+        cOut.textContent=arr.length;
+      }
+      run.onclick=process;
+      [dedup,trim,dropEmpty,sort,desc,caseSensitive].forEach(function(c){ c.onchange=process; });
+      src.addEventListener("input",process);
+      clear.onclick=function(){ src.value=""; dst.value=""; cSrc.textContent=0;cOut.textContent=0;cDup.textContent=0; };
+      copy.onclick=function(){
+        if(!dst.value){ toast("没有可复制的内容"); return; }
+        if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(dst.value).then(function(){toast("已复制");},function(){fallback(dst.value);});}else fallback(dst.value);
+      };
+      function toast(m){ var t=document.createElement("div"); t.textContent=m; t.style.cssText="position:fixed;left:50%;top:20px;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:14px;"; document.body.appendChild(t); setTimeout(function(){document.body.removeChild(t);},1400); }
+      function fallback(t){ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");} document.body.removeChild(ta); }
+      process();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

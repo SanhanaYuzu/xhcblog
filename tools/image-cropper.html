@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图片裁剪 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:1000px;margin:0 auto;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px;}
+
+.tool-page .drop{border:2px dashed var(--border);border-radius:12px;padding:22px 14px;text-align:center;cursor:pointer;transition:.18s;background:var(--bg);}
+.tool-page .drop:hover,.tool-page .drop.over{border-color:var(--primary);}
+.tool-page .drop .big{font-size:32px;display:block;margin-bottom:6px;}
+.tool-page .drop .t1{font-size:14px;font-weight:600;color:var(--text);}
+.tool-page .drop .t2{font-size:12px;color:var(--text-3);margin-top:4px;}
+.tool-page .drop input[type=file]{display:none;}
+
+.tool-page .stage-wrap{margin-top:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:10px;display:none;}
+.tool-page canvas#stage{display:block;width:100%;height:auto;max-width:100%;border-radius:8px;touch-action:none;cursor:crosshair;background:#20242c;}
+
+.tool-page .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;}
+.tool-page .bar .lbl{font-size:13px;font-weight:600;color:var(--text-2);margin-right:2px;}
+.tool-page .chip{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .chip:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+.tool-page .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+.tool-page .nums .cell{border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:8px 10px;}
+.tool-page .nums .cell span{display:block;font-size:11.5px;color:var(--text-3);margin-bottom:4px;}
+.tool-page .nums input{width:100%;border:none;background:transparent;font-size:15px;font-weight:700;color:var(--text);outline:none;font-family:inherit;font-variant-numeric:tabular-nums;}
+
+.tool-page .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.tool-page .btn{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .btn:disabled{opacity:.45;cursor:not-allowed;}
+.tool-page .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
+.tool-page .btn.primary:disabled:hover{background:var(--primary);color:#fff;}
+.tool-page select{padding:7px 10px;font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;}
+
+.tool-page .out-h{font-size:14px;font-weight:700;color:var(--text-2);margin-bottom:10px;}
+.tool-page .out-box{border:1px solid var(--border);border-radius:10px;background:var(--bg);min-height:150px;display:flex;align-items:center;justify-content:center;overflow:auto;padding:10px;}
+.tool-page .out-box img{max-width:100%;max-height:340px;border-radius:6px;display:block;}
+.tool-page .out-box .ph{font-size:13px;color:var(--text-3);}
+.tool-page .tip{font-size:12px;color:var(--text-3);line-height:1.7;margin-top:10px;}
+
+.tool-page .toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+.tool-page .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(max-width:680px){
+  .tool-page .panel{padding:14px;}
+  .tool-page .nums{grid-template-columns:repeat(2,1fr);}
+  .tool-page .chip{padding:6px 11px;font-size:12.5px;}
+}
+
+/* 深色模式适配 */
+body.dark .tool-page .panel{box-shadow:none;}
+body.dark .tool-page .drop,
+body.dark .tool-page .stage-wrap,
+body.dark .tool-page .nums .cell,
+body.dark .tool-page .out-box,
+body.dark .tool-page select{background:#12151b;color:var(--text);}
+body.dark .tool-page .nums input{color:var(--text);}
+body.dark .tool-page .btn{background:var(--card);color:var(--text-2);}
+body.dark .tool-page .btn.primary,
+body.dark .tool-page .chip.on{color:#fff;}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">✂️ 图片裁剪</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">拖拽选框或输入精确坐标裁剪图片，支持 1:1 / 4:3 / 16:9 比例锁定，全部在本地完成。</p>
+
+  <div class="panel">
+    <div class="drop" id="dropZone">
+      <span class="big">📂</span>
+      <div class="t1">点击选择图片</div>
+      <div class="t2">或将图片拖拽到此处 · 支持 JPG / PNG / WEBP</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="stage-wrap" id="stageWrap">
+      <canvas id="stage" width="900" height="500"></canvas>
+    </div>
+
+    <div class="bar">
+      <span class="lbl">裁剪比例</span>
+      <button class="chip on" data-ratio="0">自由</button>
+      <button class="chip" data-ratio="1">1:1</button>
+      <button class="chip" data-ratio="1.3333333">4:3</button>
+      <button class="chip" data-ratio="0.75">3:4</button>
+      <button class="chip" data-ratio="1.7777778">16:9</button>
+      <button class="chip" data-ratio="0.5625">9:16</button>
+    </div>
+
+    <div class="nums">
+      <div class="cell"><span>X（px）</span><input type="number" id="inX" value="0" min="0" step="1"></div>
+      <div class="cell"><span>Y（px）</span><input type="number" id="inY" value="0" min="0" step="1"></div>
+      <div class="cell"><span>宽度（px）</span><input type="number" id="inW" value="0" min="1" step="1"></div>
+      <div class="cell"><span>高度（px）</span><input type="number" id="inH" value="0" min="1" step="1"></div>
+    </div>
+
+    <div class="acts">
+      <button class="btn primary" id="cropBtn" disabled>✂️ 裁剪</button>
+      <button class="btn" id="fullBtn" disabled>全选</button>
+      <button class="btn" id="centerBtn" disabled>居中 80%</button>
+      <select id="outFmt">
+        <option value="image/png">输出 PNG</option>
+        <option value="image/jpeg">输出 JPEG</option>
+        <option value="image/webp">输出 WebP</option>
+      </select>
+      <button class="btn" id="clearBtn" disabled>🗑️ 清空</button>
+    </div>
+    <p class="tip">操作：在图片上拖拽可新建选框，选框内部拖动可移动，四角小方块可缩放；坐标框内可输入精确数值。</p>
+  </div>
+
+  <div class="panel">
+    <div class="out-h">裁剪结果 <span id="outInfo" style="font-weight:500;color:var(--text-3);font-size:12px;"></span></div>
+    <div class="out-box"><img id="outImg" alt="" style="display:none;"><span class="ph" id="outPh">还没有裁剪结果</span></div>
+    <div class="acts"><button class="btn primary" id="dlBtn" disabled>⬇️ 下载裁剪图</button></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var dropZone = $("dropZone"), fileInput = $("fileInput"), stageWrap = $("stageWrap");
+  var cv = $("stage"), ctx = cv.getContext("2d");
+  var inX = $("inX"), inY = $("inY"), inW = $("inW"), inH = $("inH");
+  var cropBtn = $("cropBtn"), fullBtn = $("fullBtn"), centerBtn = $("centerBtn");
+  var clearBtn = $("clearBtn"), dlBtn = $("dlBtn"), outFmt = $("outFmt");
+  var outImg = $("outImg"), outPh = $("outPh"), outInfo = $("outInfo"), toastEl = $("toast");
+
+  var img = null, srcName = "image", srcUrl = "";
+  var scale = 1;                 // 显示尺寸 / 原图尺寸
+  var crop = { x: 0, y: 0, w: 0, h: 0 };
+  var ratio = 0;                 // 0 = 自由
+  var MIN = 10;
+  var drag = null, outUrl = "", toastTid = null;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTid);
+    toastTid = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+  }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+  function fitStage() {
+    if (!img) return;
+    var maxW = 900, maxH = 520;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var s = Math.min(maxW / w, maxH / h, 1);
+    cv.width = Math.max(1, Math.round(w * s));
+    cv.height = Math.max(1, Math.round(h * s));
+    scale = cv.width / w;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (!img) return;
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    var x = crop.x * scale, y = crop.y * scale, w = crop.w * scale, h = crop.h * scale;
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, cv.width, y);
+    ctx.fillRect(0, y + h, cv.width, cv.height - y - h);
+    ctx.fillRect(0, y, x, h);
+    ctx.fillRect(x + w, y, cv.width - x - w, h);
+
+    ctx.strokeStyle = "#0d6efd";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1;
+    for (var i = 1; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x + w * i / 3, y);
+      ctx.lineTo(x + w * i / 3, y + h);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y + h * i / 3);
+      ctx.lineTo(x + w, y + h * i / 3);
+      ctx.stroke();
+    }
+
+    var hs = 8;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#0d6efd";
+    ctx.lineWidth = 2;
+    var pts = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]];
+    for (var j = 0; j < pts.length; j++) {
+      ctx.fillRect(pts[j][0] - hs / 2, pts[j][1] - hs / 2, hs, hs);
+      ctx.strokeRect(pts[j][0] - hs / 2, pts[j][1] - hs / 2, hs, hs);
+    }
+    syncInputs();
+  }
+
+  function syncInputs() {
+    inX.value = Math.round(crop.x);
+    inY.value = Math.round(crop.y);
+    inW.value = Math.round(crop.w);
+    inH.value = Math.round(crop.h);
+  }
+
+  function normalize() {
+    if (!img) return;
+    crop.w = Math.max(MIN, Math.min(crop.w, img.naturalWidth));
+    crop.h = Math.max(MIN, Math.min(crop.h, img.naturalHeight));
+    crop.x = clamp(crop.x, 0, img.naturalWidth - crop.w);
+    crop.y = clamp(crop.y, 0, img.naturalHeight - crop.h);
+  }
+
+  function applyRatio() {
+    if (!img || ratio <= 0) return;
+    var cx = crop.x + crop.w / 2, cy = crop.y + crop.h / 2;
+    var w = crop.w, h = w / ratio;
+    if (h > img.naturalHeight) { h = img.naturalHeight; w = h * ratio; }
+    if (w > img.naturalWidth) { w = img.naturalWidth; h = w / ratio; }
+    crop.w = w; crop.h = h;
+    crop.x = cx - w / 2; crop.y = cy - h / 2;
+    normalize();
+  }
+
+  function pos(e) {
+    var r = cv.getBoundingClientRect();
+    var sx = cv.width / r.width, sy = cv.height / r.height;
+    return { x: (e.clientX - r.left) * sx / scale, y: (e.clientY - r.top) * sy / scale };
+  }
+
+  function hitTest(p) {
+    var tol = 12 / scale;
+    var nearL = Math.abs(p.x - crop.x) <= tol, nearR = Math.abs(p.x - (crop.x + crop.w)) <= tol;
+    var nearT = Math.abs(p.y - crop.y) <= tol, nearB = Math.abs(p.y - (crop.y + crop.h)) <= tol;
+    if (nearT && nearL) return "nw";
+    if (nearT && nearR) return "ne";
+    if (nearB && nearL) return "sw";
+    if (nearB && nearR) return "se";
+    if (p.x >= crop.x && p.x <= crop.x + crop.w && p.y >= crop.y && p.y <= crop.y + crop.h) return "move";
+    return "new";
+  }
+
+  function resizeBy(mode, p, base) {
+    var x0 = base.x, y0 = base.y, x1 = base.x + base.w, y1 = base.y + base.h;
+    var nx = x0, ny = y0, nx1 = x1, ny1 = y1;
+    if (mode.indexOf("w") >= 0) nx = clamp(Math.min(p.x, x1 - MIN), 0, img.naturalWidth);
+    if (mode.indexOf("e") >= 0) nx1 = clamp(Math.max(p.x, x0 + MIN), 0, img.naturalWidth);
+    if (mode.indexOf("n") >= 0) ny = clamp(Math.min(p.y, y1 - MIN), 0, img.naturalHeight);
+    if (mode.indexOf("s") >= 0) ny1 = clamp(Math.max(p.y, y0 + MIN), 0, img.naturalHeight);
+
+    var w = nx1 - nx, h = ny1 - ny;
+    if (ratio > 0) {
+      h = w / ratio;
+      if (mode.indexOf("n") >= 0) {
+        ny = ny1 - h;
+        if (ny < 0) { ny = 0; h = ny1; w = h * ratio; if (mode.indexOf("w") >= 0) nx = nx1 - w; else nx1 = nx + w; }
+      } else {
+        ny1 = ny + h;
+        if (ny1 > img.naturalHeight) {
+          ny1 = img.naturalHeight; h = ny1 - ny; w = h * ratio;
+          if (mode.indexOf("w") >= 0) nx = nx1 - w; else nx1 = nx + w;
+        }
+      }
+      if (nx < 0) { nx = 0; }
+      if (nx1 > img.naturalWidth) { nx1 = img.naturalWidth; }
+    }
+    crop = { x: nx, y: ny, w: Math.max(MIN, nx1 - nx), h: Math.max(MIN, ny1 - ny) };
+    normalize();
+  }
+
+  cv.addEventListener("pointerdown", function (e) {
+    if (!img) return;
+    var p = pos(e);
+    var mode = hitTest(p);
+    cv.setPointerCapture(e.pointerId);
+    drag = { mode: mode, start: p, base: { x: crop.x, y: crop.y, w: crop.w, h: crop.h } };
+    if (mode === "new") {
+      crop = { x: p.x, y: p.y, w: MIN, h: MIN };
+      drag.base = { x: p.x, y: p.y, w: MIN, h: MIN };
+      drag.mode = "se";
+      drag.origin = p;
+    }
+    draw();
+  });
+
+  cv.addEventListener("pointermove", function (e) {
+    if (!img) return;
+    var p = pos(e);
+    if (!drag) {
+      var m = hitTest(p);
+      cv.style.cursor = (m === "move") ? "move" : (m === "new" ? "crosshair" : (m === "nw" || m === "se" ? "nwse-resize" : "nesw-resize"));
+      return;
+    }
+    if (drag.mode === "move") {
+      crop.x = clamp(drag.base.x + (p.x - drag.start.x), 0, img.naturalWidth - crop.w);
+      crop.y = clamp(drag.base.y + (p.y - drag.start.y), 0, img.naturalHeight - crop.h);
+    } else if (drag.origin) {
+      var o = drag.origin;
+      var base = { x: Math.min(o.x, p.x), y: Math.min(o.y, p.y), w: MIN, h: MIN };
+      base.w = Math.max(MIN, Math.abs(p.x - o.x));
+      base.h = Math.max(MIN, Math.abs(p.y - o.y));
+      crop = base;
+      if (ratio > 0) {
+        crop.h = crop.w / ratio;
+        if (p.y < o.y) crop.y = o.y - crop.h;
+      }
+      normalize();
+    } else {
+      resizeBy(drag.mode, p, drag.base);
+    }
+    draw();
+  });
+
+  function endDrag(e) {
+    if (drag) {
+      drag = null;
+      normalize();
+      draw();
+    }
+  }
+  cv.addEventListener("pointerup", endDrag);
+  cv.addEventListener("pointercancel", endDrag);
+
+  function loadFile(f) {
+    if (!f) return;
+    if (f.type.indexOf("image/") !== 0) { toast("请选择图片文件"); return; }
+    if (srcUrl) URL.revokeObjectURL(srcUrl);
+    srcName = (f.name || "image").replace(/\.[^.]+$/, "");
+    srcUrl = URL.createObjectURL(f);
+    var im = new Image();
+    im.onload = function () {
+      img = im;
+      fitStage();
+      crop = { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight };
+      ratio = 0;
+      setChip(0);
+      applyRatio();
+      stageWrap.style.display = "block";
+      cropBtn.disabled = false; fullBtn.disabled = false;
+      centerBtn.disabled = false; clearBtn.disabled = false;
+      draw();
+    };
+    im.onerror = function () { toast("图片解析失败"); };
+    im.src = srcUrl;
+  }
+
+  function setChip(r) {
+    var chips = document.querySelectorAll(".tool-page .chip");
+    for (var i = 0; i < chips.length; i++) {
+      var v = parseFloat(chips[i].getAttribute("data-ratio"));
+      if (Math.abs(v - r) < 0.0001) chips[i].classList.add("on");
+      else chips[i].classList.remove("on");
+    }
+  }
+
+  var chipList = document.querySelectorAll(".tool-page .chip");
+  for (var k = 0; k < chipList.length; k++) {
+    chipList[k].addEventListener("click", function () {
+      ratio = parseFloat(this.getAttribute("data-ratio")) || 0;
+      setChip(ratio);
+      if (img) { applyRatio(); draw(); }
+    });
+  }
+
+  [inX, inY, inW, inH].forEach(function (el) {
+    el.addEventListener("change", function () {
+      if (!img) return;
+      crop.x = parseFloat(inX.value) || 0;
+      crop.y = parseFloat(inY.value) || 0;
+      crop.w = parseFloat(inW.value) || MIN;
+      crop.h = parseFloat(inH.value) || MIN;
+      if (ratio > 0 && (el === inW || el === inH)) {
+        if (el === inW) crop.h = crop.w / ratio; else crop.w = crop.h * ratio;
+      }
+      normalize();
+      draw();
+    });
+  });
+
+  fullBtn.addEventListener("click", function () {
+    if (!img) return;
+    crop = { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight };
+    applyRatio();
+    draw();
+  });
+
+  centerBtn.addEventListener("click", function () {
+    if (!img) return;
+    var w = img.naturalWidth * 0.8, h = img.naturalHeight * 0.8;
+    crop = { x: (img.naturalWidth - w) / 2, y: (img.naturalHeight - h) / 2, w: w, h: h };
+    applyRatio();
+    draw();
+  });
+
+  cropBtn.addEventListener("click", function () {
+    if (!img) return;
+    var w = Math.max(1, Math.round(crop.w)), h = Math.max(1, Math.round(crop.h));
+    var out = document.createElement("canvas");
+    out.width = w; out.height = h;
+    var octx = out.getContext("2d");
+    var type = outFmt.value;
+    if (type !== "image/png") { octx.fillStyle = "#ffffff"; octx.fillRect(0, 0, w, h); }
+    octx.drawImage(img, Math.round(crop.x), Math.round(crop.y), w, h, 0, 0, w, h);
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = ""; }
+    if (out.toBlob) {
+      out.toBlob(function (blob) {
+        if (!blob) { toast("裁剪失败"); return; }
+        outUrl = URL.createObjectURL(blob);
+        showOut(w, h);
+      }, type, 0.92);
+    } else {
+      outUrl = out.toDataURL(type, 0.92);
+      showOut(w, h);
+    }
+  });
+
+  function showOut(w, h) {
+    outImg.src = outUrl;
+    outImg.style.display = "";
+    outPh.style.display = "none";
+    outInfo.textContent = w + " × " + h + " px";
+    dlBtn.disabled = false;
+    toast("裁剪完成");
+  }
+
+  dlBtn.addEventListener("click", function () {
+    if (!outUrl) return;
+    var ext = outFmt.value === "image/png" ? "png" : (outFmt.value === "image/webp" ? "webp" : "jpg");
+    var a = document.createElement("a");
+    a.href = outUrl;
+    a.download = srcName + "-cropped." + ext;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
+  clearBtn.addEventListener("click", function () {
+    img = null;
+    if (srcUrl) { URL.revokeObjectURL(srcUrl); srcUrl = ""; }
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = ""; }
+    stageWrap.style.display = "none";
+    outImg.style.display = "none"; outImg.removeAttribute("src");
+    outPh.style.display = ""; outInfo.textContent = "";
+    inX.value = 0; inY.value = 0; inW.value = 0; inH.value = 0;
+    cropBtn.disabled = true; fullBtn.disabled = true;
+    centerBtn.disabled = true; clearBtn.disabled = true; dlBtn.disabled = true;
+    fileInput.value = "";
+    toast("已清空");
+  });
+
+  dropZone.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function (e) { loadFile(e.target.files && e.target.files[0]); });
+  ["dragenter", "dragover"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove("over"); });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length) loadFile(dt.files[0]);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unicode 字符查询 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .search-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+    .search-row input{flex:1;min-width:180px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text-1);}
+    .search-row input:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    .search-row select{padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--bg);color:var(--text-1);}
+    .cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+    .cats button{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-1);transition:.12s;}
+    .cats button:hover,.cats button.active{border-color:#3498db;background:#e8f4fd;color:#3498db;}
+    .char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:400px;overflow-y:auto;}
+    .char-cell{background:#f6f8fb;border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;transition:.12s;font-size:24px;line-height:1.4;}
+    .char-cell:hover{border-color:#3498db;background:#eef5fe;transform:scale(1.05);}
+    .char-cell .code{display:block;font-size:10px;color:var(--text-3);margin-top:2px;font-family:Consolas;}
+    body.dark .char-cell{background:#1c232c;border-color:rgba(255,255,255,.06);}
+    body.dark .char-cell:hover{background:#1e2e3e;}
+    body.dark .cats button{background:#1c232c;}
+    #copied{display:none;font-size:12px;color:#27ae60;margin-left:10px;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🔤 Unicode 字符查询</h1>
+    <p class="desc">浏览和搜索 Unicode 字符，涵盖数学符号、箭头、字母变体、表情、特殊符号等。点击即可复制。</p>
+    <div class="card">
+      <div class="search-row">
+        <input id="searchInput2" type="text" placeholder="搜索字符名或码点，如 arrow, heart, 2600">
+        <select id="catSelect"></select>
+        <span id="copied">✅ 已复制</span>
+      </div>
+      <div class="cats" id="catBtns"></div>
+      <div class="char-grid" id="charGrid"></div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    function qsa(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+    var categories = {
+      '全部': 0,
+      '数学': 0x2200, '箭头': 0x2190, '字母': 0x0391,
+      '几何': 0x25A0, '货币': 0x20A0, '标点': 0x2000,
+      '表情': 0x1F600, '特殊': 0x2600, '罗马数字': 0x2160,
+      '括号': 0x2308, '框线': 0x2500, 'IPA': 0x0250
+    };
+    var sizes = {
+      '全部': 400, '数学': 80, '箭头': 60, '字母': 120,
+      '几何': 32, '货币': 32, '标点': 64, '表情': 80,
+      '特殊': 48, '罗马数字': 48, '括号': 16, '框线': 32, 'IPA': 64
+    };
+    var names = Object.keys(categories);
+    var currentCat = '全部';
+
+    function generateChars(cat, filter){
+      var start = categories[cat];
+      var count = sizes[cat];
+      var chars = [];
+      for(var i=0;i<count;i++){
+        var cp=start+i;
+        try{
+          var ch=String.fromCodePoint(cp);
+          var name='';
+          try{name=Intl.CharData&&Intl.CharData.name?Intl.CharData.name(ch):'';}catch(e){}
+          if(filter&&!filter.test(name)&&ch.indexOf(filter.source||'')===-1)continue;
+          chars.push({char:ch,code:'U+'+cp.toString(16).toUpperCase().padStart(4,'0'),name:name});
+        }catch(e){}
+      }
+      return chars;
+    }
+
+    function render(filter){
+      var chars = generateChars(currentCat, filter);
+      var grid = qs('#charGrid');
+      grid.innerHTML = chars.map(function(c){
+        return '<div class="char-cell" onclick="copyChar(this)" data-c="'+c.char+'">'+c.char+'<span class="code">'+c.code+'</span></div>';
+      }).join('');
+      if(chars.length===0)grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text-3);padding:20px;">未找到匹配字符</div>';
+    }
+
+    // Build category buttons
+    var btns = qs('#catBtns');
+    names.forEach(function(n){
+      var b=document.createElement('button');
+      b.textContent=n;b.dataset.cat=n;
+      if(n===currentCat)b.classList.add('active');
+      b.addEventListener('click',function(){
+        currentCat=n;
+        qsa('#catBtns button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active');
+        qs('#searchInput2').value='';
+        render(null);
+      });
+      btns.appendChild(b);
+    });
+
+    qs('#searchInput2').addEventListener('input',function(){
+      var v=this.value.trim();
+      if(!v){render(null);return;}
+      try{var r=new RegExp(v,'i');render(r);}catch(e){render(null);}
+    });
+
+    window.copyChar = function(el){
+      var ch=el.dataset.c;
+      if(navigator.clipboard)navigator.clipboard.writeText(ch);
+      else{var ta=document.createElement('textarea');ta.value=ch;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
+      var c=qs('#copied');c.style.display='inline';setTimeout(function(){c.style.display='none';},1500);
+    };
+
+    render(null);
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

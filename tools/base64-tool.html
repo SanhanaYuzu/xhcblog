@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base64 编解码 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:920px;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+.tool-page .panel-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.tool-page .lbl{font-size:14px;font-weight:700;color:var(--text-2);}
+.tool-page .meta{margin-left:auto;font-size:12px;color:var(--text-3);}
+.tool-page textarea{width:100%;box-sizing:border-box;min-height:150px;resize:vertical;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.65;}
+.tool-page textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(13,110,253,.12);}
+.tool-page .mode-bar{display:flex;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:16px;max-width:340px;}
+.tool-page .mode-bar button{flex:1;padding:8px 10px;border:0;background:transparent;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-2);transition:.15s;}
+.tool-page .mode-bar button.on{background:var(--primary);color:#fff;}
+.tool-page .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px;}
+.tool-page .btn{padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .tip{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.6;display:none;}
+.tool-page .tip.err{display:block;background:#fdecec;color:#c0392b;border:1px solid #f5c6c6;}
+.tool-page .tip.ok{display:block;background:#eaf7ee;color:#1e7e34;border:1px solid #c3e6cb;}
+.tool-page .hint{font-size:13px;color:var(--text-3);line-height:1.7;margin-top:14px;}
+.tool-page .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:rgba(20,22,28,.92);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:9999;}
+.tool-page .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+@media(max-width:680px){
+  .tool-page .mode-bar{max-width:100%;}
+  .tool-page .btn-row{gap:8px;}
+  .tool-page .btn{flex:1 1 auto;min-width:calc(50% - 4px);padding:10px 8px;}
+  .tool-page textarea{min-height:120px;font-size:13px;}
+  .tool-page .meta{margin-left:0;width:100%;}
+}
+/* 深色模式适配 */
+body.dark .tool-page .panel{background:var(--card);border-color:var(--border);}
+body.dark .tool-page textarea{background:#171b22;border-color:var(--border);color:var(--text);}
+body.dark .tool-page .mode-bar{background:#171b22;border-color:var(--border);}
+body.dark .tool-page .btn{background:#1d2128;color:var(--text-2);border-color:var(--border);}
+body.dark .tool-page .btn.primary{background:var(--primary);color:#fff;}
+body.dark .tool-page .tip.err{background:#3a1d1f;color:#ff8a80;border-color:#5a2a2d;}
+body.dark .tool-page .tip.ok{background:#16301f;color:#7ee2a8;border-color:#255c3a;}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">Base64 编解码</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">文本与 Base64 互转，完美支持中文与 Emoji（UTF-8）</p>
+
+  <div class="mode-bar">
+    <button id="mEnc" class="on" type="button">编码 文本→Base64</button>
+    <button id="mDec" type="button">解码 Base64→文本</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="lbl" id="inLabel">输入（原始文本）</span>
+      <span class="meta" id="inMeta">字符数 0 · 字节数 0</span>
+    </div>
+    <textarea id="inputBox" placeholder="在此粘贴或输入内容…" spellcheck="false"></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="runBtn" type="button">编码</button>
+    <button class="btn" id="swapBtn" type="button">⇅ 结果转入输入</button>
+    <button class="btn" id="clearBtn" type="button">清空</button>
+    <button class="btn" id="copyBtn" type="button">📋 复制结果</button>
+  </div>
+
+  <div class="tip" id="tipBox"></div>
+
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-head">
+      <span class="lbl" id="outLabel">结果（Base64）</span>
+      <span class="meta" id="outMeta">字符数 0</span>
+    </div>
+    <textarea id="outputBox" placeholder="转换结果将显示在这里…" spellcheck="false" readonly></textarea>
+  </div>
+
+  <p class="hint">提示：编码采用标准 UTF-8 字节序，中文 / Emoji 不会乱码；解码时会自动忽略空格与换行。</p>
+  <div class="toast" id="toastBox"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var mode = 'encode';
+  var inputBox = document.getElementById('inputBox');
+  var outputBox = document.getElementById('outputBox');
+  var tipBox = document.getElementById('tipBox');
+  var toastBox = document.getElementById('toastBox');
+  var mEnc = document.getElementById('mEnc');
+  var mDec = document.getElementById('mDec');
+  var runBtn = document.getElementById('runBtn');
+  var inLabel = document.getElementById('inLabel');
+  var outLabel = document.getElementById('outLabel');
+  var inMeta = document.getElementById('inMeta');
+  var outMeta = document.getElementById('outMeta');
+  var toastTimer = null;
+
+  function toast(msg) {
+    toastBox.textContent = msg;
+    toastBox.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastBox.classList.remove('show'); }, 1800);
+  }
+
+  function showTip(msg, kind) {
+    tipBox.className = 'tip ' + kind;
+    tipBox.textContent = msg;
+  }
+
+  function hideTip() {
+    tipBox.className = 'tip';
+    tipBox.textContent = '';
+  }
+
+  function byteLen(str) {
+    try { return new TextEncoder().encode(str).length; } catch (e) { return str.length; }
+  }
+
+  function b64Encode(str) {
+    var bytes = new TextEncoder().encode(str);
+    var bin = '';
+    var CHUNK = 8192;
+    for (var i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+
+  function b64Decode(b64) {
+    var clean = b64.replace(/[\s\r\n]+/g, '');
+    if (!clean) return '';
+    if (!/^[A-Za-z0-9+/=_-]*$/.test(clean)) {
+      throw new Error('包含非法的 Base64 字符');
+    }
+    clean = clean.replace(/-/g, '+').replace(/_/g, '/');
+    while (clean.length % 4 !== 0) { clean += '='; }
+    var bin = atob(clean);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  function updateMeta() {
+    var iv = inputBox.value;
+    var ov = outputBox.value;
+    inMeta.textContent = '字符数 ' + iv.length + ' · 字节数 ' + byteLen(iv);
+    outMeta.textContent = '字符数 ' + ov.length + ' · 字节数 ' + byteLen(ov);
+  }
+
+  function setMode(next) {
+    mode = next;
+    var isEnc = mode === 'encode';
+    mEnc.classList.toggle('on', isEnc);
+    mDec.classList.toggle('on', !isEnc);
+    runBtn.textContent = isEnc ? '编码' : '解码';
+    inLabel.textContent = isEnc ? '输入（原始文本）' : '输入（Base64 字符串）';
+    outLabel.textContent = isEnc ? '结果（Base64）' : '结果（原始文本）';
+    inputBox.placeholder = isEnc ? '在此输入要编码的文本，支持中文…' : '在此粘贴 Base64 字符串…';
+    hideTip();
+    outputBox.value = '';
+    updateMeta();
+  }
+
+  function run() {
+    var src = inputBox.value;
+    if (!src.trim()) {
+      outputBox.value = '';
+      updateMeta();
+      showTip('请先输入需要转换的内容。', 'err');
+      return;
+    }
+    try {
+      var result = mode === 'encode' ? b64Encode(src) : b64Decode(src);
+      outputBox.value = result;
+      updateMeta();
+      showTip((mode === 'encode' ? '编码' : '解码') + '成功，共 ' + result.length + ' 个字符。', 'ok');
+    } catch (err) {
+      outputBox.value = '';
+      updateMeta();
+      showTip('转换失败：' + (err && err.message ? err.message : String(err)) + '（请检查输入是否为合法的 Base64）', 'err');
+    }
+  }
+
+  function copyResult() {
+    var text = outputBox.value;
+    if (!text) { toast('还没有可复制的结果'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('已复制到剪贴板');
+      }).catch(function () {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch (e) { toast('复制失败，请手动选择复制'); }
+    document.body.removeChild(ta);
+  }
+
+  mEnc.addEventListener('click', function () { setMode('encode'); });
+  mDec.addEventListener('click', function () { setMode('decode'); });
+  runBtn.addEventListener('click', run);
+  document.getElementById('copyBtn').addEventListener('click', copyResult);
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    inputBox.value = '';
+    outputBox.value = '';
+    hideTip();
+    updateMeta();
+    inputBox.focus();
+  });
+
+  document.getElementById('swapBtn').addEventListener('click', function () {
+    if (!outputBox.value) { toast('结果为空，无法转入'); return; }
+    var moved = outputBox.value;
+    setMode(mode === 'encode' ? 'decode' : 'encode');
+    inputBox.value = moved;
+    updateMeta();
+    toast('已转入输入框并切换模式');
+  });
+
+  inputBox.addEventListener('input', updateMeta);
+
+  inputBox.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+  });
+
+  var yearEl = document.getElementById('year');
+  if (yearEl && !yearEl.textContent) { yearEl.textContent = new Date().getFullYear(); }
+
+  setMode('encode');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>二维码识别器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px;}
+    .panel h2{font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:15px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    /* 模式切换标签 */
+    .mode-tabs{display:flex;gap:8px;margin-bottom:16px;}
+    .mode-tab{
+      flex:1;padding:11px 0;text-align:center;border:1px solid var(--border);border-radius:10px;
+      background:var(--bg);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;
+      font-family:inherit;transition:.15s;
+    }
+    .mode-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+    /* 上传区域 */
+    .qr-upload-zone{
+      border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;
+      cursor:pointer;transition:.15s;background:var(--bg);
+    }
+    .qr-upload-zone:hover{border-color:var(--primary);}
+    .qr-upload-zone.drag{border-color:var(--primary);background:var(--primary-soft);}
+    .qr-upload-zone .up-ico{font-size:42px;}
+    .qr-upload-zone .up-txt{margin-top:10px;color:var(--text-2);font-size:14px;}
+    .qr-upload-zone .up-hint{margin-top:4px;color:var(--text-3);font-size:12px;}
+
+    .qr-preview{
+      margin-top:16px;border-radius:12px;overflow:hidden;background:var(--bg);
+      border:1px solid var(--border);display:none;
+    }
+    .qr-preview img{display:block;max-width:100%;margin:0 auto;}
+
+    /* 摄像头 */
+    .qr-cam-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;display:none;}
+    .qr-cam-wrap video{display:block;width:100%;max-height:60vh;object-fit:cover;}
+    .qr-cam-overlay{
+      position:absolute;inset:0;pointer-events:none;
+      border:2px solid rgba(255,255,255,.5);
+      box-shadow:0 0 0 9999px rgba(0,0,0,.35) inset;
+    }
+    .qr-cam-reticle{
+      position:absolute;top:50%;left:50%;width:60%;height:60%;
+      transform:translate(-50%,-50%);
+      border:2px solid #2ecc71;border-radius:12px;
+      box-shadow:0 0 18px rgba(46,204,113,.6);
+    }
+    .qr-cam-status{
+      position:absolute;bottom:10px;left:0;right:0;text-align:center;
+      color:#fff;font-size:13px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8);
+    }
+
+    .ctrl{display:flex;gap:11px;margin-top:16px;flex-wrap:wrap;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:11px;
+      padding:12px 22px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
+
+    /* 结果 */
+    .qr-result{border-radius:14px;padding:20px;margin-bottom:18px;display:none;}
+    .qr-result.ok{background:var(--primary-soft);border:1px solid var(--primary);}
+    .qr-result.err{background:rgba(229,72,77,.1);border:1px solid #e5484d;}
+    .qr-result .r-label{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    .qr-result.ok .r-label{color:var(--primary);}
+    .qr-result.err .r-label{color:#e5484d;}
+    .qr-result .r-text{
+      font-size:15px;line-height:1.7;word-break:break-all;background:var(--card);
+      border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);
+    }
+    .qr-result .r-actions{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;}
+    .qr-result .r-link{color:var(--primary);text-decoration:underline;font-weight:600;}
+
+    .qr-note{font-size:12.5px;color:var(--text-3);line-height:1.7;margin-top:6px;}
+    .qr-note code{background:var(--bg);padding:1px 6px;border-radius:4px;border:1px solid var(--border);}
+
+    body.dark .qr-upload-zone{background:var(--card);}
+    body.dark .qr-result .r-text{background:var(--bg);}
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📷</span>
+      <h1>二维码识别器</h1>
+    </div>
+    <p class="tool-sub">上传含二维码的图片，或调用摄像头实时扫描，自动识别并提取内容。</p>
+
+    <!-- 结果区 -->
+    <div class="qr-result" id="qrResult">
+      <div class="r-label"><span id="qrStatusIco">✅</span><span id="qrStatusTxt">识别成功</span></div>
+      <div class="r-text" id="qrText"></div>
+      <div class="r-actions" id="qrActions"></div>
+    </div>
+
+    <!-- 模式切换 -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabUpload" type="button" onclick="switchMode('upload')">🖼️ 上传图片识别</button>
+      <button class="mode-tab" id="tabCam" type="button" onclick="switchMode('cam')">📹 摄像头识别</button>
+    </div>
+
+    <!-- 上传模式 -->
+    <div class="panel" id="uploadPanel">
+      <h2><span class="bar"></span> 选择图片</h2>
+      <div class="qr-upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="up-ico">📁</div>
+        <div class="up-txt">点击选择图片，或将图片拖拽到此处</div>
+        <div class="up-hint">支持 PNG / JPG / WEBP / GIF，建议图片清晰、二维码占比足够大</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <div class="qr-preview" id="previewBox">
+        <img id="previewImg" alt="预览">
+      </div>
+    </div>
+
+    <!-- 摄像头模式 -->
+    <div class="panel" id="camPanel" style="display:none;">
+      <h2><span class="bar"></span> 摄像头扫描</h2>
+      <div class="qr-cam-wrap" id="camWrap">
+        <video id="camVideo" playsinline muted></video>
+        <div class="qr-cam-overlay"></div>
+        <div class="qr-cam-reticle"></div>
+        <div class="qr-cam-status" id="camStatus">正在启动摄像头…</div>
+      </div>
+      <div class="ctrl">
+        <button class="btn primary" id="camStart" type="button" onclick="startCamera()">▶️ 开启摄像头</button>
+        <button class="btn" id="camStop" type="button" onclick="stopCamera()" disabled>⏹ 停止</button>
+      </div>
+      <p class="qr-note">提示：首次使用需授权摄像头权限。建议用手机后置摄像头，将二维码对准取景框中央即可自动识别。</p>
+    </div>
+
+    <p class="qr-note">
+      识别结果若为网址，可点击直接打开或复制；若为其他文本，也可一键复制。
+    </p>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <!-- jsQR 解码库 -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+  (function(){
+    var fileInput = document.getElementById('fileInput');
+    var uploadZone = document.getElementById('uploadZone');
+    var previewBox = document.getElementById('previewBox');
+    var previewImg = document.getElementById('previewImg');
+    var resultBox = document.getElementById('qrResult');
+    var resultText = document.getElementById('qrText');
+    var statusIco = document.getElementById('qrStatusIco');
+    var statusTxt = document.getElementById('qrStatusTxt');
+    var actionsBox = document.getElementById('qrActions');
+
+    var stream = null;
+    var scanning = false;
+    var video = document.getElementById('camVideo');
+    var camWrap = document.getElementById('camWrap');
+    var camStatus = document.getElementById('camStatus');
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+
+    /* ---------- 结果展示 ---------- */
+    function showResult(text, isOk){
+      resultBox.style.display = 'block';
+      resultBox.className = 'qr-result ' + (isOk ? 'ok' : 'err');
+      statusIco.textContent = isOk ? '✅' : '⚠️';
+      statusTxt.textContent = isOk ? '识别成功' : '识别失败';
+      resultText.textContent = isOk ? text : text;
+      actionsBox.innerHTML = '';
+      if (isOk) {
+        // 复制按钮
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'btn small primary';
+        copyBtn.textContent = '📋 复制内容';
+        copyBtn.onclick = function(){ copyText(text); };
+        actionsBox.appendChild(copyBtn);
+        // 若是网址，提供打开链接
+        if (/^https?:\/\//i.test(text.trim())) {
+          var link = document.createElement('a');
+          link.className = 'btn small r-link';
+          link.href = text.trim();
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = '🔗 打开链接';
+          actionsBox.appendChild(link);
+        }
+      }
+    }
+
+    function copyText(t){
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(function(){ toast('已复制到剪贴板'); }, function(){ fallbackCopy(t); });
+      } else { fallbackCopy(t); }
+    }
+    function fallbackCopy(t){
+      var ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch(e){ toast('复制失败，请手动复制', 'warn'); }
+      document.body.removeChild(ta);
+    }
+
+    /* ---------- 解码核心 ---------- */
+    function decodeFromCanvas(cnv){
+      try {
+        var imgData = ctx.getImageData(0, 0, cnv.width, cnv.height);
+        if (typeof jsQR === 'undefined') { showResult('解码库未加载，请检查网络后刷新', false); return null; }
+        var code = jsQR(imgData.data, imgData.width, imgData.height);
+        return code;
+      } catch(e) {
+        showResult('图片读取失败：' + e.message, false);
+        return null;
+      }
+    }
+
+    /* ---------- 上传模式 ---------- */
+    fileInput.addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      handleFile(f);
+    });
+
+    // 拖拽
+    ['dragenter','dragover'].forEach(function(ev){
+      uploadZone.addEventListener(ev, function(e){ e.preventDefault(); uploadZone.classList.add('drag'); });
+    });
+    ['dragleave','drop'].forEach(function(ev){
+      uploadZone.addEventListener(ev, function(e){ e.preventDefault(); uploadZone.classList.remove('drag'); });
+    });
+    uploadZone.addEventListener('drop', function(e){
+      var f = e.dataTransfer.files[0]; if (f && f.type.indexOf('image') === 0) handleFile(f);
+    });
+
+    function handleFile(f){
+      if (!f.type || f.type.indexOf('image') !== 0) { showResult('请选择图片文件', false); return; }
+      var url = URL.createObjectURL(f);
+      var img = new Image();
+      img.onload = function(){
+        previewImg.src = url;
+        previewBox.style.display = 'block';
+        // 绘制到 canvas
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        var code = decodeFromCanvas(canvas);
+        if (code && code.data) {
+          showResult(code.data, true);
+        } else {
+          showResult('未能识别到二维码，请换一张更清晰或二维码更大的图片', false);
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = function(){ showResult('图片加载失败', false); };
+      img.src = url;
+    }
+
+    /* ---------- 摄像头模式 ---------- */
+    window.switchMode = function(mode){
+      document.getElementById('tabUpload').classList.toggle('active', mode === 'upload');
+      document.getElementById('tabCam').classList.toggle('active', mode === 'cam');
+      document.getElementById('uploadPanel').style.display = mode === 'upload' ? 'block' : 'none';
+      document.getElementById('camPanel').style.display = mode === 'cam' ? 'block' : 'none';
+      if (mode !== 'cam') stopCamera();
+    };
+
+    window.startCamera = function(){
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showResult('当前浏览器不支持摄像头（需 HTTPS 或 localhost 环境）', false);
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(s){
+          stream = s;
+          video.srcObject = stream;
+          video.setAttribute('playsinline', '');
+          video.play();
+          camWrap.style.display = 'block';
+          document.getElementById('camStart').disabled = true;
+          document.getElementById('camStop').disabled = false;
+          camStatus.textContent = '将二维码对准取景框…';
+          scanning = true;
+          scanLoop();
+        })
+        .catch(function(err){
+          showResult('无法开启摄像头：' + (err && err.message ? err.message : err), false);
+        });
+    };
+
+    window.stopCamera = function(){
+      scanning = false;
+      if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+      video.srcObject = null;
+      camWrap.style.display = 'none';
+      document.getElementById('camStart').disabled = false;
+      document.getElementById('camStop').disabled = true;
+      camStatus.textContent = '已停止';
+    };
+
+    function scanLoop(){
+      if (!scanning) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var code = decodeFromCanvas(canvas);
+        if (code && code.data) {
+          showResult(code.data, true);
+          // 识别到后短暂提示，不停止以便连续扫描；用户可手动停止
+          camStatus.textContent = '已识别！可继续扫描或停止';
+        }
+      }
+      requestAnimationFrame(scanLoop);
+    }
+
+    // 暴露 toast（app.js 提供，若未定义则简单 alert 兜底）
+    window.toast = window.toast || function(msg){ /* noop */ };
+  })();
+  </script>
+</body>
+</html>

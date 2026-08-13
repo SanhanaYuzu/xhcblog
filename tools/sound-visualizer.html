@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>音波可视化 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:1000px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .sv-panel{
+      background:#0b0e14;border:1px solid var(--border);border-radius:14px;overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    body.dark .sv-panel{box-shadow:none;}
+    .sv-controls{
+      display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;
+      background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .sv-controls .grp{display:flex;align-items:center;gap:8px;}
+    .sv-controls .grp label{font-size:13px;color:#c7ccd6;white-space:nowrap;}
+    .sv-modes{display:flex;gap:6px;}
+    .sv-modes button{
+      border:1px solid rgba(255,255,255,.18);background:transparent;color:#c7ccd6;
+      padding:6px 12px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .sv-modes button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .sv-modes button:hover:not(.active){border-color:var(--primary);color:#fff;}
+    .sv-controls input[type=range]{width:120px;accent-color:var(--primary);}
+    .sv-controls .val{font-size:13px;color:#9aa3b2;min-width:38px;text-align:right;font-variant-numeric:tabular-nums;}
+
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .sv-canvas-wrap{position:relative;width:100%;}
+    #svCanvas{display:block;width:100%;height:420px;background:#07090f;}
+    .sv-hint{
+      position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      color:#8b93a3;font-size:15px;text-align:center;gap:8px;pointer-events:none;
+    }
+    .sv-hint .big{font-size:42px;}
+    .sv-status{font-size:12.5px;color:#8b93a3;padding:10px 16px;border-top:1px solid rgba(255,255,255,.08);}
+
+    @media(max-width:760px){
+      #svCanvas{height:320px;}
+      .sv-controls{gap:10px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌊</span>
+      <h1>音波可视化</h1>
+    </div>
+    <p class="tool-sub">调用麦克风，使用 Web Audio API 实时分析音频并绘制波形 / 频谱。请在弹出的授权框中允许使用麦克风。</p>
+
+    <div class="sv-panel">
+      <div class="sv-controls">
+        <div class="grp">
+          <button class="btn primary" id="startBtn">▶ 开始</button>
+          <button class="btn" id="stopBtn" disabled>■ 停止</button>
+        </div>
+        <div class="grp">
+          <label>模式</label>
+          <div class="sv-modes" id="modes">
+            <button data-mode="bars" class="active">频谱条</button>
+            <button data-mode="circle">圆形频谱</button>
+            <button data-mode="wave">波形线</button>
+          </div>
+        </div>
+        <div class="grp">
+          <label>灵敏度</label>
+          <input type="range" id="sens" min="0.2" max="3" step="0.1" value="1.2">
+          <span class="val" id="sensVal">1.2×</span>
+        </div>
+      </div>
+      <div class="sv-canvas-wrap">
+        <canvas id="svCanvas"></canvas>
+        <div class="sv-hint" id="hint">
+          <span class="big">🎙️</span>
+          <span>点击「开始」并授权麦克风权限</span>
+        </div>
+      </div>
+      <div class="sv-status" id="status">未启动</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var canvas = document.getElementById("svCanvas");
+      var ctx = canvas.getContext("2d");
+      var startBtn = document.getElementById("startBtn"), stopBtn = document.getElementById("stopBtn");
+      var hint = document.getElementById("hint"), statusEl = document.getElementById("status");
+      var modesBox = document.getElementById("modes");
+      var sens = document.getElementById("sens"), sensVal = document.getElementById("sensVal");
+      var mode = "bars", running = false, rafId = null;
+      var audioCtx = null, analyser = null, source = null, dataArr = null, stream = null;
+
+      function resize() {
+        var dpr = window.devicePixelRatio || 1;
+        var w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener("resize", function () { if (running) resize(); });
+
+      function hsl(i, n, light) {
+        return "hsl(" + Math.round((i / n) * 320 + 180) + ",85%," + light + "%)";
+      }
+
+      function draw() {
+        rafId = requestAnimationFrame(draw);
+        var w = canvas.clientWidth, h = canvas.clientHeight;
+        analyser.getByteFrequencyData(dataArr);
+        ctx.clearRect(0, 0, w, h);
+        // 背景渐隐残影
+        ctx.fillStyle = "rgba(7,9,15,0.35)";
+        ctx.fillRect(0, 0, w, h);
+
+        var gain = parseFloat(sens.value);
+        var n = dataArr.length;
+
+        if (mode === "bars") {
+          var bars = 72;
+          var step = Math.floor(n / bars);
+          var bw = w / bars;
+          for (var i = 0; i < bars; i++) {
+            var v = (dataArr[i * step] / 255) * gain;
+            if (v > 1) v = 1;
+            var bh = v * h * 0.92;
+            var grad = ctx.createLinearGradient(0, h, 0, h - bh);
+            grad.addColorStop(0, hsl(i, bars, 45));
+            grad.addColorStop(1, hsl(i, bars, 65));
+            ctx.fillStyle = grad;
+            ctx.fillRect(i * bw + 1, h - bh, bw - 2, bh);
+          }
+        } else if (mode === "circle") {
+          var cx = w / 2, cy = h / 2;
+          var baseR = Math.min(w, h) * 0.22;
+          ctx.lineWidth = 2;
+          for (var j = 0; j < n; j += 2) {
+            var val = (dataArr[j] / 255) * gain;
+            if (val > 1) val = 1;
+            var ang = (j / n) * Math.PI * 2;
+            var r1 = baseR, r2 = baseR + val * Math.min(w, h) * 0.26;
+            ctx.strokeStyle = hsl(j, n, 55 + val * 20);
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+            ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+            ctx.stroke();
+          }
+          // 中心脉冲圆
+          var avg = 0; for (var k = 0; k < n; k++) avg += dataArr[k]; avg /= n;
+          ctx.beginPath();
+          ctx.arc(cx, cy, baseR * 0.7 + (avg / 255) * gain * 20, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(120,180,255,0.25)";
+          ctx.fill();
+        } else { // wave
+          analyser.getByteTimeDomainData(dataArr);
+          ctx.lineWidth = 2.5;
+          var grad2 = ctx.createLinearGradient(0, 0, w, 0);
+          grad2.addColorStop(0, "#36d1dc"); grad2.addColorStop(1, "#5b86e5");
+          ctx.strokeStyle = grad2;
+          ctx.beginPath();
+          var slice = w / n;
+          for (var m = 0; m < n; m++) {
+            var yv = (dataArr[m] / 128 - 1) * (h * 0.4) * gain;
+            if (yv > h * 0.48) yv = h * 0.48; if (yv < -h * 0.48) yv = -h * 0.48;
+            var yy = h / 2 + yv;
+            if (m === 0) ctx.moveTo(0, yy); else ctx.lineTo(m * slice, yy);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function start() {
+        if (running) return;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          statusEl.textContent = "当前浏览器不支持麦克风采集";
+          return;
+        }
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+          stream = s;
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.8;
+          dataArr = new Uint8Array(analyser.frequencyBinCount);
+          source = audioCtx.createMediaStreamSource(s);
+          source.connect(analyser);
+          resize();
+          running = true;
+          startBtn.disabled = true; stopBtn.disabled = false;
+          hint.style.display = "none";
+          statusEl.textContent = "正在采集麦克风音频…";
+          draw();
+        }).catch(function (err) {
+          statusEl.textContent = "无法访问麦克风：" + (err && err.message ? err.message : err);
+        });
+      }
+
+      function stop() {
+        running = false;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+        if (audioCtx) audioCtx.close();
+        audioCtx = analyser = source = stream = null;
+        startBtn.disabled = false; stopBtn.disabled = true;
+        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        hint.style.display = "flex";
+        statusEl.textContent = "已停止";
+      }
+
+      startBtn.addEventListener("click", start);
+      stopBtn.addEventListener("click", stop);
+
+      modesBox.addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        mode = b.dataset.mode;
+        Array.prototype.forEach.call(modesBox.children, function (c) { c.classList.remove("active"); });
+        b.classList.add("active");
+      });
+
+      sens.addEventListener("input", function () { sensVal.textContent = parseFloat(sens.value).toFixed(1) + "×"; });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图片压缩 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:1000px;margin:0 auto;}
+.tool-page .grid{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;}
+
+.tool-page .drop{border:2px dashed var(--border);border-radius:12px;padding:24px 14px;text-align:center;cursor:pointer;transition:.18s;background:var(--bg);}
+.tool-page .drop:hover,.tool-page .drop.over{border-color:var(--primary);}
+.tool-page .drop .big{font-size:34px;display:block;margin-bottom:6px;}
+.tool-page .drop .t1{font-size:14px;font-weight:600;color:var(--text);}
+.tool-page .drop .t2{font-size:12px;color:var(--text-3);margin-top:4px;}
+.tool-page .drop input[type=file]{display:none;}
+
+.tool-page .ctrl{margin-top:16px;}
+.tool-page .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.tool-page .row label{font-size:13px;font-weight:600;color:var(--text-2);}
+.tool-page .row .val{font-size:14px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums;}
+.tool-page input[type=range]{width:100%;accent-color:var(--primary);cursor:pointer;margin:2px 0 14px;}
+.tool-page .field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.tool-page .field span{font-size:13px;font-weight:600;color:var(--text-2);}
+.tool-page select{flex:1;max-width:170px;padding:7px 10px;font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;}
+.tool-page select:focus{border-color:var(--primary);}
+
+.tool-page .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;}
+.tool-page .stat{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg);text-align:center;}
+.tool-page .stat .k{font-size:11.5px;color:var(--text-3);}
+.tool-page .stat .v{font-size:15px;font-weight:700;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums;}
+.tool-page .stat .v.good{color:var(--green);}
+
+.tool-page .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.tool-page .btn{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .btn:disabled{opacity:.45;cursor:not-allowed;}
+.tool-page .btn:disabled:hover{border-color:var(--border);color:var(--text-2);}
+.tool-page .btn.primary:disabled:hover{background:var(--primary);color:#fff;}
+
+.tool-page .pvs{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tool-page .pv-h{font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:8px;display:flex;justify-content:space-between;gap:6px;}
+.tool-page .pv-h em{font-style:normal;font-size:11.5px;color:var(--text-3);font-weight:500;}
+.tool-page .pv-box{border:1px solid var(--border);border-radius:10px;background:var(--bg);min-height:210px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px;}
+.tool-page .pv-box img{max-width:100%;max-height:300px;border-radius:6px;display:block;}
+.tool-page .pv-box .ph{font-size:13px;color:var(--text-3);}
+.tool-page .tip{font-size:12px;color:var(--text-3);line-height:1.7;margin-top:12px;}
+
+.tool-page .toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+.tool-page .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(max-width:680px){
+  .tool-page .grid{grid-template-columns:1fr;}
+  .tool-page .pvs{grid-template-columns:1fr;}
+  .tool-page .panel{padding:15px;}
+  .tool-page select{max-width:140px;}
+}
+
+/* 深色模式适配 */
+body.dark .tool-page .panel{box-shadow:none;}
+body.dark .tool-page .drop{background:#12151b;}
+body.dark .tool-page .stat,
+body.dark .tool-page .pv-box,
+body.dark .tool-page select{background:#12151b;color:var(--text);}
+body.dark .tool-page .btn{background:var(--card);color:var(--text-2);}
+body.dark .tool-page .btn.primary{color:#fff;}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">🗜️ 图片压缩</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">本地 Canvas 重绘压缩，图片不上传服务器，可调质量与尺寸，一键下载。</p>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="drop" id="dropZone">
+        <span class="big">📂</span>
+        <div class="t1">点击选择图片</div>
+        <div class="t2">或将图片拖拽到此处</div>
+        <div class="t2">支持 JPG / PNG / WEBP / GIF</div>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <div class="ctrl">
+        <div class="row"><label for="quality">压缩质量</label><span class="val" id="qVal">80%</span></div>
+        <input type="range" id="quality" min="10" max="100" step="1" value="80">
+
+        <div class="field">
+          <span>最大宽度</span>
+          <select id="maxW">
+            <option value="0">保持原始尺寸</option>
+            <option value="2560">2560 px</option>
+            <option value="1920">1920 px</option>
+            <option value="1280">1280 px</option>
+            <option value="800">800 px</option>
+            <option value="480">480 px</option>
+          </select>
+        </div>
+        <div class="field">
+          <span>输出格式</span>
+          <select id="outFmt">
+            <option value="image/jpeg">JPEG（推荐）</option>
+            <option value="image/webp">WebP（更小）</option>
+            <option value="image/png">PNG（无损）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="k">原图大小</div><div class="v" id="stOrig">—</div></div>
+        <div class="stat"><div class="k">压缩后</div><div class="v" id="stComp">—</div></div>
+        <div class="stat"><div class="k">压缩率</div><div class="v" id="stRate">—</div></div>
+        <div class="stat"><div class="k">输出尺寸</div><div class="v" id="stSize">—</div></div>
+      </div>
+
+      <div class="acts">
+        <button class="btn primary" id="dlBtn" disabled>⬇️ 下载压缩图</button>
+        <button class="btn" id="clearBtn" disabled>🗑️ 清空</button>
+      </div>
+      <p class="tip">提示：PNG 为无损格式，质量滑块对其无效，如需明显瘦身请选择 JPEG 或 WebP。</p>
+    </div>
+
+    <div class="panel">
+      <div class="pvs">
+        <div>
+          <div class="pv-h"><span>原图</span><em id="pvOrigInfo"></em></div>
+          <div class="pv-box"><img id="origImg" alt="" style="display:none;"><span class="ph" id="origPh">未选择图片</span></div>
+        </div>
+        <div>
+          <div class="pv-h"><span>压缩后</span><em id="pvCompInfo"></em></div>
+          <div class="pv-box"><img id="compImg" alt="" style="display:none;"><span class="ph" id="compPh">等待压缩</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var dropZone = $("dropZone"), fileInput = $("fileInput");
+  var quality = $("quality"), qVal = $("qVal"), maxWSel = $("maxW"), outFmt = $("outFmt");
+  var origImg = $("origImg"), compImg = $("compImg"), origPh = $("origPh"), compPh = $("compPh");
+  var stOrig = $("stOrig"), stComp = $("stComp"), stRate = $("stRate"), stSize = $("stSize");
+  var pvOrigInfo = $("pvOrigInfo"), pvCompInfo = $("pvCompInfo");
+  var dlBtn = $("dlBtn"), clearBtn = $("clearBtn"), toastEl = $("toast");
+
+  var srcImage = null, srcFile = null, outBlob = null, outUrl = "", srcUrl = "", tid = null, toastTid = null;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTid);
+    toastTid = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+  }
+
+  function fmtSize(b) {
+    if (!b && b !== 0) return "—";
+    if (b < 1024) return b + " B";
+    if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+    return (b / 1048576).toFixed(2) + " MB";
+  }
+
+  function extOf(type) {
+    if (type === "image/png") return "png";
+    if (type === "image/webp") return "webp";
+    return "jpg";
+  }
+
+  function reset() {
+    if (srcUrl) { URL.revokeObjectURL(srcUrl); srcUrl = ""; }
+    if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = ""; }
+    srcImage = null; srcFile = null; outBlob = null;
+    origImg.style.display = "none"; origImg.removeAttribute("src");
+    compImg.style.display = "none"; compImg.removeAttribute("src");
+    origPh.style.display = ""; compPh.style.display = "";
+    stOrig.textContent = "—"; stComp.textContent = "—";
+    stRate.textContent = "—"; stRate.classList.remove("good");
+    stSize.textContent = "—";
+    pvOrigInfo.textContent = ""; pvCompInfo.textContent = "";
+    dlBtn.disabled = true; clearBtn.disabled = true;
+    fileInput.value = "";
+  }
+
+  function loadFile(f) {
+    if (!f) return;
+    if (f.type.indexOf("image/") !== 0) { toast("请选择图片文件"); return; }
+    if (srcUrl) URL.revokeObjectURL(srcUrl);
+    srcFile = f;
+    srcUrl = URL.createObjectURL(f);
+    var im = new Image();
+    im.onload = function () {
+      srcImage = im;
+      origImg.src = srcUrl;
+      origImg.style.display = "";
+      origPh.style.display = "none";
+      stOrig.textContent = fmtSize(f.size);
+      pvOrigInfo.textContent = im.naturalWidth + " × " + im.naturalHeight;
+      clearBtn.disabled = false;
+      compress();
+    };
+    im.onerror = function () { toast("图片解析失败"); reset(); };
+    im.src = srcUrl;
+  }
+
+  function compress() {
+    if (!srcImage) return;
+    var type = outFmt.value;
+    var q = parseInt(quality.value, 10) / 100;
+    var limit = parseInt(maxWSel.value, 10) || 0;
+    var w = srcImage.naturalWidth, h = srcImage.naturalHeight;
+    if (limit > 0 && w > limit) {
+      h = Math.max(1, Math.round(h * limit / w));
+      w = limit;
+    }
+    var cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    var ctx = cv.getContext("2d");
+    if (type !== "image/png") {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+    }
+    ctx.drawImage(srcImage, 0, 0, w, h);
+
+    var done = function (blob) {
+      if (!blob) { toast("压缩失败，请换个格式试试"); return; }
+      if (outUrl) URL.revokeObjectURL(outUrl);
+      outBlob = blob;
+      outUrl = URL.createObjectURL(blob);
+      compImg.src = outUrl;
+      compImg.style.display = "";
+      compPh.style.display = "none";
+      stComp.textContent = fmtSize(blob.size);
+      stSize.textContent = w + " × " + h;
+      pvCompInfo.textContent = w + " × " + h;
+      var rate = srcFile ? (1 - blob.size / srcFile.size) * 100 : 0;
+      if (rate >= 0) {
+        stRate.textContent = "-" + rate.toFixed(1) + "%";
+        stRate.classList.add("good");
+      } else {
+        stRate.textContent = "+" + Math.abs(rate).toFixed(1) + "%";
+        stRate.classList.remove("good");
+      }
+      dlBtn.disabled = false;
+    };
+
+    if (cv.toBlob) {
+      cv.toBlob(done, type, q);
+    } else {
+      var url = cv.toDataURL(type, q);
+      var bin = atob(url.split(",")[1]);
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      done(new Blob([arr], { type: type }));
+    }
+  }
+
+  function lazyCompress() {
+    clearTimeout(tid);
+    tid = setTimeout(compress, 120);
+  }
+
+  dropZone.addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function (e) { loadFile(e.target.files && e.target.files[0]); });
+
+  ["dragenter", "dragover"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove("over"); });
+  });
+  dropZone.addEventListener("drop", function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length) loadFile(dt.files[0]);
+  });
+
+  quality.addEventListener("input", function () {
+    qVal.textContent = quality.value + "%";
+    lazyCompress();
+  });
+  maxWSel.addEventListener("change", lazyCompress);
+  outFmt.addEventListener("change", lazyCompress);
+
+  dlBtn.addEventListener("click", function () {
+    if (!outBlob) return;
+    var base = (srcFile && srcFile.name ? srcFile.name.replace(/\.[^.]+$/, "") : "image");
+    var a = document.createElement("a");
+    a.href = outUrl;
+    a.download = base + "-compressed." + extOf(outFmt.value);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast("已开始下载");
+  });
+
+  clearBtn.addEventListener("click", function () { reset(); toast("已清空"); });
+
+  qVal.textContent = quality.value + "%";
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>曼德博分形 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:900px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 18px;}
+
+    .layout{display:grid;grid-template-columns:1fr 250px;gap:18px;align-items:start;}
+    .canvas-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:14px;}
+    canvas{display:block;width:100%;height:auto;background:#000;border-radius:10px;touch-action:none;cursor:pointer;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .ctrl{margin-bottom:14px;}
+    .ctrl label{display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+    .ctrl input[type=range]{width:100%;accent-color:var(--primary);}
+    .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .btn-grid button{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-grid button:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-grid button.primary{background:var(--primary);border-color:var(--primary);color:#fff;grid-column:span 2;}
+    .btn-grid button.primary:hover{background:var(--primary-dark);color:#fff;}
+    .meta{font-size:12px;color:var(--text-3);margin-top:12px;line-height:1.9;word-break:break-all;}
+    .legend{font-size:12px;color:var(--text-3);line-height:1.9;margin-top:10px;}
+
+    @media(max-width:720px){.layout{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔭</span>
+      <h1>曼德博分形</h1>
+    </div>
+    <p class="tool-sub">复平面上 z → z² + c 的迭代集合。点击画布放大该区域，观察无限自相似的边界细节。</p>
+
+    <div class="layout">
+      <div class="canvas-wrap">
+        <canvas id="cv" width="600" height="480"></canvas>
+      </div>
+      <div class="panel">
+        <h2><span class="bar"></span> 控制</h2>
+        <div class="ctrl">
+          <label>迭代精度 <span id="itVal">120</span></label>
+          <input type="range" id="iter" min="30" max="400" step="10" value="120">
+        </div>
+        <div class="ctrl">
+          <label>配色 <span id="cVal">蓝紫</span></label>
+          <select id="palette" style="width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:9px;font-family:inherit;font-size:14px;">
+            <option value="0">蓝紫</option>
+            <option value="1">火焰</option>
+            <option value="2">青绿</option>
+            <option value="3">灰度</option>
+          </select>
+        </div>
+        <div class="btn-grid">
+          <button id="zoomIn">＋ 放大</button>
+          <button id="zoomOut">－ 缩小</button>
+          <button id="resetBtn" class="primary">↺ 回到全景</button>
+        </div>
+        <div class="meta" id="meta"></div>
+        <div class="legend">提示：直接点击画布可在该点放大。</div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv = document.getElementById("cv");
+      var ctx = cv.getContext("2d");
+      var W = cv.width, H = cv.height;
+
+      var maxIter=120, palette=0;
+      var view = {cx:-0.5, cy:0, scale:3.2}; // 复平面范围: scale 为高度跨度
+
+      function paletteColor(m, outside){
+        if(outside) return [0,0,0];
+        var t = m/maxIter;
+        if(palette===0){ // 蓝紫
+          return [Math.round(80+175*t), Math.round(40+60*t*t), Math.round(120+135*t)];
+        }else if(palette===1){ // 火焰
+          return [Math.round(255*Math.min(1,t*1.6)), Math.round(255*Math.max(0,t-0.3)*1.4), Math.round(80*Math.max(0,1-t*2))];
+        }else if(palette===2){ // 青绿
+          return [Math.round(40+60*t), Math.round(180+70*t), Math.round(150+100*t)];
+        }else{ // 灰度
+          var g=Math.round(255*t); return [g,g,g];
+        }
+      }
+
+      function render(){
+        var img = ctx.createImageData(W,H);
+        var data = img.data;
+        var aspect = W/H;
+        var reMin = view.cx - view.scale*aspect/2;
+        var reMax = view.cx + view.scale*aspect/2;
+        var imMin = view.cy - view.scale/2;
+        var imMax = view.cy + view.scale/2;
+        for(var py=0;py<H;py++){
+          var ci = imMax - (py/H)*(imMax-imMin);
+          for(var px=0;px<W;px++){
+            var cr = reMin + (px/W)*(reMax-reMin);
+            var zr=0, zi=0, it=0;
+            while(zr*zr+zi*zi<=4 && it<maxIter){
+              var tr = zr*zr - zi*zi + cr;
+              zi = 2*zr*zi + ci;
+              zr = tr;
+              it++;
+            }
+            var i=(py*W+px)*4;
+            if(it>=maxIter){ data[i]=0;data[i+1]=0;data[i+2]=0; }
+            else{
+              // 平滑着色
+              var mag = Math.sqrt(zr*zr+zi*zi);
+              var sm = it + 1 - Math.log(Math.log(mag))/Math.LN2;
+              var c = paletteColor(sm, false);
+              data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];
+            }
+            data[i+3]=255;
+          }
+        }
+        ctx.putImageData(img,0,0);
+        document.getElementById("meta").textContent = "中心: ("+view.cx.toFixed(5)+", "+view.cy.toFixed(5)+")\n跨度: "+view.scale.toExponential(2);
+      }
+
+      function zoomAt(px, py, factor){
+        var aspect=W/H;
+        var reMin=view.cx-view.scale*aspect/2, reMax=view.cx+view.scale*aspect/2;
+        var imMin=view.cy-view.scale/2, imMax=view.cy+view.scale/2;
+        var cr=reMin+(px/W)*(reMax-reMin);
+        var ci=imMin+(py/H)*(imMax-imMin);
+        view.cx=cr; view.cy=ci; view.scale*=factor;
+        render();
+      }
+
+      cv.addEventListener("click",function(e){
+        var r=cv.getBoundingClientRect();
+        var px=(e.clientX-r.left)*(cv.width/r.width);
+        var py=(e.clientY-r.top)*(cv.height/r.height);
+        zoomAt(px,py,0.5);
+      });
+
+      document.getElementById("zoomIn").onclick=function(){view.scale*=0.6;render();};
+      document.getElementById("zoomOut").onclick=function(){view.scale/=0.6;render();};
+      document.getElementById("resetBtn").onclick=function(){view={cx:-0.5,cy:0,scale:3.2};render();};
+      document.getElementById("iter").oninput=function(){maxIter=+this.value;document.getElementById("itVal").textContent=maxIter;render();};
+      document.getElementById("palette").onchange=function(){palette=+this.value;render();};
+
+      render();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

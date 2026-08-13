@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URL 编解码 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:920px;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+.tool-page .panel-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.tool-page .lbl{font-size:14px;font-weight:700;color:var(--text-2);}
+.tool-page .meta{margin-left:auto;font-size:12px;color:var(--text-3);}
+.tool-page textarea{width:100%;box-sizing:border-box;min-height:150px;resize:vertical;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.65;word-break:break-all;}
+.tool-page textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(13,110,253,.12);}
+.tool-page .switch-wrap{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:16px;}
+.tool-page .seg{display:flex;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:4px;flex:1 1 300px;}
+.tool-page .seg button{flex:1;padding:8px 10px;border:0;background:transparent;border-radius:7px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--text-2);transition:.15s;white-space:nowrap;}
+.tool-page .seg button.on{background:var(--primary);color:#fff;}
+.tool-page .seg-cap{font-size:12px;color:var(--text-3);margin-bottom:6px;display:block;}
+.tool-page .seg-col{display:flex;flex-direction:column;flex:1 1 300px;}
+.tool-page .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px;}
+.tool-page .btn{padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+.tool-page .btn:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.tool-page .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+.tool-page .tip{margin:12px 0;padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.7;display:none;word-break:break-all;}
+.tool-page .tip.err{display:block;background:#fdecec;color:#c0392b;border:1px solid #f5c6c6;}
+.tool-page .tip.ok{display:block;background:#eaf7ee;color:#1e7e34;border:1px solid #c3e6cb;}
+.tool-page .tip b{display:block;margin-bottom:4px;font-size:14px;}
+.tool-page .tip code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.tool-page .desc{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--text-3);line-height:1.7;margin-bottom:14px;}
+.tool-page .desc code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--primary);font-weight:600;}
+.tool-page .parts{margin-top:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none;}
+.tool-page .parts.show{display:block;}
+.tool-page .prow{display:flex;flex-wrap:wrap;gap:8px;padding:9px 13px;border-bottom:1px solid var(--border);font-size:13px;}
+.tool-page .prow:last-child{border-bottom:0;}
+.tool-page .prow .k{flex:0 0 auto;min-width:96px;color:var(--text-3);}
+.tool-page .prow .v{flex:1;min-width:140px;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;color:var(--text);}
+.tool-page .hint{font-size:13px;color:var(--text-3);line-height:1.8;margin-top:14px;}
+.tool-page .hint code{background:var(--bg);border:1px solid var(--border);padding:1px 6px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.tool-page .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:rgba(20,22,28,.92);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:9999;}
+.tool-page .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+@media(max-width:680px){
+  .tool-page .seg{flex:1 1 100%;}
+  .tool-page .seg-col{flex:1 1 100%;}
+  .tool-page .seg button{font-size:12.5px;padding:9px 4px;}
+  .tool-page .btn{flex:1 1 auto;min-width:calc(50% - 5px);padding:10px 8px;}
+  .tool-page textarea{min-height:120px;font-size:13px;}
+  .tool-page .meta{margin-left:0;width:100%;}
+  .tool-page .prow .k{flex:1 1 100%;min-width:auto;}
+}
+/* 深色模式适配 */
+body.dark .tool-page .panel{background:var(--card);border-color:var(--border);}
+body.dark .tool-page textarea{background:#171b22;border-color:var(--border);color:var(--text);}
+body.dark .tool-page .seg{background:#171b22;border-color:var(--border);}
+body.dark .tool-page .seg button{color:var(--text-2);}
+body.dark .tool-page .seg button.on{background:var(--primary);color:#fff;}
+body.dark .tool-page .btn{background:#1d2128;color:var(--text-2);border-color:var(--border);}
+body.dark .tool-page .btn.primary{background:var(--primary);color:#fff;}
+body.dark .tool-page .desc{background:#171b22;border-color:var(--border);color:var(--text-3);}
+body.dark .tool-page .desc code{color:#7ab8ff;}
+body.dark .tool-page .parts{border-color:var(--border);}
+body.dark .tool-page .prow{border-bottom-color:var(--border);}
+body.dark .tool-page .hint code{background:#171b22;border-color:var(--border);}
+body.dark .tool-page .tip.err{background:#3a1d1f;color:#ff8a80;border-color:#5a2a2d;}
+body.dark .tool-page .tip.ok{background:#16301f;color:#7ee2a8;border-color:#255c3a;}
+body.dark .tool-page .tip code{background:rgba(255,255,255,.1);}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">URL 编解码</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">支持 encodeURIComponent 与 encodeURI 两种标准</p>
+
+  <div class="switch-wrap">
+    <div class="seg-col">
+      <span class="seg-cap">操作模式</span>
+      <div class="seg">
+        <button type="button" id="mEnc" class="on">编码</button>
+        <button type="button" id="mDec">解码</button>
+      </div>
+    </div>
+    <div class="seg-col">
+      <span class="seg-cap">编码标准</span>
+      <div class="seg">
+        <button type="button" id="sComp" class="on">Component（参数值）</button>
+        <button type="button" id="sUri">URI（整条链接）</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="desc" id="descBox"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="lbl" id="inLabel">输入</span>
+      <span class="meta" id="inMeta">0 字符</span>
+    </div>
+    <textarea id="inputBox" placeholder="在此输入或粘贴内容…" spellcheck="false"></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="runBtn" type="button">编码</button>
+    <button class="btn" id="swapBtn" type="button">⇅ 结果转入输入</button>
+    <button class="btn" id="sampleBtn" type="button">载入示例</button>
+    <button class="btn" id="copyBtn" type="button">📋 复制结果</button>
+    <button class="btn" id="clearBtn" type="button">清空</button>
+  </div>
+
+  <div class="tip" id="tipBox"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="lbl" id="outLabel">结果</span>
+      <span class="meta" id="outMeta">0 字符</span>
+    </div>
+    <textarea id="outputBox" placeholder="转换结果将显示在这里…" spellcheck="false" readonly></textarea>
+    <div class="parts" id="partsBox"></div>
+  </div>
+
+  <p class="hint">
+    <code>encodeURIComponent</code>：编码除 <code>A-Z a-z 0-9 - _ . ! ~ * ' ( )</code> 外的所有字符，适合编码「查询参数的值」。<br>
+    <code>encodeURI</code>：保留 <code>: / ? # [ ] @ ! $ &amp; ' ( ) * + , ; =</code> 等 URL 结构字符，适合编码「一整条链接」。<br>
+    解码遇到非法百分号序列（如 <code>%ZZ</code>、单独的 <code>%</code>）时会给出明确提示。
+  </p>
+  <div class="toast" id="toastBox"></div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var mode = 'encode';
+  var std = 'component';
+  var inputBox = document.getElementById('inputBox');
+  var outputBox = document.getElementById('outputBox');
+  var tipBox = document.getElementById('tipBox');
+  var descBox = document.getElementById('descBox');
+  var partsBox = document.getElementById('partsBox');
+  var toastBox = document.getElementById('toastBox');
+  var inLabel = document.getElementById('inLabel');
+  var outLabel = document.getElementById('outLabel');
+  var inMeta = document.getElementById('inMeta');
+  var outMeta = document.getElementById('outMeta');
+  var runBtn = document.getElementById('runBtn');
+  var mEnc = document.getElementById('mEnc');
+  var mDec = document.getElementById('mDec');
+  var sComp = document.getElementById('sComp');
+  var sUri = document.getElementById('sUri');
+  var toastTimer = null;
+
+  var SAMPLE_RAW = 'https://xhc.dpdns.org/search?q=前端 工具&tag=JSON/正则&page=1#结果';
+  var SAMPLE_ENC = 'https%3A%2F%2Fxhc.dpdns.org%2Fsearch%3Fq%3D%E5%89%8D%E7%AB%AF%20%E5%B7%A5%E5%85%B7';
+
+  var DESC = {
+    component: '<b style="display:inline">encodeURIComponent / decodeURIComponent</b>　会把 <code>: / ? # &amp; = +</code> 等结构字符一并转义，适用于把一段文本安全地放进查询参数的值里。',
+    uri: '<b style="display:inline">encodeURI / decodeURI</b>　保留 URL 结构字符（<code>: / ? # &amp; =</code> 等）不转义，只处理空格、中文等非法字符，适用于编码一整条完整链接。'
+  };
+
+  function toast(msg) {
+    toastBox.textContent = msg;
+    toastBox.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastBox.classList.remove('show'); }, 1800);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function hideTip() {
+    tipBox.className = 'tip';
+    tipBox.innerHTML = '';
+  }
+
+  function showTip(html, kind) {
+    tipBox.className = 'tip ' + kind;
+    tipBox.innerHTML = html;
+  }
+
+  function updateMeta() {
+    inMeta.textContent = inputBox.value.length + ' 字符';
+    outMeta.textContent = outputBox.value.length + ' 字符';
+  }
+
+  /* 定位非法百分号序列的位置，便于友好提示 */
+  function findBadPercent(str) {
+    for (var i = 0; i < str.length; i++) {
+      if (str.charAt(i) !== '%') { continue; }
+      var seq = str.substr(i, 3);
+      if (seq.length < 3 || !/^%[0-9A-Fa-f]{2}$/.test(seq)) {
+        return { index: i, seq: str.substr(i, 3) };
+      }
+      i += 2;
+    }
+    return null;
+  }
+
+  function refreshUI() {
+    var isEnc = mode === 'encode';
+    mEnc.classList.toggle('on', isEnc);
+    mDec.classList.toggle('on', !isEnc);
+    sComp.classList.toggle('on', std === 'component');
+    sUri.classList.toggle('on', std === 'uri');
+    runBtn.textContent = isEnc ? '编码' : '解码';
+    var fn = std === 'component'
+      ? (isEnc ? 'encodeURIComponent' : 'decodeURIComponent')
+      : (isEnc ? 'encodeURI' : 'decodeURI');
+    inLabel.textContent = isEnc ? '输入（原始文本 / URL）' : '输入（已编码的 URL）';
+    outLabel.textContent = '结果（' + fn + '）';
+    inputBox.placeholder = isEnc ? '例如：https://xhc.dpdns.org/search?q=前端 工具' : '例如：https%3A%2F%2Fxhc.dpdns.org%2F%E5%B7%A5%E5%85%B7';
+    descBox.innerHTML = DESC[std];
+  }
+
+  /* 解析结果中的 URL 结构，作为附加信息展示 */
+  function renderParts(text) {
+    partsBox.classList.remove('show');
+    partsBox.innerHTML = '';
+    if (!/^https?:\/\//i.test(text)) { return; }
+    var u;
+    try { u = new URL(text); } catch (e) { return; }
+    var rows = [
+      { k: '协议', v: u.protocol.replace(':', '') },
+      { k: '主机', v: u.host },
+      { k: '路径', v: u.pathname || '/' }
+    ];
+    if (u.hash) { rows.push({ k: '锚点', v: u.hash }); }
+    u.searchParams.forEach(function (val, key) {
+      rows.push({ k: '参数 ' + key, v: val });
+    });
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      html += '<div class="prow"><span class="k">' + escapeHtml(rows[i].k) + '</span><span class="v">' + escapeHtml(rows[i].v) + '</span></div>';
+    }
+    partsBox.innerHTML = html;
+    partsBox.classList.add('show');
+  }
+
+  function run() {
+    var src = inputBox.value;
+    if (!src) {
+      outputBox.value = '';
+      partsBox.classList.remove('show');
+      updateMeta();
+      showTip('<b>⚠️ 输入为空</b>请先输入需要转换的内容。', 'err');
+      return;
+    }
+
+    var result;
+    try {
+      if (mode === 'encode') {
+        result = std === 'component' ? encodeURIComponent(src) : encodeURI(src);
+      } else {
+        var bad = findBadPercent(src);
+        if (bad) {
+          outputBox.value = '';
+          partsBox.classList.remove('show');
+          updateMeta();
+          showTip('<b>❌ 解码失败：非法的百分号序列</b>在第 <code>' + (bad.index + 1) + '</code> 个字符处发现 <code>' + escapeHtml(bad.seq) + '</code>。<br>合法格式应为 <code>%</code> + 两位十六进制数（如 <code>%E4</code>）；若原文本身包含 <code>%</code>，需先写成 <code>%25</code>。', 'err');
+          return;
+        }
+        result = std === 'component' ? decodeURIComponent(src) : decodeURI(src);
+      }
+    } catch (err) {
+      outputBox.value = '';
+      partsBox.classList.remove('show');
+      updateMeta();
+      var msg = err && err.message ? err.message : String(err);
+      showTip('<b>❌ 转换失败</b>' + escapeHtml(msg) + '<br>常见原因：字符串包含不完整的百分号转义，或不是合法的 UTF-8 编码序列。', 'err');
+      return;
+    }
+
+    outputBox.value = result;
+    updateMeta();
+    renderParts(result);
+    var delta = result.length - src.length;
+    var deltaText = delta === 0 ? '长度不变' : (delta > 0 ? ('增加 ' + delta + ' 个字符') : ('减少 ' + (-delta) + ' 个字符'));
+    showTip('<b>✅ ' + (mode === 'encode' ? '编码' : '解码') + '成功</b>使用 <code>' + (std === 'component' ? (mode === 'encode' ? 'encodeURIComponent' : 'decodeURIComponent') : (mode === 'encode' ? 'encodeURI' : 'decodeURI')) + '</code>，' + deltaText + '，结果共 ' + result.length + ' 个字符。', 'ok');
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch (e) { toast('复制失败，请手动选择复制'); }
+    document.body.removeChild(ta);
+  }
+
+  function copyResult() {
+    var text = outputBox.value;
+    if (!text) { toast('还没有可复制的结果'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('已复制到剪贴板');
+      }).catch(function () {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  mEnc.addEventListener('click', function () {
+    mode = 'encode';
+    refreshUI();
+    hideTip();
+    outputBox.value = '';
+    partsBox.classList.remove('show');
+    updateMeta();
+  });
+
+  mDec.addEventListener('click', function () {
+    mode = 'decode';
+    refreshUI();
+    hideTip();
+    outputBox.value = '';
+    partsBox.classList.remove('show');
+    updateMeta();
+  });
+
+  sComp.addEventListener('click', function () {
+    std = 'component';
+    refreshUI();
+    if (inputBox.value) { run(); }
+  });
+
+  sUri.addEventListener('click', function () {
+    std = 'uri';
+    refreshUI();
+    if (inputBox.value) { run(); }
+  });
+
+  runBtn.addEventListener('click', run);
+  document.getElementById('copyBtn').addEventListener('click', copyResult);
+
+  document.getElementById('swapBtn').addEventListener('click', function () {
+    if (!outputBox.value) { toast('结果为空，无法转入'); return; }
+    var moved = outputBox.value;
+    mode = mode === 'encode' ? 'decode' : 'encode';
+    refreshUI();
+    inputBox.value = moved;
+    outputBox.value = '';
+    partsBox.classList.remove('show');
+    hideTip();
+    updateMeta();
+    toast('已转入输入框并切换模式');
+  });
+
+  document.getElementById('sampleBtn').addEventListener('click', function () {
+    inputBox.value = mode === 'encode' ? SAMPLE_RAW : SAMPLE_ENC;
+    updateMeta();
+    run();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    inputBox.value = '';
+    outputBox.value = '';
+    partsBox.classList.remove('show');
+    hideTip();
+    updateMeta();
+    inputBox.focus();
+  });
+
+  inputBox.addEventListener('input', updateMeta);
+
+  inputBox.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+  });
+
+  var yearEl = document.getElementById('year');
+  if (yearEl && !yearEl.textContent) { yearEl.textContent = new Date().getFullYear(); }
+
+  refreshUI();
+  updateMeta();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片水印 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:880px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    input[type=text],input[type=number],select{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .drop{border:2px dashed var(--border);border-radius:12px;padding:26px;text-align:center;color:var(--text-3);cursor:pointer;transition:.15s;}
+    .drop:hover{border-color:var(--primary);color:var(--primary);}
+    #preview{margin-top:14px;max-width:100%;border-radius:10px;border:1px solid var(--border);display:none;}
+    .preview-wrap{background:repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50%/20px 20px;display:inline-block;border-radius:10px;padding:0;overflow:hidden;}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+    .col3{display:flex;gap:12px;flex-wrap:wrap;}
+    .col3>div{flex:1;min-width:140px;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🖼️</span>
+      <div>
+        <h1>图片水印</h1>
+        <p class="tool-sub">上传图片添加文字水印，支持位置 / 平铺 / 透明度，纯本地处理</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 1. 选择图片</h2>
+      <div class="drop" id="drop">点击选择或拖拽图片到此处（本地处理，不上传）</div>
+      <input type="file" id="file" accept="image/*" style="display:none;">
+      <div style="text-align:center;" class="preview-wrap">
+        <img id="preview" alt="预览">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 2. 水印设置</h2>
+      <div class="row">
+        <input type="text" id="wmText" placeholder="水印文字" value="XHC 博客" style="flex:1;min-width:200px;">
+        <label class="field">字号
+          <input type="number" id="wmSize" value="32" min="8" max="200" style="width:80px;">
+        </label>
+        <label class="field">透明度
+          <input type="number" id="wmAlpha" value="50" min="0" max="100" style="width:80px;"> %
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">颜色
+          <input type="text" id="wmColor" value="#ffffff" style="width:90px;">
+        </label>
+        <label class="field">位置
+          <select id="wmPos">
+            <option value="tile">平铺</option>
+            <option value="br" selected>右下角</option>
+            <option value="bl">左下角</option>
+            <option value="tr">右上角</option>
+            <option value="tl">左上角</option>
+            <option value="center">居中</option>
+          </select>
+        </label>
+        <label class="field">旋转
+          <input type="number" id="wmRotate" value="-30" min="-90" max="90" style="width:70px;"> °
+        </label>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="apply" disabled>应用水印</button>
+        <button class="btn-primary" id="download" disabled>⬇ 下载</button>
+      </div>
+      <div class="note">所有处理均在浏览器内通过 Canvas 完成，图片不会离开你的设备。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      document.getElementById("year").textContent=new Date().getFullYear();
+      var file=document.getElementById("file"), drop=document.getElementById("drop");
+      var preview=document.getElementById("preview");
+      var wmText=document.getElementById("wmText"), wmSize=document.getElementById("wmSize");
+      var wmAlpha=document.getElementById("wmAlpha"), wmColor=document.getElementById("wmColor");
+      var wmPos=document.getElementById("wmPos"), wmRotate=document.getElementById("wmRotate");
+      var apply=document.getElementById("apply"), download=document.getElementById("download");
+      var img=null, resultURL=null;
+
+      drop.onclick=function(){ file.click(); };
+      drop.ondragover=function(e){ e.preventDefault(); };
+      drop.ondrop=function(e){ e.preventDefault(); if(e.dataTransfer.files&&e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
+      file.onchange=function(){ if(file.files&&file.files[0]) loadFile(file.files[0]); };
+
+      function loadFile(f){
+        if(!/^image\//.test(f.type)){ toast("请选择图片文件"); return; }
+        var r=new FileReader();
+        r.onload=function(e){
+          var im=new Image();
+          im.onload=function(){ img=im; preview.src=im.src; preview.style.display="block"; apply.disabled=false; download.disabled=false; resultURL=null; };
+          im.src=e.target.result;
+        };
+        r.readAsDataURL(f);
+      }
+
+      function render(){
+        if(!img) return;
+        var c=document.createElement("canvas");
+        c.width=img.width; c.height=img.height;
+        var ctx=c.getContext("2d");
+        ctx.drawImage(img,0,0);
+        var text=wmText.value || "";
+        if(text){
+          var size=Math.max(8,Math.min(200,+wmSize.value||32));
+          var alpha=Math.max(0,Math.min(100,+wmAlpha.value||50))/100;
+          ctx.save();
+          ctx.globalAlpha=alpha;
+          ctx.fillStyle=wmColor.value||"#ffffff";
+          ctx.font="bold "+size+"px sans-serif";
+          ctx.textBaseline="middle";
+          var m=ctx.measureText(text).width;
+          var pad=size*0.6;
+          if(wmPos.value==="tile"){
+            ctx.translate(img.width/2,img.height/2);
+            ctx.rotate((+wmRotate.value||-30)*Math.PI/180);
+            ctx.translate(-img.width/2,-img.height/2);
+            var stepX=m+size*3, stepY=size*3;
+            for(var y=-img.height;y<img.height*2;y+=stepY){
+              for(var x=-img.width;x<img.width*2;x+=stepX){
+                ctx.fillText(text,x,y);
+              }
+            }
+          } else {
+            var x2,y2;
+            if(wmPos.value==="br"){ x2=img.width-pad; y2=img.height-pad; ctx.textAlign="right"; }
+            else if(wmPos.value==="bl"){ x2=pad; y2=img.height-pad; ctx.textAlign="left"; }
+            else if(wmPos.value==="tr"){ x2=img.width-pad; y2=pad; ctx.textAlign="right"; }
+            else if(wmPos.value==="tl"){ x2=pad; y2=pad; ctx.textAlign="left"; }
+            else { x2=img.width/2; y2=img.height/2; ctx.textAlign="center"; }
+            ctx.fillText(text,x2,y2);
+          }
+          ctx.restore();
+        }
+        if(resultURL) URL.revokeObjectURL(resultURL);
+        resultURL=c.toDataURL("image/png");
+        preview.src=resultURL;
+      }
+
+      apply.onclick=render;
+      [wmText,wmSize,wmAlpha,wmColor,wmPos,wmRotate].forEach(function(el){ el.addEventListener("input",function(){ if(img) render(); }); });
+      download.onclick=function(){ if(!resultURL){ render(); } if(resultURL){ var a=document.createElement("a"); a.href=resultURL; a.download="watermark.png"; a.click(); } };
+
+      function toast(m){ var t=document.createElement("div"); t.textContent=m; t.style.cssText="position:fixed;left:50%;top:20px;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:14px;"; document.body.appendChild(t); setTimeout(function(){document.body.removeChild(t);},1400); }
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

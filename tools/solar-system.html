@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>太阳系模拟器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .sim-wrap{max-width:880px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 22px;}
+    .stage{
+      position:relative;background:#05070d;border-radius:16px;overflow:hidden;
+      border:1px solid #1a2030;box-shadow:0 10px 40px rgba(0,0,0,.5);
+    }
+    body.dark .stage{border-color:#232c3d;background:#04060c;}
+    #ss-canvas{display:block;width:100%;height:auto;touch-action:none;}
+    .ss-controls{
+      display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+      padding:14px 16px;margin-top:14px;background:var(--card);
+      border:1px solid var(--border);border-radius:14px;
+    }
+    body.dark .ss-controls{background:var(--card);}
+    .btn-ctrl{
+      border:1px solid var(--border);background:var(--bg);color:var(--text);
+      border-radius:11px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;
+      font-family:inherit;transition:.15s;
+    }
+    .btn-ctrl:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-ctrl.primary{background:var(--primary);border-color:var(--primary-dark);color:#fff;}
+    .ctrl-group{display:flex;align-items:center;gap:10px;}
+    .ctrl-group label{font-size:13px;color:var(--text-2);white-space:nowrap;}
+    .ctrl-group input[type=range]{width:160px;accent-color:var(--primary);cursor:pointer;}
+    .ctrl-check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer;user-select:none;}
+    .ctrl-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;}
+    .ss-hint{font-size:12.5px;color:var(--text-3);margin-top:14px;line-height:1.7;}
+    @media(max-width:560px){
+      .ss-controls{padding:12px;}
+      .ctrl-group input[type=range]{width:120px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="sim-wrap">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🪐</span>
+      <h1>太阳系模拟器</h1>
+    </div>
+    <p class="tool-sub">八大行星围绕发光的太阳公转动画。可调节速度、显隐轨道与标签，观察近似真实的相对比例与公转节奏。</p>
+
+    <div class="stage">
+      <canvas id="ss-canvas"></canvas>
+    </div>
+
+    <div class="ss-controls">
+      <button id="ssPlay" class="btn-ctrl primary">⏸ 暂停</button>
+      <div class="ctrl-group">
+        <label>速度 <span id="ssSpeedVal">1.0×</span></label>
+        <input id="ssSpeed" type="range" min="0.5" max="5" step="0.1" value="1">
+      </div>
+      <label class="ctrl-check"><input type="checkbox" id="ssOrbits" checked> 轨道</label>
+      <label class="ctrl-check"><input type="checkbox" id="ssLabels" checked> 标签</label>
+    </div>
+
+    <p class="ss-hint">
+      提示：拖动速度滑块可加速或放慢公转；取消勾选「轨道 / 标签」可获得更纯净的星空视图。
+      动画在后台标签页会自动暂停渲染以节省资源。
+    </p>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('ss-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, cx, cy, maxR, dpr;
+    let starCanvas = null;
+    let playing = true, speed = 1, showOrbits = true, showLabels = true;
+    let raf = null;
+
+    const DEFS = [
+      { name: '水星', color: '#b8c0c8', size: 4,  a: 0.14, speed: 0.9 },
+      { name: '金星', color: '#e8b84b', size: 7,  a: 0.24, speed: 0.65 },
+      { name: '地球', color: '#3da5d8', size: 7.5, a: 0.33, speed: 0.5 },
+      { name: '火星', color: '#e5533d', size: 5.5, a: 0.43, speed: 0.4 },
+      { name: '木星', color: '#d8a93a', size: 18, a: 0.58, speed: 0.18 },
+      { name: '土星', color: '#e8c84a', size: 15, a: 0.70, speed: 0.13 },
+      { name: '天王星', color: '#5fd0d8', size: 11, a: 0.82, speed: 0.09 },
+      { name: '海王星', color: '#3f6fe0', size: 10, a: 0.92, speed: 0.07 }
+    ];
+    DEFS.forEach(d => d._start = Math.random() * Math.PI * 2);
+
+    function buildStars() {
+      starCanvas = document.createElement('canvas');
+      starCanvas.width = W; starCanvas.height = H;
+      const sctx = starCanvas.getContext('2d');
+      const n = Math.floor(W * H / 1300);
+      for (let i = 0; i < n; i++) {
+        const x = Math.random() * W, y = Math.random() * H;
+        const r = Math.random() * 1.3 + 0.2, a = Math.random() * 0.7 + 0.2;
+        sctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+        sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI * 2); sctx.fill();
+      }
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      W = w; H = h;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx = w / 2; cy = h / 2;
+      maxR = Math.min(w, h) / 2 - 26;
+      buildStars();
+    }
+
+    function drawFrame(now) {
+      const prog = (now - t0) / 1000;
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(starCanvas, 0, 0, W, H);
+
+      // Sun
+      const sunR = Math.max(18, Math.min(W, H) * 0.045);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, sunR);
+      g.addColorStop(0, '#fff7d6');
+      g.addColorStop(0.4, '#ffd24a');
+      g.addColorStop(1, '#ff8a1e');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, sunR, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,180,60,0.6)';
+      ctx.shadowBlur = 40;
+      ctx.beginPath(); ctx.arc(cx, cy, sunR, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      for (const p of DEFS) {
+        const R = maxR * p.a;
+        if (showOrbits) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, R, R, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        const ang = p._start + p.speed * prog * speed * 6;
+        const x = cx + Math.cos(ang) * R;
+        const y = cy + Math.sin(ang) * R;
+
+        const rad = p.size;
+        const pg = ctx.createRadialGradient(x - rad * 0.3, y - rad * 0.3, 0, x, y, rad);
+        pg.addColorStop(0, '#ffffff');
+        pg.addColorStop(1, p.color);
+        ctx.fillStyle = pg;
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+
+        if (p.name === '土星') {
+          ctx.strokeStyle = 'rgba(232,200,74,0.85)';
+          ctx.lineWidth = rad * 0.5;
+          ctx.beginPath();
+          ctx.ellipse(x, y, rad * 1.9, rad * 0.62, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (showLabels) {
+          ctx.fillStyle = 'rgba(230,235,245,0.92)';
+          ctx.font = '12px system-ui, "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(p.name, x, y - rad - 9);
+        }
+      }
+    }
+
+    let t0 = 0;
+    function loop() {
+      if (!playing) return;
+      drawFrame(performance.now());
+      raf = requestAnimationFrame(loop);
+    }
+    function start() {
+      if (raf) cancelAnimationFrame(raf);
+      t0 = performance.now();
+      playing = true;
+      loop();
+    }
+    function pause() { playing = false; if (raf) cancelAnimationFrame(raf); }
+
+    // 控件
+    const playBtn = document.getElementById('ssPlay');
+    const speedInput = document.getElementById('ssSpeed');
+    const speedVal = document.getElementById('ssSpeedVal');
+    const orbitsChk = document.getElementById('ssOrbits');
+    const labelsChk = document.getElementById('ssLabels');
+
+    playBtn.addEventListener('click', () => {
+      if (playing) { pause(); playBtn.textContent = '▶ 播放'; playBtn.classList.remove('primary'); }
+      else { start(); playBtn.textContent = '⏸ 暂停'; playBtn.classList.add('primary'); }
+    });
+    speedInput.addEventListener('input', () => {
+      speed = parseFloat(speedInput.value);
+      speedVal.textContent = speed.toFixed(1) + '×';
+    });
+    orbitsChk.addEventListener('change', () => showOrbits = orbitsChk.checked);
+    labelsChk.addEventListener('change', () => showLabels = labelsChk.checked);
+
+    function init() {
+      resize();
+      start();
+      window.addEventListener('resize', () => { resize(); if (!playing) drawFrame(performance.now()); });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+  </script>
+
+  <!-- 站内链接修正 + 搜索 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? '../' + h : null;
+      }
+      document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if (!a) return;
+        var n = fix(a.getAttribute('href'));
+        if (n) a.setAttribute('href', n);
+      }, true);
+      window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+          var si = document.getElementById('searchInput'), sb = document.getElementById('searchBtn');
+          if (!si || !sb) return;
+          var go = function () { location.href = '../index.html?q=' + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>颜色格式转换 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:680px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px;}
+
+    .preview{height:90px;border-radius:13px;border:1px solid var(--border);margin-bottom:18px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;text-shadow:0 1px 2px rgba(0,0,0,.25);transition:.15s;}
+
+    .conv-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
+    .conv-row label{width:58px;font-size:14px;font-weight:600;color:var(--text-2);}
+    .conv-row input{flex:1;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;font-family:"SFMono-Regular",Consolas,monospace;}
+    .conv-row input:focus{outline:none;border-color:var(--primary);}
+    .conv-row .copy{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:9px;padding:9px 12px;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;}
+    .conv-row .copy:hover{border-color:var(--primary);color:var(--primary);}
+
+    .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .swatch{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:.12s;}
+    .swatch:hover{transform:scale(1.12);}
+
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌈</span>
+      <h1>颜色格式转换</h1>
+    </div>
+    <p class="tool-sub">在任意输入框输入颜色，自动同步 HEX / RGB / HSL 三种格式，实时预览色块，点击常用色可一键填充。</p>
+
+    <div class="panel">
+      <div class="preview" id="preview">#3498db</div>
+
+      <div class="conv-row">
+        <label>HEX</label>
+        <input id="hexIn" value="#3498db" spellcheck="false">
+        <button class="copy" data-t="hex">复制</button>
+      </div>
+      <div class="conv-row">
+        <label>RGB</label>
+        <input id="rgbIn" value="rgb(52, 152, 219)" spellcheck="false">
+        <button class="copy" data-t="rgb">复制</button>
+      </div>
+      <div class="conv-row">
+        <label>HSL</label>
+        <input id="hslIn" value="hsl(204, 70%, 53%)" spellcheck="false">
+        <button class="copy" data-t="hsl">复制</button>
+      </div>
+
+      <div class="swatches" id="swatches"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var hexIn = document.getElementById("hexIn");
+      var rgbIn = document.getElementById("rgbIn");
+      var hslIn = document.getElementById("hslIn");
+      var preview = document.getElementById("preview");
+
+      function clamp(v,a,b){return Math.min(b,Math.max(a,v));}
+      function pad2(v){v=Math.round(v).toString(16);return v.length===1?"0"+v:v;}
+
+      function hexToRgb(hex){
+        hex=hex.replace(/^#/,"");
+        if(hex.length===3) hex=hex.split("").map(function(c){return c+c;}).join("");
+        if(!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+        return {r:parseInt(hex.slice(0,2),16),g:parseInt(hex.slice(2,4),16),b:parseInt(hex.slice(4,6),16)};
+      }
+      function rgbToHex(r,g,b){return "#"+pad2(r)+pad2(g)+pad2(b);}
+
+      function rgbToHsl(r,g,b){
+        r/=255;g/=255;b/=255;
+        var max=Math.max(r,g,b),min=Math.min(r,g,b);
+        var h,s,l=(max+min)/2;
+        if(max===min){h=s=0;}
+        else{
+          var d=max-min;
+          s=l>0.5?d/(2-max-min):d/(max+min);
+          switch(max){
+            case r:h=(g-b)/d+(g<b?6:0);break;
+            case g:h=(b-r)/d+2;break;
+            case b:h=(r-g)/d+4;break;
+          }
+          h/=6;
+        }
+        return {h:Math.round(h*360),s:Math.round(s*100),l:Math.round(l*100)};
+      }
+      function hslToRgb(h,s,l){
+        h/=360;s/=100;l/=100;
+        var r,g,b;
+        if(s===0){r=g=b=l;}
+        else{
+          function hue2rgb(p,q,t){
+            if(t<0)t+=1;if(t>1)t-=1;
+            if(t<1/6)return p+(q-p)*6*t;
+            if(t<1/2)return q;
+            if(t<2/3)return p+(q-p)*(2/3-t)*6;
+            return p;
+          }
+          var q=l<0.5?l*(1+s):l+s-l*s;
+          var p=2*l-q;
+          r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);
+        }
+        return {r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)};
+      }
+
+      function setFromRgb(r,g,b,src){
+        r=clamp(r,0,255);g=clamp(g,0,255);b=clamp(b,0,255);
+        var hex=rgbToHex(r,g,b);
+        var hsl=rgbToHsl(r,g,b);
+        if(src!=="hex") hexIn.value=hex;
+        if(src!=="rgb") rgbIn.value="rgb("+Math.round(r)+", "+Math.round(g)+", "+Math.round(b)+")";
+        if(src!=="hsl") hslIn.value="hsl("+hsl.h+", "+hsl.s+"%, "+hsl.l+"%)";
+        preview.style.background=hex;
+        preview.textContent=hex;
+        preview.style.color=(hsl.l>55)?"#222":"#fff";
+      }
+
+      hexIn.addEventListener("input",function(){
+        var c=hexToRgb(hexIn.value);
+        if(c) setFromRgb(c.r,c.g,c.b,"hex");
+      });
+      rgbIn.addEventListener("input",function(){
+        var m=rgbIn.value.match(/(\d+(?:\.\d+)?)/g);
+        if(m&&m.length>=3) setFromRgb(+m[0],+m[1],+m[2],"rgb");
+      });
+      hslIn.addEventListener("input",function(){
+        var m=hslIn.value.match(/(\d+(?:\.\d+)?)/g);
+        if(m&&m.length>=3){
+          var c=hslToRgb(+m[0],+m[1],+m[2]);
+          setFromRgb(c.r,c.g,c.b,"hsl");
+        }
+      });
+
+      // 复制
+      var toastEl=document.getElementById("tipToast");
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+      Array.prototype.forEach.call(document.querySelectorAll(".copy"),function(btn){
+        btn.addEventListener("click",function(){
+          var t=btn.dataset.t;
+          var val = t==="hex"?hexIn.value : t==="rgb"?rgbIn.value : hslIn.value;
+          if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(val).then(function(){toast("已复制 "+val);},function(){fallback(val);});
+          else fallback(val);
+          function fallback(s){var ta=document.createElement("textarea");ta.value=s;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");}document.body.removeChild(ta);}
+        });
+      });
+
+      // 常用色
+      var presets=["#e74c3c","#e67e22","#f1c40f","#2ecc71","#1abc9c","#3498db","#9b59b6","#34495e","#ffffff","#000000"];
+      var sw=document.getElementById("swatches");
+      presets.forEach(function(c){
+        var d=document.createElement("div");
+        d.className="swatch";d.style.background=c;d.title=c;
+        d.addEventListener("click",function(){hexIn.value=c;var rgb=hexToRgb(c);setFromRgb(rgb.r,rgb.g,rgb.b,"hex");});
+        sw.appendChild(d);
+      });
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

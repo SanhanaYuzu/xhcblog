@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>俄罗斯方块 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .game-wrap{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start;}
+    .board-box{position:relative;background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:6px;}
+    canvas#board{display:block;background:#0f1117;border-radius:6px;}
+    .side{display:flex;flex-direction:column;gap:14px;min-width:150px;}
+    .side .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+    .side .card h3{font-size:13px;color:var(--text-3);margin:0 0 8px;font-weight:600;}
+    .side .card .v{font-size:26px;font-weight:800;color:var(--primary);}
+    .side .card .v.sm{font-size:18px;}
+    canvas#next{display:block;background:#0f1117;border-radius:8px;margin:0 auto;}
+    .keys{font-size:12px;color:var(--text-3);line-height:1.9;}
+    .keys b{color:var(--text-2);}
+    .btns{display:flex;gap:10px;margin-top:18px;justify-content:center;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:12px;padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:12px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .overlay{position:absolute;inset:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,17,23,.86);color:#fff;border-radius:6px;text-align:center;gap:10px;}
+    .overlay.hidden{display:none;}
+    .overlay h2{margin:0;font-size:22px;}
+    .overlay p{margin:0;color:#cfd3dc;font-size:14px;}
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    @media(max-width:560px){.side{flex-direction:row;flex-wrap:wrap;}.side .card{flex:1;min-width:120px;}}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🧱</span>
+      <h1>俄罗斯方块</h1>
+    </div>
+    <p class="tool-sub">经典俄罗斯方块：方向键移动旋转，空格直落，消行得分，随等级加速。</p>
+
+    <div class="game-wrap">
+      <div class="board-box">
+        <canvas id="board" width="300" height="600"></canvas>
+        <div class="overlay" id="overlay">
+          <h2 id="ovTitle">俄罗斯方块</h2>
+          <p id="ovText">按「开始游戏」或回车开始</p>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card"><h3>得分</h3><div class="v" id="score">0</div></div>
+        <div class="card"><h3>消除行数</h3><div class="v sm" id="lines">0</div></div>
+        <div class="card"><h3>等级</h3><div class="v sm" id="level">1</div></div>
+        <div class="card"><h3>下一个</h3><canvas id="next" width="120" height="120"></canvas></div>
+        <div class="card keys">
+          <b>← →</b> 左右移动<br>
+          <b>↑</b> 旋转<br>
+          <b>↓</b> 加速下落<br>
+          <b>空格</b> 直接落地
+        </div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn-primary" id="startBtn">▶ 开始游戏</button>
+      <button class="btn-ghost" id="pauseBtn">⏸ 暂停</button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var COLS=10, ROWS=20, CELL=30;
+      var canvas=document.getElementById("board"), ctx=canvas.getContext("2d");
+      var ncanvas=document.getElementById("next"), nctx=ncanvas.getContext("2d");
+      var scoreEl=document.getElementById("score"), linesEl=document.getElementById("lines"), levelEl=document.getElementById("level");
+      var overlay=document.getElementById("overlay"), ovTitle=document.getElementById("ovTitle"), ovText=document.getElementById("ovText");
+      var toastEl=document.getElementById("tipToast");
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+
+      var COLORS=["","#e74c3c","#3498db","#f1c40f","#2ecc71","#9b59b6","#e67e22","#1abc9c"];
+      var SHAPES=[
+        [],
+        [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
+        [[2,0,0],[2,2,2],[0,0,0]],                 // L
+        [[0,0,3],[3,3,3],[0,0,0]],                 // J
+        [[4,4],[4,4]],                             // O
+        [[0,5,5],[5,5,0],[0,0,0]],                 // S
+        [[6,6,0],[0,6,6],[0,0,0]],                 // Z
+        [[0,7,0],[7,7,7],[0,0,0]]                  // T
+      ];
+
+      var board=[], cur=null, nextType=0, score=0, lines=0, level=1, dropTimer=null, running=false, paused=false, speed=600;
+
+      function reset(){ board=[]; for(var r=0;r<ROWS;r++){ board.push(new Array(COLS).fill(0)); } score=0; lines=0; level=1; speed=600; updateStats(); }
+      function randType(){ return Math.floor(Math.random()*7)+1; }
+      function newPiece(){
+        var t = cur?nextType:randType();
+        nextType = randType();
+        var m = SHAPES[t].map(function(row){return row.slice();});
+        cur={ type:t, mat:m, x: Math.floor((COLS-4)/2)+1, y: -1 };
+        drawNext();
+        if(collide(cur.x,cur.y,cur.mat)){ gameOver(); }
+      }
+      function collide(x,y,mat){
+        for(var r=0;r<mat.length;r++)for(var c=0;c<mat[r].length;c++){
+          if(mat[r][c]){
+            var nx=x+c, ny=y+r;
+            if(nx<0||nx>=COLS||ny>=ROWS) return true;
+            if(ny>=0 && board[ny][nx]) return true;
+          }
+        }
+        return false;
+      }
+      function merge(){
+        for(var r=0;r<cur.mat.length;r++)for(var c=0;c<cur.mat[r].length;c++){
+          if(cur.mat[r][c]){ var ny=cur.y+r, nx=cur.x+c; if(ny>=0) board[ny][nx]=cur.type; }
+        }
+      }
+      function clearLines(){
+        var cleared=0;
+        for(var r=ROWS-1;r>=0;r--){
+          if(board[r].every(function(v){return v>0;})){
+            board.splice(r,1); board.unshift(new Array(COLS).fill(0)); cleared++; r++;
+          }
+        }
+        if(cleared){ lines+=cleared; score+= [0,100,300,500,800][cleared]*level; level=Math.floor(lines/10)+1; speed=Math.max(120,600-level*45); updateStats(); }
+      }
+      function rotate(){
+        if(cur.type===4) return; // O 不旋转
+        var m=cur.mat, N=m.length, res=[];
+        for(var r=0;r<N;r++){ res.push(new Array(N).fill(0)); }
+        for(var r=0;r<N;r++)for(var c=0;c<N;c++){ res[c][N-1-r]=m[r][c]; }
+        if(!collide(cur.x,cur.y,res)){ cur.mat=res; }
+      }
+      function step(){
+        if(!running||paused) return;
+        if(!collide(cur.x,cur.y+1,cur.mat)){ cur.y++; }
+        else { merge(); clearLines(); newPiece(); }
+        draw();
+      }
+      function updateStats(){ scoreEl.textContent=score; linesEl.textContent=lines; levelEl.textContent=level; }
+      function draw(){
+        ctx.fillStyle="#0f1117"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+          if(board[r][c]){ drawCell(ctx,c,r,board[r][c]); }
+        }
+        if(cur){
+          for(var r=0;r<cur.mat.length;r++)for(var c=0;c<cur.mat[r].length;c++){
+            if(cur.mat[r][c] && cur.y+r>=0){ drawCell(ctx,cur.x+c,cur.y+r,cur.type); }
+          }
+        }
+      }
+      function drawCell(c,x,y,t){
+        c.fillStyle=COLORS[t]||"#888";
+        c.fillRect(x*CELL+1,y*CELL+1,CELL-2,CELL-2);
+        c.fillStyle="rgba(255,255,255,.25)";
+        c.fillRect(x*CELL+1,y*CELL+1,CELL-2,4);
+      }
+      function drawNext(){
+        nctx.fillStyle="#0f1117"; nctx.fillRect(0,0,ncanvas.width,ncanvas.height);
+        var m=SHAPES[nextType], N=m.length, S=24, off=(120-N*S)/2;
+        for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+          if(m[r][c]){
+            nctx.fillStyle=COLORS[nextType];
+            nctx.fillRect(off+c*S+1,off+r*S+1,S-2,S-2);
+          }
+        }
+      }
+      function start(){
+        reset(); running=true; paused=false; overlay.classList.add("hidden");
+        newPiece(); draw();
+        if(dropTimer) clearInterval(dropTimer);
+        dropTimer=setInterval(step, speed);
+      }
+      function gameOver(){
+        running=false; if(dropTimer) clearInterval(dropTimer);
+        ovTitle.textContent="游戏结束"; ovText.textContent="得分 "+score+" · 按回车或开始重玩";
+        overlay.classList.remove("hidden");
+      }
+      function togglePause(){
+        if(!running) return;
+        paused=!paused;
+        if(paused){ ovTitle.textContent="已暂停"; ovText.textContent="按继续或回车恢复"; overlay.classList.remove("hidden"); }
+        else { overlay.classList.add("hidden"); }
+      }
+
+      document.getElementById("startBtn").addEventListener("click", start);
+      document.getElementById("pauseBtn").addEventListener("click", togglePause);
+      document.addEventListener("keydown", function(e){
+        if(!running) { if(e.key==="Enter") start(); return; }
+        if(e.key==="Enter" && paused) { togglePause(); return; }
+        if(paused) return;
+        if(e.key==="ArrowLeft"){ if(!collide(cur.x-1,cur.y,cur.mat)){cur.x--;draw();} e.preventDefault(); }
+        else if(e.key==="ArrowRight"){ if(!collide(cur.x+1,cur.y,cur.mat)){cur.x++;draw();} e.preventDefault(); }
+        else if(e.key==="ArrowDown"){ if(!collide(cur.x,cur.y+1,cur.mat)){cur.y++;score+=1;updateStats();draw();} e.preventDefault(); }
+        else if(e.key==="ArrowUp"){ rotate(); draw(); e.preventDefault(); }
+        else if(e.key===" "){ while(!collide(cur.x,cur.y+1,cur.mat)){cur.y++;score+=2;} merge(); clearLines(); newPiece(); draw(); e.preventDefault(); }
+      });
+
+      reset(); draw();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

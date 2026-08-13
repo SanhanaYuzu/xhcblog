@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>傅里叶级数合成 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:860px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    canvas{display:block;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;}
+    .ctrl-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .field select,.field input[type=range]{accent-color:var(--primary);}
+    .field select{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 10px;font-family:inherit;}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🌊</span>
+      <h1>傅里叶级数合成</h1>
+    </div>
+    <p class="tool-sub">用一串旋转向量（本轮）叠加，逼近方波、锯齿波与三角波——直观理解「任意周期信号都能分解为正弦波之和」。</p>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 参数</h2>
+      <div class="ctrl-row">
+        <div class="field">波形
+          <select id="wave">
+            <option value="square">方波</option>
+            <option value="saw">锯齿波</option>
+            <option value="tri">三角波</option>
+          </select>
+        </div>
+        <div class="field">谐波数 <span id="harmLbl">8</span>
+          <input type="range" id="harm" min="1" max="40" value="8" style="width:140px;">
+        </div>
+        <div class="field">速度 <span id="spdLbl">1.0</span>×
+          <input type="range" id="spd" min="1" max="40" value="10" style="width:120px;">
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="toggleBtn">⏸ 暂停</button>
+        <button class="btn-ghost" id="resetBtn">🔄 重置波形</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 可视化</h2>
+      <canvas id="cv" height="320"></canvas>
+      <div class="note">左侧为旋转向量链（本轮 epicycles），末端轨迹实时绘出右侧对应波形；谐波数越多，逼近越精确。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+      var waveSel=document.getElementById("wave"), harmEl=document.getElementById("harm"), spdEl=document.getElementById("spd");
+      var harmLbl=document.getElementById("harmLbl"), spdLbl=document.getElementById("spdLbl");
+      var wave=[]; // 历史波形点
+      var t=0, playing=true, raf=null;
+
+      function resize(){ cv.width=cv.clientWidth; }
+      window.addEventListener("resize", resize); resize();
+
+      function coeffs(type,n){
+        // 第 n 个谐波(从1开始)的角频率倍率与幅度、相位
+        if(type==="square"){ return (n%2===1)? {amp:4/(n*Math.PI), mul:n, ph:0} : null; }
+        if(type==="saw"){ return {amp:(2/(n*Math.PI))*(n%2===1?1:-1), mul:n, ph:0}; }
+        if(type==="tri"){
+          if(n%2===1){ var s=(n-1)/2%2===0?1:-1; return {amp:(8/(n*n*Math.PI*Math.PI))*s, mul:n, ph:0}; }
+          return null;
+        }
+        return null;
+      }
+
+      function draw(){
+        var W=cv.width, H=cv.height;
+        ctx.fillStyle=getCss("--bg")||"#fff"; ctx.fillRect(0,0,W,H);
+        var cx=Math.min(170, W*0.28), cy=H/2;
+        var baseR=Math.min(110, H*0.4);
+        var N=parseInt(harmEl.value,10);
+        var x=cx, y=cy;
+        ctx.strokeStyle="rgba(127,127,127,.35)"; ctx.lineWidth=1;
+        for(var n=1;n<=N;n++){
+          var c=coeffs(waveSel.value,n); if(!c) continue;
+          var r=baseR*c.amp;
+          var px=x, py=y;
+          x += r*Math.cos(c.mul*t + c.ph);
+          y += r*Math.sin(c.mul*t + c.ph);
+          ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.strokeStyle=getCss("--primary"); ctx.globalAlpha=.55; ctx.stroke(); ctx.globalAlpha=1;
+          ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fillStyle=getCss("--primary"); ctx.fill();
+        }
+        // 连接线到波形区
+        var waveStart=Math.min(340, W*0.45);
+        ctx.strokeStyle="rgba(127,127,127,.4)";
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(waveStart, y); ctx.stroke();
+        // 记录波形点（最右端为当前 y）
+        wave.unshift(y);
+        if(wave.length> (W-waveStart-4)) wave.pop();
+        // 画波形
+        ctx.strokeStyle=getCss("--primary"); ctx.lineWidth=2; ctx.beginPath();
+        for(var i=0;i<wave.length;i++){
+          var wx=waveStart + i, wy=wave[i];
+          if(i===0) ctx.moveTo(wx,wy); else ctx.lineTo(wx,wy);
+        }
+        ctx.stroke();
+        // 中线
+        ctx.strokeStyle="rgba(127,127,127,.3)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(W,cy); ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      function loop(){
+        if(playing){ t += 0.02*(parseInt(spdEl.value,10)/10); wave=[]; draw(); }
+        raf=requestAnimationFrame(loop);
+      }
+
+      function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+      harmEl.addEventListener("input", function(){ harmLbl.textContent=harmEl.value; wave=[]; });
+      spdEl.addEventListener("input", function(){ spdLbl.textContent=(parseInt(spdEl.value,10)/10).toFixed(1); });
+      waveSel.addEventListener("change", function(){ wave=[]; });
+      document.getElementById("toggleBtn").addEventListener("click", function(){
+        playing=!playing; this.textContent= playing?"⏸ 暂停":"▶ 播放";
+      });
+      document.getElementById("resetBtn").addEventListener("click", function(){ t=0; wave=[]; });
+
+      loop();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

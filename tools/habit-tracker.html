@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>习惯打卡 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:780px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    .add-row{display:flex;gap:10px;}
+    .add-row input{flex:1;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 13px;font-size:15px;font-family:inherit;}
+    .add-row input:focus{outline:none;border-color:var(--primary);}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:11px 18px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .habit{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);}
+    .habit:last-child{border-bottom:none;}
+    .habit .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+    .habit .info{flex:1;min-width:0;}
+    .habit .name{font-size:16px;font-weight:600;}
+    .habit .meta{font-size:12.5px;color:var(--text-3);margin-top:2px;}
+    .habit .today{width:54px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text-2);font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;transition:.15s;}
+    .habit .today.done{background:var(--primary);color:#fff;border-color:var(--primary);}
+    .habit .del{background:none;border:none;color:var(--text-3);font-size:18px;cursor:pointer;flex-shrink:0;padding:4px;}
+    .habit .del:hover{color:#e74c3c;}
+    .streak-grid{display:flex;gap:3px;flex-wrap:wrap;margin-top:6px;}
+    .streak-grid span{width:13px;height:13px;border-radius:3px;background:var(--border);}
+    .streak-grid span.on{background:var(--primary);}
+    .empty{color:var(--text-3);font-size:13px;text-align:center;padding:18px 0;}
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">✅</span>
+      <h1>习惯打卡</h1>
+    </div>
+    <p class="tool-sub">建立你的每日习惯清单，点「今日」即可打卡，自动统计连续天数与近 35 天记录，数据保存在本地。</p>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 添加一个习惯</h2>
+      <div class="add-row">
+        <input type="text" id="nameInput" placeholder="例如：每天喝水 8 杯、背 20 个单词…" maxlength="30">
+        <button class="btn-primary" id="addBtn">＋ 添加</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 我的习惯</h2>
+      <div id="habitList"><div class="empty">还没有习惯，先在上方添加一个吧</div></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var KEY="xhc_habits_v1";
+      var listEl=document.getElementById("habitList"), nameInput=document.getElementById("nameInput");
+      var toastEl=document.getElementById("tipToast");
+      var COLORS=["#e74c3c","#3498db","#f1c40f","#2ecc71","#9b59b6","#e67e22","#1abc9c","#e84393"];
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+      function todayKey(){ var d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0"); }
+      function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ return []; } }
+      function save(a){ localStorage.setItem(KEY, JSON.stringify(a)); }
+
+      function streak(arr){
+        // arr: 已完成日期 key 数组(升序)
+        var set={}; arr.forEach(function(k){set[k]=1;});
+        var s=0; var d=new Date();
+        // 若今天没打卡，从昨天起算连续
+        function keyOf(date){ return date.getFullYear()+"-"+(date.getMonth()+1).toString().padStart(2,"0")+"-"+date.getDate().toString().padStart(2,"0"); }
+        if(!set[keyOf(d)]) d.setDate(d.getDate()-1);
+        while(set[keyOf(d)]){ s++; d.setDate(d.getDate()-1); }
+        return s;
+      }
+
+      function render(){
+        var habits=load();
+        if(!habits.length){ listEl.innerHTML='<div class="empty">还没有习惯，先在上方添加一个吧</div>'; return; }
+        listEl.innerHTML="";
+        var tk=todayKey();
+        habits.forEach(function(h,idx){
+          var doneDays=(h.days||[]);
+          var done=doneDays.indexOf(tk)>-1;
+          var st=streak(doneDays);
+          var total=doneDays.length;
+          var row=document.createElement("div");
+          row.className="habit";
+          var color=COLORS[idx%COLORS.length];
+          // 近35天格
+          var cells="";
+          var base=new Date(); base.setDate(base.getDate()-34);
+          for(var i=0;i<35;i++){ var dd=new Date(base); dd.setDate(base.getDate()+i); var k=dd.getFullYear()+"-"+(dd.getMonth()+1).toString().padStart(2,"0")+"-"+dd.getDate().toString().padStart(2,"0"); cells+='<span class="'+(doneDays.indexOf(k)>-1?"on":"")+'"></span>'; }
+          row.innerHTML=
+            '<span class="dot" style="background:'+color+'"></span>'+
+            '<div class="info"><div class="name">'+escapeHtml(h.name)+'</div>'+
+            '<div class="meta">连续 <b style="color:var(--primary)">'+st+'</b> 天 · 累计 '+total+' 次</div>'+
+            '<div class="streak-grid">'+cells+'</div></div>'+
+            '<button class="today'+(done?" done":"")+'" data-i="'+idx+'">'+(done?"已打卡":"今日")+'</button>'+
+            '<button class="del" data-i="'+idx+'" title="删除">×</button>';
+          listEl.appendChild(row);
+        });
+      }
+      function escapeHtml(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
+
+      function add(){
+        var name=nameInput.value.trim();
+        if(!name){ toast("请输入习惯名称"); return; }
+        var habits=load();
+        habits.push({name:name, days:[]});
+        save(habits); nameInput.value=""; render();
+      }
+      function toggle(i){
+        var habits=load(); var h=habits[i]; if(!h) return;
+        var tk=todayKey(), pos=h.days.indexOf(tk);
+        if(pos>-1) h.days.splice(pos,1); else h.days.push(tk);
+        save(habits); render();
+      }
+      function del(i){
+        var habits=load(); habits.splice(i,1); save(habits); render();
+      }
+
+      document.getElementById("addBtn").addEventListener("click", add);
+      nameInput.addEventListener("keydown", function(e){ if(e.key==="Enter") add(); });
+      listEl.addEventListener("click", function(e){
+        if(e.target.classList.contains("today")) toggle(parseInt(e.target.dataset.i,10));
+        else if(e.target.classList.contains("del")) del(parseInt(e.target.dataset.i,10));
+      });
+
+      render();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

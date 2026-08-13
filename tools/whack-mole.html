@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>打地鼠 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.wm-wrap{max-width:400px;margin:0 auto;padding:28px 0 48px;text-align:center;}
+.wm-wrap h1{margin-bottom:4px;font-size:22px;}
+.wm-info{display:flex;justify-content:center;gap:20px;margin:14px 0;font-size:15px;}
+.wm-info span{background:var(--card);border:1px solid var(--border);padding:6px 18px;border-radius:8px;}
+.wm-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:300px;margin:16px auto;background:#8b6914;padding:14px;border-radius:12px;}
+.wm-hole{width:80px;height:80px;border-radius:50%;background:#5c4012;display:flex;align-items:center;justify-content:center;font-size:40px;cursor:pointer;user-select:none;border:3px solid #3d2809;transition:transform .1s;}
+.wm-hole.has-mole{background:#7cb342;animation:popIn .15s ease-out;}
+.wm-hole:active{transform:scale(0.9);}
+@keyframes popIn{from{transform:scale(0);}to{transform:scale(1);}}
+.wm-btns{display:flex;justify-content:center;gap:10px;margin-top:16px;}
+.hint-text{color:var(--text-3);font-size:13px;margin-top:12px;}
+.wm-over{color:#e74c3c;font-weight:bold;font-size:18px;display:none;margin-top:10px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="wm-wrap">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+<h1>🔨 打地鼠</h1>
+<div class="wm-info"><span>时间：<strong id="wmTime">30</strong>s</span><span>得分：<strong id="wmScore">0</strong></span><span>最高：<strong id="wmBest">0</strong></span></div>
+<div class="wm-board" id="wmBoard"></div>
+<div class="wm-btns"><button class="btn btn-primary" id="wmStart">开始游戏</button></div>
+<p class="hint-text">点击冒出的地鼠得分！30 秒内尽可能多打！</p>
+<div class="wm-over" id="wmOver">时间到！最终得分：<span id="wmFinalScore">0</span></div>
+</main>
+<footer class="footer"><div class="container">© <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+(function(){
+var score=0,timeLeft=30,best=parseInt(localStorage.getItem('whackBest')||'0'),playing=false,timer=null,moleTimer=null;
+document.getElementById('wmBest').textContent=best;
+var boardEl=document.getElementById('wmBoard');
+
+function createBoard(){boardEl.innerHTML='';for(var i=0;i<9;i++){var h=document.createElement('div');h.className='wm-hole';h.textContent='';h.onclick=function(){if(this.classList.contains('has-mole')){score++;document.getElementById('wmScore').textContent=score;this.classList.remove('has-mole');this.textContent='';}};boardEl.appendChild(h);}}
+
+function showMole(){if(!playing||timeLeft<=0)return;var holes=document.querySelectorAll('.wm-hole');var empty=[];for(var i=0;i<holes.length;i++)if(!holes[i].classList.contains('has-mole'))empty.push(holes[i]);if(empty.length===0)return;var hole=empty[Math.floor(Math.random()*empty.length)];hole.classList.add('has-mole');hole.textContent='🐹';setTimeout(function(){hole.classList.remove('has-mole');hole.textContent='';},700+Math.random()*300);}
+
+function tick(){timeLeft--;document.getElementById('wmTime').textContent=timeLeft;if(timeLeft<=0){endGame();}}
+
+function startGame(){score=0;timeLeft=30;playing=true;document.getElementById('wmScore').textContent=score;document.getElementById('wmTime').textContent=timeLeft;document.getElementById('wmOver').style.display='none';createBoard();timer=setInterval(tick,1000);moleTimer=setInterval(showMole,600+Math.random()*400);document.getElementById('wmStart').disabled=true;}
+
+function endGame(){playing=false;clearInterval(timer);clearInterval(moleTimer);document.querySelectorAll('.wm-hole').forEach(function(h){h.classList.remove('has-mole');h.textContent='';});if(score>best){best=score;localStorage.setItem('whackBest',best);document.getElementById('wmBest').textContent=best;}document.getElementById('wmFinalScore').textContent=score;document.getElementById('wmOver').style.display='block';document.getElementById('wmStart').disabled=false;}
+
+document.getElementById('wmStart').onclick=startGame;
+
+createBoard();
+})();
+</script>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt=""></a></div>
+</body>
+</html>

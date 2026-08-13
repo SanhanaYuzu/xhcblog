@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片格式转换 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+    .upload-area{border:2px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:16px;}
+    .upload-area:hover{border-color:#3498db;background:#f0f7ff;}
+    .upload-area input{display:none;}
+    .preview-img{max-width:100%;max-height:300px;border-radius:10px;display:block;margin:0 auto 16px;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+    .info{font-size:13px;color:var(--text-3);margin-bottom:8px;}
+    body.dark .upload-area:hover{background:#162030;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🖼️ 图片格式转换</h1>
+    <p class="desc">上传图片，通过 Canvas 转换为 PNG / JPEG / WebP 格式，可调质量并下载。纯本地处理，图片不上传。</p>
+    <div class="card">
+      <div class="upload-area" id="uploadArea">
+        <input type="file" accept="image/*" id="fileInput">
+        <div id="dropText">📂 点击选择图片或拖拽到此处</div>
+      </div>
+      <img id="preview" class="preview-img" style="display:none;">
+      <div class="info" id="srcInfo" style="display:none;"></div>
+      <div class="row" id="controls" style="display:none;">
+        <label style="font-size:14px;font-weight:600;">输出格式:</label>
+        <select id="format" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;">
+          <option value="image/png">PNG</option>
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+        <label style="font-size:14px;font-weight:600;">质量:</label>
+        <input type="range" id="quality" min="10" max="100" value="92" style="width:100px;">
+        <span id="qVal" style="font-size:13px;">92%</span>
+        <button class="btn btn-primary" id="convertBtn">转换并下载</button>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+  <script>
+    function qs(s,r){return(r||document).querySelector(s);}
+    var imgFile=null,imgEl=qs('#preview');
+
+    function loadFile(file){
+      if(!file.type.startsWith('image/')){alert('请选择图片文件');return;}
+      imgFile=file;
+      var reader=new FileReader();
+      reader.onload=function(e){
+        imgEl.src=e.target.result;imgEl.style.display='block';
+        var kb=(file.size/1024).toFixed(1);
+        qs('#srcInfo').textContent='源文件: '+file.name+' | '+file.type+' | '+kb+' KB | '+imgEl.naturalWidth+'×'+imgEl.naturalHeight;
+        qs('#srcInfo').style.display='';
+        qs('#controls').style.display='';
+        qs('#dropText').textContent='点击更换图片';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    qs('#fileInput').addEventListener('change',function(){if(this.files[0])loadFile(this.files[0]);});
+    qs('#uploadArea').addEventListener('click',function(){qs('#fileInput').click();});
+    qs('#uploadArea').addEventListener('dragover',function(e){e.preventDefault();});
+    qs('#uploadArea').addEventListener('drop',function(e){e.preventDefault();if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+    qs('#quality').addEventListener('input',function(){qs('#qVal').textContent=this.value+'%';});
+
+    qs('#convertBtn').addEventListener('click',function(){
+      var canvas=document.createElement('canvas');
+      var ctx=canvas.getContext('2d');
+      canvas.width=imgEl.naturalWidth;canvas.height=imgEl.naturalHeight;
+      ctx.drawImage(imgEl,0,0);
+      var fmt=qs('#format').value,q=parseInt(qs('#quality').value)/100;
+      var ext=fmt.split('/')[1];
+      if(ext==='jpeg')ext='jpg';
+      canvas.toBlob(function(blob){
+        var url=URL.createObjectURL(blob);
+        var a=document.createElement('a');
+        a.download='converted.'+ext;a.href=url;a.click();
+        URL.revokeObjectURL(url);
+      },fmt,q);
+    });
+
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

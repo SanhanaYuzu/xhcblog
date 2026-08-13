@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>单摆模拟 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:880px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 18px;}
+
+    .layout{display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start;}
+    .canvas-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:14px;}
+    canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:10px;touch-action:none;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .ctrl{margin-bottom:14px;}
+    .ctrl label{display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+    .ctrl input[type=range]{width:100%;accent-color:var(--primary);}
+    .stats{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;line-height:2;margin-bottom:14px;color:var(--text-2);}
+    .stats b{color:var(--primary);font-variant-numeric:tabular-nums;}
+    .btn-row{display:flex;gap:8px;}
+    .btn-row button{flex:1;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-row button:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-row button.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn-row button.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    @media(max-width:720px){.layout{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">⏳</span>
+      <h1>单摆模拟</h1>
+    </div>
+    <p class="tool-sub">演示理想单摆的简谐运动。调节摆长、初始角度、阻尼与重力，观察周期变化，并与小角度近似公式对比。</p>
+
+    <div class="layout">
+      <div class="canvas-wrap">
+        <canvas id="cv" width="560" height="460"></canvas>
+      </div>
+      <div class="panel">
+        <h2><span class="bar"></span> 参数</h2>
+        <div class="ctrl">
+          <label>摆长 L (cm) <span id="lVal">200</span></label>
+          <input type="range" id="len" min="40" max="350" step="5" value="200">
+        </div>
+        <div class="ctrl">
+          <label>初始角度 θ₀ (°) <span id="aVal">30</span></label>
+          <input type="range" id="ang" min="1" max="80" step="1" value="30">
+        </div>
+        <div class="ctrl">
+          <label>阻尼系数 <span id="dVal">0.00</span></label>
+          <input type="range" id="damp" min="0" max="1" step="0.02" value="0">
+        </div>
+        <div class="ctrl">
+          <label>重力 g <span id="gVal">9.8</span></label>
+          <input type="range" id="grav" min="1" max="25" step="0.1" value="9.8">
+        </div>
+
+        <div class="stats">
+          周期 T（实测）：<b id="tReal">—</b> s<br>
+          周期 T（小角近似）：<b id="tApp">—</b> s<br>
+          当前角度：<b id="aNow">—</b>°
+        </div>
+
+        <div class="btn-row">
+          <button id="resetBtn">↺ 重置</button>
+          <button id="pauseBtn" class="primary">⏸ 暂停</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv = document.getElementById("cv");
+      var ctx = cv.getContext("2d");
+      var W = cv.width, H = cv.height;
+      var ox = W/2, oy = 70;
+
+      var L=200, th0=30*Math.PI/180, damp=0, g=9.8;
+      var theta, omega, t=0, periodTimer=0, lastCross=0, measured=0, paused=false;
+
+      function reset(){
+        theta = th0; omega = 0; t = 0; measured = 0; lastCross = 0;
+      }
+
+      function step(dt){
+        // θ'' = -(g/L) sinθ - damp*ω
+        var Lm = L/100; // 米
+        var acc = -(g/Lm)*Math.sin(theta) - damp*omega;
+        omega += acc*dt;
+        theta += omega*dt;
+        t += dt;
+        // 测量半周期（过零点）
+        if(lastCross===0 && theta<0 && (theta-omega*dt)>=0){
+          if(t>0.3){ measured = t*2; }
+          lastCross = t;
+        }
+      }
+
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        var Lpx = L * (H-120)/350;
+        var px = ox + Lpx*Math.sin(theta);
+        var py = oy + Lpx*Math.cos(theta);
+        // 摆线
+        ctx.strokeStyle=getCss("--text-2")||"#888";
+        ctx.lineWidth=2.5;
+        ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(px,py);ctx.stroke();
+        // 支点
+        ctx.fillStyle=getCss("--text")||"#222";
+        ctx.beginPath();ctx.arc(ox,oy,5,0,7);ctx.fill();
+        // 摆锤
+        ctx.fillStyle="#e67e22";
+        ctx.beginPath();ctx.arc(px,py,11,0,7);ctx.fill();
+        // 角度弧
+        ctx.strokeStyle="rgba(52,152,219,.5)";
+        ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(ox,oy,40,-Math.PI/2,-Math.PI/2+theta,theta>0);ctx.stroke();
+      }
+
+      function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||null;}
+
+      function updateStats(){
+        var Lm=L/100;
+        var tApp = 2*Math.PI*Math.sqrt(Lm/g);
+        document.getElementById("tApp").textContent = tApp.toFixed(3);
+        document.getElementById("tReal").textContent = measured? measured.toFixed(3) : "—";
+        document.getElementById("aNow").textContent = (theta*180/Math.PI).toFixed(1);
+      }
+
+      var last=performance.now();
+      function loop(ts){
+        var dt=(ts-last)/1000; last=ts;
+        if(!paused){
+          dt=Math.min(dt,0.03);
+          var sub=6, h=dt/sub;
+          for(var i=0;i<sub;i++) step(h);
+        }
+        draw();
+        updateStats();
+        requestAnimationFrame(loop);
+      }
+
+      var lenEl=document.getElementById("len"),angEl=document.getElementById("ang"),dEl=document.getElementById("damp"),gEl=document.getElementById("grav");
+      lenEl.oninput=function(){L=+this.value;document.getElementById("lVal").textContent=L;};
+      angEl.oninput=function(){th0=this.value*Math.PI/180;document.getElementById("aVal").textContent=this.value;reset();};
+      dEl.oninput=function(){damp=+this.value;document.getElementById("dVal").textContent=damp.toFixed(2);};
+      gEl.oninput=function(){g=+this.value;document.getElementById("gVal").textContent=g.toFixed(1);};
+
+      document.getElementById("resetBtn").onclick=reset;
+      document.getElementById("pauseBtn").onclick=function(){paused=!paused;this.textContent=paused?"▶ 继续":"⏸ 暂停";};
+
+      reset();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>百分比计算器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .pc-tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+    .pc-tab{padding:9px 16px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+    .pc-tab:hover{border-color:var(--primary);color:var(--primary);}
+    .pc-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+    .pc-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;}
+    body.dark .pc-panel{box-shadow:none;}
+
+    .pc-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+    .pc-row label{font-size:14px;font-weight:600;color:var(--text-2);min-width:120px;}
+    .pc-row input{flex:1;min-width:140px;font-size:16px;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:ui-monospace,Menlo,Consolas,monospace;}
+    .pc-row .suf{color:var(--text-3);font-size:14px;}
+
+    .pc-result{margin-top:18px;padding:16px;border-radius:12px;background:var(--bg);border:1px solid var(--border);text-align:center;}
+    .pc-result .rt{font-size:14px;color:var(--text-3);margin-bottom:6px;}
+    .pc-result .rv{font-size:30px;font-weight:800;color:var(--primary);font-variant-numeric:tabular-nums;}
+    .pc-hide{display:none;}
+
+    @media(max-width:560px){
+      .pc-row label{min-width:100%;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">📐</span>
+      <h1>百分比计算器</h1>
+    </div>
+    <p class="tool-sub">三种常用百分比计算模式，实时得出结果。</p>
+
+    <div class="pc-tabs">
+      <div class="pc-tab active" data-mode="1">A 是 B 的百分之多少</div>
+      <div class="pc-tab" data-mode="2">A 的 B% 是多少</div>
+      <div class="pc-tab" data-mode="3">A 比 B 增减百分之多少</div>
+    </div>
+
+    <!-- 模式1 -->
+    <div class="pc-panel" id="panel1">
+      <div class="pc-row"><label>A 的值</label><input id="m1a" type="number" value="30"><span class="suf"></span></div>
+      <div class="pc-row"><label>B 的值</label><input id="m1b" type="number" value="120"><span class="suf"></span></div>
+      <div class="pc-result"><div class="rt">A 是 B 的</div><div class="rv" id="m1r">—</div></div>
+    </div>
+
+    <!-- 模式2 -->
+    <div class="pc-panel pc-hide" id="panel2">
+      <div class="pc-row"><label>A 的值</label><input id="m2a" type="number" value="200"><span class="suf"></span></div>
+      <div class="pc-row"><label>百分比 B (%)</label><input id="m2b" type="number" value="15"><span class="suf">%</span></div>
+      <div class="pc-result"><div class="rt">结果</div><div class="rv" id="m2r">—</div></div>
+    </div>
+
+    <!-- 模式3 -->
+    <div class="pc-panel pc-hide" id="panel3">
+      <div class="pc-row"><label>新值 A</label><input id="m3a" type="number" value="138"><span class="suf"></span></div>
+      <div class="pc-row"><label>原值 B</label><input id="m3b" type="number" value="120"><span class="suf"></span></div>
+      <div class="pc-result"><div class="rt">变化幅度</div><div class="rv" id="m3r">—</div></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll(".pc-tab");
+      var panels = { 1: document.getElementById("panel1"), 2: document.getElementById("panel2"), 3: document.getElementById("panel3") };
+      var cur = 1;
+
+      tabs.forEach(function (t) {
+        t.addEventListener("click", function () {
+          cur = parseInt(t.getAttribute("data-mode"), 10);
+          tabs.forEach(function (x) { x.classList.remove("active"); });
+          t.classList.add("active");
+          Object.keys(panels).forEach(function (k) { panels[k].classList.add("pc-hide"); });
+          panels[cur].classList.remove("pc-hide");
+          calc();
+        });
+      });
+
+      function num(id) {
+        var v = parseFloat(document.getElementById(id).value);
+        return isNaN(v) ? NaN : v;
+      }
+
+      function calc() {
+        if (cur === 1) {
+          var a = num("m1a"), b = num("m1b");
+          if (isNaN(a) || isNaN(b) || b === 0) { document.getElementById("m1r").textContent = "—"; return; }
+          document.getElementById("m1r").textContent = (a / b * 100).toFixed(2) + " %";
+        } else if (cur === 2) {
+          var a2 = num("m2a"), b2 = num("m2b");
+          if (isNaN(a2) || isNaN(b2)) { document.getElementById("m2r").textContent = "—"; return; }
+          document.getElementById("m2r").textContent = (a2 * b2 / 100).toFixed(4).replace(/\.?0+$/, "");
+        } else {
+          var a3 = num("m3a"), b3 = num("m3b");
+          if (isNaN(a3) || isNaN(b3) || b3 === 0) { document.getElementById("m3r").textContent = "—"; return; }
+          var p = (a3 - b3) / b3 * 100;
+          var txt = (p >= 0 ? "↑ +" : "↓ ") + p.toFixed(2) + " %";
+          var el = document.getElementById("m3r");
+          el.textContent = txt;
+          el.style.color = p >= 0 ? "#34c759" : "#ff3b30";
+        }
+      }
+
+      ["m1a","m1b","m2a","m2b","m3a","m3b"].forEach(function (id) {
+        document.getElementById(id).addEventListener("input", calc);
+      });
+      calc();
+    })();
+  </script>
+</body>
+</html>

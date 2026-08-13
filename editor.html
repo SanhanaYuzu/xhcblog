@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>写文章 - XHC 博客</title>
+  <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="index.html">
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:820px;padding:32px 0;">
+    <h1 id="editorTitle">写文章</h1>
+    <div id="editorNote" class="note"></div>
+    <form id="editorForm" class="card" style="padding:24px;">
+      <label>标题 *</label>
+      <input id="postTitle" type="text" required placeholder="文章标题">
+      <label>摘要</label>
+      <textarea id="postSummary" rows="2" placeholder="列表页显示的摘要"></textarea>
+      <div class="row">
+        <div style="flex:1">
+          <label>分类</label>
+          <input id="postCategory" type="text" placeholder="如：系统资源 / 使用教程">
+        </div>
+        <div style="flex:1">
+          <label>标签（逗号分隔）</label>
+          <input id="postTags" type="text" placeholder="Windows, 教程">
+        </div>
+      </div>
+      <label>封面（图片或 emoji/文字）</label>
+      <div class="cover-upload" style="display:flex;gap:12px;align-items:center;">
+        <input id="postCover" type="text" placeholder="🪟 或粘贴图片 URL">
+        <label class="btn btn-outline sm" style="cursor:pointer;flex:0 0 auto;" for="coverImageInput">📷 上传图片</label>
+        <input id="coverImageInput" type="file" accept="image/*" hidden>
+      </div>
+      <div id="coverPreviewWrap" style="display:none;margin-top:8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);max-height:200px;">
+        <img id="coverPreviewImg" src="" alt="封面预览" style="width:100%;max-height:200px;object-fit:cover;display:block;">
+      </div>
+      <input id="coverImageUrl" type="hidden" value="">
+      <label>正文</label>
+      <div class="rich-editor" id="richEditor">
+        <div class="re-toolbar" id="reToolbar">
+          <button type="button" class="re-btn" data-cmd="bold" title="粗体 (Ctrl+B)"><b>B</b></button>
+          <button type="button" class="re-btn" data-cmd="italic" title="斜体 (Ctrl+I)"><i>I</i></button>
+          <span class="re-sep"></span>
+          <button type="button" class="re-btn" data-cmd="h2" title="标题 H2">H2</button>
+          <button type="button" class="re-btn" data-cmd="h3" title="标题 H3">H3</button>
+          <span class="re-sep"></span>
+          <button type="button" class="re-btn" data-cmd="code" title="代码块">&lt;/&gt;</button>
+          <button type="button" class="re-btn" data-cmd="ul" title="无序列表">≡</button>
+          <button type="button" class="re-btn" data-cmd="quote" title="引用">❝</button>
+          <span class="re-sep"></span>
+          <label class="re-btn re-upload-label" title="上传文本文档（.txt / .md）">📄 上传文档
+            <input id="docFileInput" type="file" accept=".txt,.md,.text,.markdown" hidden>
+          </label>
+          <span class="re-sep"></span>
+          <button type="button" class="re-btn" id="reToggleHtml" title="切换 HTML 源码">&lt;&gt; 源码</button>
+        </div>
+        <div class="re-body" id="reBody" contenteditable="true" placeholder="在这里直接写文章内容，支持工具栏格式化…"></div>
+        <textarea class="re-src" id="reSrc" style="display:none;" placeholder="HTML 源码…"></textarea>
+      </div>
+      <!-- 隐藏字段，提交时填入最终 HTML -->
+      <input id="postContent" type="hidden" value="">
+      <div class="row" style="margin-top:18px;">
+        <button type="submit" class="btn btn-primary" id="publishBtn">发布</button>
+        <a href="myposts.html" class="btn btn-outline">我的帖子</a>
+        <a href="index.html" class="btn btn-outline">取消</a>
+      </div>
+    </form>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

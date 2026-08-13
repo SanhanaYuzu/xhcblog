@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>随机数生成器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+    .field{flex:1;min-width:150px;}
+    .field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+    .field input[type=number],.field input[type=text]{
+      width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);
+      color:var(--text);border-radius:10px;padding:11px 13px;font-size:15px;font-family:inherit;
+    }
+    .field input:focus{outline:none;border-color:var(--primary);}
+
+    .opt-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:6px;}
+    .opt{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--text-2);cursor:pointer;user-select:none;}
+    .opt input{width:17px;height:17px;accent-color:var(--primary);cursor:pointer;}
+
+    .btn-primary{
+      width:100%;border:none;background:var(--primary);color:#fff;border-radius:12px;
+      padding:13px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;margin-top:4px;
+    }
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{
+      width:100%;border:1px solid var(--border);background:var(--card);color:var(--text-2);
+      border-radius:12px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;margin-top:10px;
+    }
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+
+    .result-box{
+      background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;
+      min-height:90px;font-family:"SFMono-Regular",Consolas,monospace;font-size:16px;line-height:1.9;
+      word-break:break-all;color:var(--text);
+    }
+    .result-box .num{display:inline-block;background:var(--primary-soft);color:var(--primary);
+      border-radius:7px;padding:2px 10px;margin:3px 4px;font-weight:600;}
+    .result-empty{color:var(--text-3);font-size:13px;text-align:center;padding:30px 0;}
+    .meta{font-size:12.5px;color:var(--text-3);margin-top:10px;}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:560px){
+      .row{gap:10px;}
+      .field{min-width:120px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🎰</span>
+      <h1>随机数生成器</h1>
+    </div>
+    <p class="tool-sub">在指定区间内生成多个随机整数，可控制是否允许重复、是否排序，适用于抽奖、抽样、测试数据等场景。</p>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 参数设置</h2>
+      <div class="row">
+        <div class="field">
+          <label>最小值（含）</label>
+          <input type="number" id="minV" value="1">
+        </div>
+        <div class="field">
+          <label>最大值（含）</label>
+          <input type="number" id="maxV" value="100">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>生成个数</label>
+          <input type="number" id="countV" value="5" min="1" max="1000">
+        </div>
+        <div class="field">
+          <label>小数位数（0 = 整数）</label>
+          <input type="number" id="decV" value="0" min="0" max="6">
+        </div>
+      </div>
+      <div class="opt-row">
+        <label class="opt"><input type="checkbox" id="uniq"> 不可重复（不重复取样）</label>
+        <label class="opt"><input type="checkbox" id="sort"> 结果升序排列</label>
+      </div>
+      <button class="btn-primary" id="genBtn">🎲 生成随机数</button>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 生成结果</h2>
+      <div class="result-box" id="resultBox"><div class="result-empty">点击上方按钮开始生成</div></div>
+      <div class="meta" id="meta"></div>
+      <button class="btn-ghost" id="copyBtn">📋 复制结果</button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var box = $("resultBox"), meta = $("meta"), toastEl = $("tipToast");
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+
+      function gen() {
+        var min = parseFloat($("minV").value);
+        var max = parseFloat($("maxV").value);
+        var count = parseInt($("countV").value, 10);
+        var dec = parseInt($("decV").value, 10);
+        var uniq = $("uniq").checked;
+        var sort = $("sort").checked;
+
+        if (isNaN(min) || isNaN(max)) { toast("请填写有效的数值范围"); return; }
+        if (max < min) { var t = min; min = max; max = t; }
+        if (isNaN(count) || count < 1) count = 1;
+        if (count > 1000) count = 1000;
+        if (isNaN(dec) || dec < 0) dec = 0;
+        if (dec > 6) dec = 6;
+
+        var range = max - min;
+        if (uniq && dec === 0 && count > range + 1) {
+          toast("不重复模式下个数不能超过区间总数 (" + (range + 1) + ")");
+          count = Math.floor(range + 1);
+        }
+
+        var res = [];
+        if (uniq && dec === 0) {
+          // 整数不重复：洗牌法
+          var pool = [];
+          for (var i = Math.ceil(min); i <= Math.floor(max); i++) pool.push(i);
+          for (var k = 0; k < count && pool.length; k++) {
+            var idx = Math.floor(Math.random() * pool.length);
+            res.push(pool[idx]);
+            pool.splice(idx, 1);
+          }
+        } else {
+          var factor = Math.pow(10, dec);
+          for (var j = 0; j < count; j++) {
+            var v = min + Math.random() * range;
+            v = Math.round(v * factor) / factor;
+            if (v > max) v = max;
+            if (v < min) v = min;
+            res.push(v);
+          }
+        }
+
+        if (sort) res.sort(function (a, b) { return a - b; });
+
+        box.innerHTML = "";
+        res.forEach(function (n) {
+          var span = document.createElement("span");
+          span.className = "num";
+          span.textContent = (dec === 0 && Number.isInteger(n)) ? n : n;
+          box.appendChild(span);
+        });
+        meta.textContent = "共生成 " + res.length + " 个" + (dec > 0 ? "（" + dec + " 位小数）" : " 个整数");
+      }
+
+      $("genBtn").addEventListener("click", gen);
+
+      $("copyBtn").addEventListener("click", function () {
+        var nums = Array.prototype.map.call(box.querySelectorAll(".num"), function (n) { return n.textContent; });
+        if (!nums.length) { toast("暂无可复制的结果"); return; }
+        var txt = nums.join(", ");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(function(){toast("已复制 " + nums.length + " 个结果");}, function(){fallback(txt);});
+        } else { fallback(txt); }
+        function fallback(s){var ta=document.createElement("textarea");ta.value=s;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");}document.body.removeChild(ta);}
+      });
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

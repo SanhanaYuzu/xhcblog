@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>随机用户数据生成 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;} .controls input[type=number]{width:60px;padding:8px;border:1px solid var(--border);border-radius:8px;text-align:center;font-size:14px;background:var(--bg);color:var(--text-1);} .controls button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;} .controls button:hover{background:#2c81ba;} .controls button.export-btn{background:transparent;color:#3498db;} .controls button.export-btn:hover{background:#e8f4fd;} .user-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;} .user-card{background:#f6f8fb;border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:18px;text-align:center;transition:.15s;} .user-card:hover{border-color:#3498db;box-shadow:0 4px 16px rgba(0,0,0,.08);} .user-card .ava{width:56px;height:56px;border-radius:50%;background:#3498db;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto 10px;} .user-card .name{font-weight:700;font-size:15px;color:var(--text-1);margin-bottom:4px;} .user-card .info{font-size:12px;color:var(--text-2);line-height:1.6;} body.dark .user-card{background:#1c232c;border-color:rgba(255,255,255,.06);}
+</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>👤 随机用户数据生成</h1><p class="desc">生成逼真的假用户数据（姓名/邮箱/电话/地址/职业），适合测试填充表单和数据库。</p>
+<div class="card"><div class="controls"><label style="font-size:14px;">数量:</label><input type="number" id="count" value="5" min="1" max="20"><button id="genBtn">🔄 随机生成</button><button class="export-btn" id="exportBtn">📋 导出 JSON</button></div><div class="user-cards" id="userCards"></div></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+var fams=['李','王','张','刘','陈','杨','赵','黄','周','吴','徐','孙','马','朱','胡','郭','何','林','罗','郑','梁','谢','宋','唐','韩','曹','许','邓','萧','冯'];
+var givens=['伟','芳','娜','秀英','敏','静','丽','强','磊','洋','勇','艳','勇','军','杰','娟','涛','明','超','秀兰','霞','平','刚','桂英','文','华','建','国','海','波'];
+var streets=['中山路','解放路','人民路','建设路','长安街','文化路','和平路','新华路','北京路','南京路'];
+var domains=['qq.com','163.com','gmail.com','outlook.com','126.com','sina.com'];
+var jobs=['软件工程师','产品经理','UI设计师','数据分析师','运营专员','市场经理','教师','医生','律师','会计师'];
+var cities=['北京','上海','广州','深圳','杭州','成都','武汉','南京','重庆','西安'];
+var generated=[];
+
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function rPhone(){var s='1';var pre=['38','39','58','59','88','89','30','50','51','52'];s+=pick(pre);for(var i=0;i<8;i++)s+=Math.floor(Math.random()*10);return s;}
+function rEmail(name){return (name.replace(/\s/g,'').toLowerCase()+Math.floor(Math.random()*1000)+'@'+pick(domains));}
+function rAddr(){return pick(cities)+'市'+pick(streets)+Math.floor(Math.random()*300+1)+'号';}
+function generateUser(){
+  var fam=pick(fams),gvn=pick(givens);var name=fam+gvn;var gender=givens.indexOf(gvn)<4?'女':'男';
+  var y=1970+Math.floor(Math.random()*35),m=Math.floor(Math.random()*12)+1,d=Math.floor(Math.random()*28)+1;
+  var ag=2026-y;return{name:name,gender:gender,age:ag,phone:rPhone(),email:rEmail(name),address:rAddr(),job:pick(jobs),birth:y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')};
+}
+
+function render(){
+  var n=parseInt(qs('#count').value)||5;generated=[];
+  for(var i=0;i<n;i++)generated.push(generateUser());
+  qs('#userCards').innerHTML=generated.map(function(u){
+    return '<div class="user-card"><div class="ava">'+u.name[0]+'</div><div class="name">'+u.name+'</div><div class="info">'+u.gender+' · '+u.age+'岁<br>'+u.job+'<br>'+u.phone+'<br>'+u.email+'<br>'+u.address+'</div></div>';
+  }).join('');
+}
+qs('#genBtn').addEventListener('click',render);
+qs('#exportBtn').addEventListener('click',function(){
+  var json=JSON.stringify(generated,null,2);
+  if(navigator.clipboard)navigator.clipboard.writeText(json);else{var el=document.createElement('textarea');el.value=json;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);}
+  var b=qs('#exportBtn');b.textContent='✅ 已复制';setTimeout(function(){b.textContent='📋 导出 JSON';},1500);
+});
+render();
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

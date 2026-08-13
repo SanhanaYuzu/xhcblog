@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>三体问题 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:860px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    canvas{display:block;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;}
+    .ctrl-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .field select,.field input[type=range]{accent-color:var(--primary);}
+    .field .val{color:var(--primary);font-weight:700;min-width:42px;text-align:right;}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🪐</span>
+      <div>
+        <h1>三体问题</h1>
+        <p class="tool-sub">三颗恒星在彼此万有引力下演化，微小初值差异导致轨迹千差万别</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 参数</h2>
+      <div class="ctrl-row">
+        <div class="field">演化速度
+          <input type="range" id="speed" min="0.2" max="3" value="1" step="0.1">
+          <span class="val" id="speedV">1.0×</span>
+        </div>
+        <div class="field">初始构型
+          <select id="preset">
+            <option value="0">随机</option>
+            <option value="1">等边三角形</option>
+            <option value="2">经典 8 字型</option>
+          </select>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn-primary" id="pauseBtn">⏸ 暂停</button>
+        <button class="btn-ghost" id="resetBtn">🔁 重新生成</button>
+        <button class="btn-ghost" id="trailBtn">轨迹：开</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 引力演化</h2>
+      <canvas id="cv" height="480"></canvas>
+      <div class="note">采用带软化项的牛顿引力（避免奇点），半隐式欧拉积分。切换「经典 8 字型」可看到三体共线循环的著名周期解。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+      var speedEl=document.getElementById("speed"), presetEl=document.getElementById("preset");
+      var speedV=document.getElementById("speedV");
+      var pauseBtn=document.getElementById("pauseBtn"), resetBtn=document.getElementById("resetBtn"), trailBtn=document.getElementById("trailBtn");
+      var bodies=[], paused=false, showTrail=true, raf=null, G=2.0, soft=22;
+
+      function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||null;}
+      var COLORS=["#e74c3c","#3498db","#f1c40f"];
+
+      function reset(){
+        var W=cv.clientWidth, H=480;
+        bodies=[]; var p=+presetEl.value;
+        if(p===1){
+          var r=Math.min(W,H)*0.28, cx=W/2, cy=H/2;
+          for(var i=0;i<3;i++){ var a=Math.PI/2 + i*2*Math.PI/3; bodies.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r, vx:-Math.sin(a)*0.9, vy:Math.cos(a)*0.9, m:60}); }
+        } else if(p===2){
+          // 经典 figure-8 近似初值（无量纲缩放至画布）
+          var cx2=W/2, cy2=H/2, sc=Math.min(W,H)*0.18;
+          bodies=[
+            {x:cx2, y:cy2, vx:-0.34, vy:0.5, m:1},
+            {x:cx2+sc, y:cy2, vx:0.34, vy:0.5, m:1},
+            {x:cx2-sc, y:cy2, vx:0, vy:-1.0, m:1}
+          ];
+          for(var k=0;k<3;k++){ bodies[k].x=cx2+(bodies[k].x-cx2); bodies[k].y=cy2+(bodies[k].y-cy2); bodies[k].vx*=sc*0.05; bodies[k].vy*=sc*0.05; }
+        } else {
+          for(var j=0;j<3;j++){ bodies.push({x:W/2+(Math.random()-0.5)*W*0.5, y:H/2+(Math.random()-0.5)*H*0.5, vx:(Math.random()-0.5)*1.2, vy:(Math.random()-0.5)*1.2, m:40+Math.random()*40}); }
+        }
+        for(var b=0;b<bodies.length;b++){ bodies[b].hist=[]; }
+      }
+      function resize(){
+        var dpr=devicePixelRatio||1;
+        cv.width=cv.clientWidth*dpr; cv.height=480*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+        if(bodies.length===0) reset(); else draw();
+      }
+      function step(dt){
+        var n=bodies.length;
+        var ax=[0,0,0], ay=[0,0,0];
+        for(var i=0;i<n;i++){ for(var j=0;j<n;j++){ if(i===j) continue;
+          var dx=bodies[j].x-bodies[i].x, dy=bodies[j].y-bodies[i].y;
+          var d2=dx*dx+dy*dy+soft*soft; var d=Math.sqrt(d2);
+          var f=G*bodies[j].m/(d2*d);
+          ax[i]+=f*dx; ay[i]+=f*dy;
+        }}
+        for(var k=0;k<n;k++){
+          bodies[k].vx+=ax[k]*dt; bodies[k].vy+=ay[k]*dt;
+          bodies[k].x+=bodies[k].vx*dt; bodies[k].y+=bodies[k].vy*dt;
+        }
+      }
+      function draw(){
+        var bg=getCss("--bg")||"#fff";
+        if(showTrail){ ctx.fillStyle=bg; ctx.globalAlpha=0.05; ctx.fillRect(0,0,cv.clientWidth,480); ctx.globalAlpha=1; }
+        else { ctx.fillStyle=bg; ctx.fillRect(0,0,cv.clientWidth,480); }
+        for(var i=0;i<bodies.length;i++){
+          var b=bodies[i];
+          if(showTrail && b.hist.length>1){ ctx.strokeStyle=COLORS[i]; ctx.globalAlpha=0.3; ctx.lineWidth=1.2; ctx.beginPath(); for(var h=0;h<b.hist.length;h++){var p=b.hist[h]; if(h===0)ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);} ctx.stroke(); ctx.globalAlpha=1; }
+          ctx.fillStyle=COLORS[i]; ctx.beginPath(); ctx.arc(b.x,b.y,Math.max(4,b.m*0.18),0,7); ctx.fill();
+        }
+      }
+      function loop(){
+        if(!paused){
+          var dt=(+speedEl.value)*0.5;
+          step(dt);
+          for(var i=0;i<bodies.length;i++){ var b=bodies[i]; b.hist.push([b.x,b.y]); if(b.hist.length>260) b.hist.shift(); }
+          draw();
+        }
+        raf=requestAnimationFrame(loop);
+      }
+      speedEl.oninput=function(){ speedV.textContent=(+this.value).toFixed(1)+"×"; };
+      pauseBtn.onclick=function(){ paused=!paused; this.textContent=paused?"▶ 继续":"⏸ 暂停"; };
+      resetBtn.onclick=function(){ reset(); };
+      trailBtn.onclick=function(){ showTrail=!showTrail; this.textContent="轨迹："+(showTrail?"开":"关"); if(!showTrail){for(var i=0;i<bodies.length;i++)bodies[i].hist=[];} };
+
+      document.getElementById("year").textContent=new Date().getFullYear();
+      window.addEventListener("resize", resize);
+      resize(); reset(); loop();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

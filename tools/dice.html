@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>骰子 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .dice-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;text-align:center;}
+    body.dark .dice-panel{box-shadow:none;}
+
+    .dice-count{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;}
+    .dice-count label{font-size:14px;font-weight:600;color:var(--text-2);}
+    .dice-count input{width:70px;font-size:16px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);text-align:center;}
+
+    .dice-faces{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;min-height:90px;align-items:center;}
+    .die{font-size:64px;line-height:1;transition:transform .1s;display:inline-block;}
+    .die.rolling{animation:shake .25s linear infinite;}
+    @keyframes shake{
+      0%{transform:rotate(-18deg) translateY(-4px);}
+      50%{transform:rotate(18deg) translateY(4px);}
+      100%{transform:rotate(-18deg) translateY(-4px);}
+    }
+
+    .dice-btns{display:flex;gap:10px;justify-content:center;margin-top:20px;}
+    .btn{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:10px 22px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+
+    .dice-sum{margin-top:18px;font-size:15px;color:var(--text-2);}
+    .dice-sum b{font-size:24px;color:var(--primary);font-weight:800;}
+
+    @media(max-width:520px){
+      .die{font-size:48px;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🎲</span>
+      <h1>骰子摇一摇</h1>
+    </div>
+    <p class="tool-sub">选择骰子数量（1–6），一键投掷，实时显示点数与总和。</p>
+
+    <div class="dice-panel">
+      <div class="dice-count">
+        <label>骰子数量</label>
+        <input id="diceNum" type="number" min="1" max="6" value="2">
+      </div>
+      <div class="dice-faces" id="diceFaces">🎲</div>
+      <div class="dice-sum" id="diceSum">点击投掷开始</div>
+      <div class="dice-btns">
+        <button class="btn primary" id="rollBtn">🎲 投掷</button>
+        <button class="btn" id="resetBtn">↺ 重置</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p>
+    </div>
+  </footer>
+  <div class="watermark">
+    <img src="../assets/images/xhcntgroup.png" alt="">
+  </div>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var FACES = ["⚀","⚁","⚂","⚃","⚄","⚅"];
+      var numInput = document.getElementById("diceNum");
+      var faces = document.getElementById("diceFaces");
+      var sumEl = document.getElementById("diceSum");
+      var rollBtn = document.getElementById("rollBtn");
+      var resetBtn = document.getElementById("resetBtn");
+      var timer = null;
+
+      function count() {
+        var n = parseInt(numInput.value, 10);
+        if (isNaN(n) || n < 1) n = 1;
+        if (n > 6) n = 6;
+        numInput.value = n;
+        return n;
+      }
+
+      function renderStatic() {
+        var n = count();
+        faces.innerHTML = "";
+        for (var i = 0; i < n; i++) {
+          var d = document.createElement("span");
+          d.className = "die";
+          d.textContent = "🎲";
+          faces.appendChild(d);
+        }
+        sumEl.textContent = "点击投掷开始";
+      }
+
+      function roll() {
+        var n = count();
+        if (timer) { clearInterval(timer); timer = null; }
+        var els = [];
+        faces.innerHTML = "";
+        for (var i = 0; i < n; i++) {
+          var d = document.createElement("span");
+          d.className = "die rolling";
+          d.textContent = FACES[Math.floor(Math.random() * 6)];
+          faces.appendChild(d);
+          els.push(d);
+        }
+        sumEl.textContent = "投掷中…";
+        var ticks = 0;
+        timer = setInterval(function () {
+          ticks++;
+          var total = 0;
+          els.forEach(function (d) {
+            var v = Math.floor(Math.random() * 6) + 1;
+            d.textContent = FACES[v - 1];
+            total += v;
+          });
+          if (ticks >= 10) {
+            clearInterval(timer); timer = null;
+            els.forEach(function (d) { d.classList.remove("rolling"); });
+            sumEl.innerHTML = "点数总和：<b>" + total + "</b>";
+          }
+        }, 70);
+      }
+
+      rollBtn.addEventListener("click", roll);
+      resetBtn.addEventListener("click", function () { if (timer) { clearInterval(timer); timer = null; } renderStatic(); });
+      numInput.addEventListener("change", renderStatic);
+
+      renderStatic();
+    })();
+  </script>
+</body>
+</html>

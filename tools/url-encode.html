@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>URL 编解码 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:820px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:12px;font-size:14px;font-family:ui-monospace,Menlo,Consolas,monospace;box-sizing:border-box;resize:vertical;min-height:120px;line-height:1.6;}
+    .field{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-2);}
+    .out{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:12px;color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:60px;cursor:pointer;}
+    .out:hover{border-color:var(--primary);}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
+    .btn-primary{border:none;background:var(--primary);color:#fff;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+    .btn-ghost{border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .note{font-size:12.5px;color:var(--text-3);margin-top:10px;line-height:1.7;}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🔗</span>
+      <div>
+        <h1>URL 编解码</h1>
+        <p class="tool-sub">URL 编码 / 解码双向转换，含中文与特殊字符处理</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 编码（原文 → 百分号编码）</h2>
+      <textarea id="in" placeholder="输入待编码内容，例如：搜索 关键词 & 中文"></textarea>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><input type="checkbox" id="utf8" checked><label for="utf8">UTF-8（推荐，含中文用此）</label></div>
+      </div>
+      <div class="btns" style="margin-top:8px">
+        <button class="btn-primary" id="encBtn">编码 →</button>
+        <button class="btn-ghost" id="clearIn">清空</button>
+      </div>
+      <div class="out" id="encOut" title="点击复制" style="margin-top:12px">—</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 解码（百分号编码 → 原文）</h2>
+      <textarea id="decIn" placeholder="粘贴编码后的字符串，例如：%E6%90%9C%E7%B4%A2%20%E5%85%B3"></textarea>
+      <div class="btns" style="margin-top:12px">
+        <button class="btn-primary" id="decBtn">← 解码</button>
+        <button class="btn-ghost" id="clearDec">清空</button>
+      </div>
+      <div class="out" id="decOut" title="点击复制" style="margin-top:12px">—</div>
+      <div class="note">编码采用 encodeURIComponent（UTF-8），适合拼接 URL 参数；解码使用 decodeURIComponent。点击任意结果框可复制。</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var input=document.getElementById("in"), encOut=document.getElementById("encOut");
+      var decIn=document.getElementById("decIn"), decOut=document.getElementById("decOut");
+      var utf8=document.getElementById("utf8");
+      function toast(m){ var t=document.createElement("div"); t.textContent=m; t.style.cssText="position:fixed;left:50%;top:20px;transform:translateX(-50%);background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:14px;"; document.body.appendChild(t); setTimeout(function(){document.body.removeChild(t);},1400); }
+      function copy(t){ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast("已复制");},function(){fallback(t);});} else fallback(t); }
+      function fallback(t){ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");toast("已复制");}catch(e){toast("复制失败");} document.body.removeChild(ta); }
+
+      document.getElementById("encBtn").onclick=function(){
+        try{ encOut.textContent=encodeURIComponent(input.value); }
+        catch(e){ encOut.textContent="编码失败："+e.message; }
+      };
+      document.getElementById("decBtn").onclick=function(){
+        try{ decOut.textContent=decodeURIComponent(decIn.value.trim()); }
+        catch(e){ decOut.textContent="解码失败：非法的百分号编码"; }
+      };
+      document.getElementById("clearIn").onclick=function(){ input.value=""; encOut.textContent="—"; };
+      document.getElementById("clearDec").onclick=function(){ decIn.value=""; decOut.textContent="—"; };
+      encOut.onclick=function(){ if(encOut.textContent&&encOut.textContent!=="—") copy(encOut.textContent); };
+      decOut.onclick=function(){ if(decOut.textContent&&decOut.textContent!=="—") copy(decOut.textContent); };
+
+      input.value="搜索 关键词 & 中文"; document.getElementById("encBtn").onclick();
+      decIn.value="%E6%90%9C%E7%B4%A2%20%E5%85%B3"; document.getElementById("decBtn").onclick();
+      document.getElementById("year").textContent=new Date().getFullYear();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IP 子网计算器 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .card{padding:24px;margin-bottom:20px;}
+    .input-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+    .input-row input{padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:Consolas,monospace;flex:1;min-width:200px;background:var(--bg);color:var(--text-1);}
+    .input-row input:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    .input-row button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;}
+    .input-row button:hover{background:#2c81ba;}
+    .result-table{width:100%;border-collapse:collapse;font-size:14px;}
+    .result-table td{padding:10px 14px;border-bottom:1px solid var(--border);}
+    .result-table td:first-child{font-weight:600;color:#3498db;width:160px;white-space:nowrap;}
+    .result-table td:last-child{font-family:Consolas,monospace;word-break:break-all;}
+    .result-table .highlight{color:#27ae60;font-weight:700;}
+    .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+    .presets button{padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-1);transition:.15s;}
+    .presets button:hover{border-color:#3498db;background:#e8f4fd;color:#3498db;}
+    body.dark .presets button:hover{background:#1a3a4a;}
+    #errMsg{color:#c0392b;font-size:13px;display:none;}
+    @media(max-width:680px){.result-table td:first-child{width:100px;font-size:13px;}}
+      .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🌐 IP 子网计算器</h1>
+    <p class="desc">输入 CIDR 格式（如 192.168.1.0/24）计算网络地址、广播地址、子网掩码、可用 IP 范围等信息。</p>
+    <div class="card">
+      <div class="presets">
+        <button data-cidr="192.168.1.0/24">192.168.1.0/24</button>
+        <button data-cidr="10.0.0.0/16">10.0.0.0/16</button>
+        <button data-cidr="172.16.0.0/12">172.16.0.0/12</button>
+        <button data-cidr="10.0.0.0/8">10.0.0.0/8</button>
+        <button data-cidr="192.168.0.0/22">192.168.0.0/22</button>
+      </div>
+      <div class="input-row">
+        <input id="cidrInput" type="text" placeholder="请输入 CIDR，如 192.168.1.0/24" value="192.168.1.0/24">
+        <button id="calcBtn">计算</button>
+      </div>
+      <div id="errMsg"></div>
+      <table class="result-table" id="resultTable" style="display:none;">
+        <tr><td>CIDR 格式</td><td id="rCidr"></td></tr>
+        <tr><td>网络地址</td><td id="rNetwork" class="highlight"></td></tr>
+        <tr><td>广播地址</td><td id="rBroadcast"></td></tr>
+        <tr><td>子网掩码</td><td id="rMask"></td></tr>
+        <tr><td>可用 IP 范围</td><td id="rRange"></td></tr>
+        <tr><td>可用主机数</td><td id="rHosts"></td></tr>
+        <tr><td>IP 类型</td><td id="rType"></td></tr>
+      </table>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>    /* app.js 把 qs/qsa/esc 包在 IIFE 内，本地定义自己的助手以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function qsa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]; }); }
+
+
+    function ipToInt(ip){var p=ip.split('.');if(p.length!==4)return-1;for(var i=0;i<4;i++){var n=parseInt(p[i]);if(isNaN(n)||n<0||n>255)return-1;p[i]=n;}return((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0;}
+    function intToIp(n){return((n>>>24)&255)+'.'+((n>>16)&255)+'.'+((n>>8)&255)+'.'+(n&255);}
+    function calc(){
+      var err=qs('#errMsg'),tab=qs('#resultTable');
+      err.style.display='none';tab.style.display='none';
+      var raw=qs('#cidrInput').value.trim();
+      var parts=raw.split('/');
+      if(parts.length!==2){err.style.display='block';err.textContent='格式错误：请输入 CIDR 格式，如 192.168.1.0/24';return;}
+      var prefix=parseInt(parts[1]);
+      if(isNaN(prefix)||prefix<0||prefix>32){err.style.display='block';err.textContent='子网前缀必须为 0-32 的整数';return;}
+      var ip=ipToInt(parts[0]);
+      if(ip===-1){err.style.display='block';err.textContent='IP 地址格式不正确';return;}
+      var mask=prefix===0?0:(~0<<(32-prefix))>>>0;
+      var network=(ip&mask)>>>0;
+      var broadcast=(network|(~mask>>>0))>>>0;
+      var first=prefix>=31?network:(network+1)>>>0;
+      var last=prefix>=31?broadcast:((broadcast-1)>>>0);
+      var hosts=prefix>=31?0:(broadcast-network-1);
+      var isPrivate=(ip>>>24===10)||(ip>>>20===0xAC1)||(ip>>>12===0xC0A8);
+      var isLoopback=(ip>>>24===127);
+      var type=isLoopback?'回环地址':isPrivate?'私有地址':'公网地址';
+      qs('#rCidr').textContent=intToIp(network)+'/'+prefix;
+      qs('#rNetwork').textContent=intToIp(network);
+      qs('#rBroadcast').textContent=intToIp(broadcast);
+      qs('#rMask').textContent=intToIp(mask)+'  (/='+prefix+')';
+      qs('#rRange').textContent=intToIp(first)+' — '+intToIp(last);
+      qs('#rHosts').textContent=hosts.toLocaleString()+' 个';
+      qs('#rType').textContent=type;
+      tab.style.display='';
+    }
+    qs('#calcBtn').addEventListener('click',calc);
+    qs('#cidrInput').addEventListener('keydown',function(e){if(e.key==='Enter')calc();});
+    qsa('.presets button').forEach(function(b){b.addEventListener('click',function(){qs('#cidrInput').value=b.dataset.cidr;calc();});});
+    calc();
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

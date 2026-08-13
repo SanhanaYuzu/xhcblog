@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>键盘测试器 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:860px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} .keyboard{display:flex;flex-direction:column;gap:4px;} .row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;} .key{width:48px;height:48px;background:#f0f3f7;border:1px solid rgba(0,0,0,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#333;transition:background .08s,transform .08s,box-shadow .08s;user-select:none;text-transform:capitalize;} .key.pressed{background:#3498db;color:#fff;transform:scale(.92);box-shadow:0 2px 8px rgba(52,152,219,.4);} .key.wide{width:72px;} .key.xwide{width:90px;} .key.space{width:280px;} .key.fn{font-size:11px;color:var(--text-2);} .log{font-size:12px;font-family:Consolas;color:var(--text-2);margin-top:12px;max-height:80px;overflow-y:auto;} body.dark .key{background:#1c232c;color:#d0d0d0;border-color:rgba(255,255,255,.08);} body.dark .key.pressed{background:#3498db;color:#fff;} .pressed-keys{font-size:13px;color:var(--text-2);margin-bottom:8px;min-height:20px;} @media(max-width:680px){.key{width:36px;height:38px;font-size:11px;} .key.wide{width:54px;} .key.xwide{width:68px;} .key.space{width:180px;}}</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>⌨️ 键盘测试器</h1><p class="desc">按下键盘上的任意键，对应按键会高亮显示。用于检测键盘是否有坏键或双击问题。</p>
+<div class="card"><div class="pressed-keys" id="pressedKeys">当前按键: —</div><div class="keyboard" id="keyboard"></div><div class="log" id="keyLog"></div></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+var layout=[['Esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'],[{k:'`',c:'fn'},'1','2','3','4','5','6','7','8','9','0','-','=',{k:'Backspace',c:'wide'}],[{k:'Tab',c:'wide'},'q','w','e','r','t','y','u','i','o','p','[',']',{k:'\\',c:'fn'}],[{k:'CapsLock',c:'xwide'},'a','s','d','f','g','h','j','k','l',';','\'',{k:'Enter',c:'wide'}],[{k:'Shift_L',c:'xwide'},'z','x','c','v','b','n','m',',','.','/','','','',{k:'Shift_R',c:'wide'}],[{k:'Ctrl',c:'fn'},{k:'Win',c:'fn'},{k:'Alt',c:'fn'},{k:' ',c:'space'},{k:'AltGr',c:'fn'},{k:'Menu',c:'fn'},{k:'Ctrl_R',c:'fn'}]];
+var keyMap={};
+var kb=qs('#keyboard');
+layout.forEach(function(row){
+  var r=document.createElement('div');r.className='row';
+  row.forEach(function(item){
+    var k=typeof item==='string'?item:item.k;var cls=typeof item==='string'?'':(item.c||'');
+    if(!k)return;
+    var d=document.createElement('div');d.className='key'+(cls?' '+cls:'');d.dataset.key=k;d.textContent=k===' '?'Space':k;r.appendChild(d);keyMap[k]=d;
+  });
+  kb.appendChild(r);
+});
+
+var pressed=[],logLines=[];
+document.addEventListener('keydown',function(e){
+  e.preventDefault();
+  var k=e.key.length===1?e.key.toLowerCase():e.key;
+  var kd=k;if(k===' ')kd='Space';
+  var el=keyMap[kd]||keyMap[e.code.replace('Left','_L').replace('Right','_R')];
+  if(el)el.classList.add('pressed');
+  if(pressed.indexOf(e.code)===-1){pressed.push(e.code);qs('#pressedKeys').textContent='当前按键: '+pressed.join(', ');}
+  var t=new Date().toLocaleTimeString();logLines.push(t+' ↓ '+e.code+' ('+e.key+')');
+  if(logLines.length>50)logLines.shift();qs('#keyLog').textContent=logLines.join('\n');
+  qs('#keyLog').scrollTop=qs('#keyLog').scrollHeight;
+});
+document.addEventListener('keyup',function(e){
+  var k=e.key.length===1?e.key.toLowerCase():e.key;
+  if(k===' ')k='Space';
+  var el=keyMap[k]||keyMap[e.code.replace('Left','_L').replace('Right','_R')];
+  if(el)el.classList.remove('pressed');
+  pressed=pressed.filter(function(c){return c!==e.code;});
+  qs('#pressedKeys').textContent=pressed.length?'当前按键: '+pressed.join(', '):'当前按键: —';
+});
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SVG 路径预览 - XHC 工具箱</title><link rel="icon" href="../assets/images/xhc-96x96.png"><link rel="stylesheet" href="../assets/css/style.css">
+<style>.tool-page{max-width:860px;margin:0 auto;padding:30px 20px 56px;} .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;} .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;} .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;} .back-link:hover{color:var(--primary);} .card{padding:24px;margin-bottom:20px;} textarea{width:100%;box-sizing:border-box;min-height:80px;padding:12px;border:1px solid var(--border);border-radius:10px;font-family:Consolas,monospace;font-size:13px;background:var(--bg);color:var(--text-1);resize:vertical;} textarea:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);} .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;} .row button{padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-1);transition:.12s;} .row button:hover{border-color:#3498db;background:#e8f4fd;color:#3498db;} .row button.active{background:#3498db;color:#fff;border-color:#3498db;} svg{display:block;margin:0 auto;max-width:100%;height:auto;border:1px solid var(--border);border-radius:10px;background:#fff;} body.dark svg{background:#1c232c;}</style></head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container"><a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a><nav class="nav" id="navCats"></nav><div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div><a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a><span id="accountSlot"></span></div></header>
+<main class="tool-page"><a class="back-link" href="../tools.html">← 返回工具箱</a><h1>📐 SVG 路径预览</h1><p class="desc">粘贴 SVG `<path d="...">` 的 d 属性值或完整 `<svg>` 代码，实时预览绘制结果。</p>
+<div class="card"><div class="row"><span style="font-size:13px;font-weight:600;color:var(--text-2);">预设:</span><button onclick="loadPreset('star')">五角星</button><button onclick="loadPreset('heart')">爱心</button><button onclick="loadPreset('spiral')">螺旋</button><button onclick="loadPreset('arrow')">箭头</button><button onclick="loadPreset('circle')">圆形</button></div><textarea id="pathInput" placeholder="粘贴 path d 属性 或完整 svg 代码…">M 50 10 L 61 35 L 90 35 L 67 51 L 75 78 L 50 63 L 25 78 L 33 51 L 10 35 L 39 35 Z</textarea><div style="text-align:center;margin:16px 0;"><button class="btn btn-primary" id="previewBtn">预览</button></div><svg viewBox="0 0 100 100" id="svgOut"><path d="" fill="none" stroke="#3498db" stroke-width="2"/></svg></div></main>
+<footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+<div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+<script src="../assets/js/config.js"></script><script src="../assets/js/data.js"></script><script src="../assets/js/app.js"></script>
+<script>
+function qs(s,r){return(r||document).querySelector(s);}
+var presets={star:'M 50 10 L 61 35 L 90 35 L 67 51 L 75 78 L 50 63 L 25 78 L 33 51 L 10 35 L 39 35 Z',heart:'M 50 30 C 20 5 0 35 20 55 L 50 80 L 80 55 C 100 35 80 5 50 30 Z',spiral:'M 50 50 C 55 50 60 50 60 45 C 60 38 53 38 50 38 C 38 38 35 48 35 55 C 35 68 48 75 58 75 C 72 75 80 65 80 52 C 80 35 65 25 50 25 C 30 25 18 40 18 58 C 18 78 35 88 55 88 C 75 88 88 72 88 52',arrow:'M 20 50 L 60 50 L 60 30 L 90 55 L 60 80 L 60 60 L 20 60 Z',circle:'M 50 10 A 40 40 0 1 1 49.9 10 Z'};
+function loadPreset(name){qs('#pathInput').value=presets[name]||'';preview();}
+function preview(){
+  var raw=qs('#pathInput').value.trim();var svgEl=qs('#svgOut');
+  var d='',viewBox='0 0 100 100',fill='none',stroke='#3498db',sw='2';
+  if(raw.indexOf('<svg')!==-1){
+    var m=raw.match(/d="([^"]*)"/);if(m)d=m[1];
+    var mv=raw.match(/viewBox="([^"]*)"/);if(mv)viewBox=mv[1];
+    var mf=raw.match(/fill="([^"]*)"/);if(mf)fill=mf[1];
+    var ms=raw.match(/stroke="([^"]*)"/);if(ms)stroke=ms[1];
+    var msw=raw.match(/stroke-width="([^"]*)"/);if(msw)sw=msw[1];
+  }else{d=raw;}
+  svgEl.setAttribute('viewBox',viewBox);
+  var p=svgEl.querySelector('path');
+  p.setAttribute('d',d);p.setAttribute('fill',fill);p.setAttribute('stroke',stroke);p.setAttribute('stroke-width',sw);
+}
+qs('#previewBtn').addEventListener('click',preview);
+qs('#pathInput').addEventListener('input',preview);
+preview();
+qs('#year').textContent=new Date().getFullYear();
+</script></body></html>

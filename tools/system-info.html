@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>系统信息检测 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .card{padding:24px;margin-bottom:20px;}
+    .info-table{width:100%;border-collapse:collapse;font-size:14px;}
+    .info-table td{padding:10px 14px;border-bottom:1px solid var(--border);}
+    .info-table td:first-child{font-weight:600;color:#3498db;width:140px;white-space:nowrap;}
+    .info-table td:last-child{font-family:Consolas,monospace;word-break:break-all;color:var(--text-1);}
+    .info-table .val-os{font-size:16px;font-weight:700;color:#2c3e50;}
+    .info-table .val-ver{color:#27ae60;font-weight:600;}
+    body.dark .info-table .val-os{color:#e0e0e0;}
+    body.dark .info-table .val-ver{color:#2ecc71;}
+    #copied{display:none;font-size:12px;color:#27ae60;margin-left:10px;}
+    @media(max-width:680px){.info-table td:first-child{width:100px;font-size:13px;}}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>🖥️ 系统信息检测</h1>
+    <p class="desc">自动识别操作系统、版本号、Build 号，以及浏览器、屏幕、CPU 等详细参数。点击下方按钮可复制完整报告。</p>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <button id="copyBtn" class="btn btn-primary">📋 复制完整报告</button>
+        <span id="copied">✅ 已复制</span>
+      </div>
+      <table class="info-table" id="infoTable"></table>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    /* app.js 把 qs 包在 IIFE 内，本地定义自己的 qs/qsa 以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function esc2(s) { return String(s).replace(/[&<>"]/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]; }); }
+
+    var ua = navigator.userAgent;
+    var rawRows = [];
+
+    function addRow(label, val, cls) { rawRows.push({ label: label, val: val, cls: cls || '' }); }
+
+    try {
+      /* ---- 操作系统 ---- */
+      (function () {
+        var os = '未知', osVer = '', build = '';
+        if (ua.indexOf('Windows NT') !== -1) {
+          var m = ua.match(/Windows NT ([\d.]+)/);
+          var nt = m ? m[1] : '';
+          var map = { '10.0': '10 / 11', '6.3': '8.1', '6.2': '8', '6.1': '7', '6.0': 'Vista' };
+          os = 'Windows ' + ((nt === '10.0') ? '10 / 11' : (map[nt] || nt));
+          var buildM = ua.match(/Windows NT [\d.]+; (?:Win64; x64; )?([^);]+)/);
+          if (buildM) { var detail = buildM[1]; if (detail.indexOf('.') !== -1) { build = detail.split('.')[0]; } }
+          if (nt === '10.0') {
+            var wv = ua.match(/Windows NT 10\.0; Win64; x64; ([\d.]+)/);
+            if (wv) osVer = 'Build ' + wv[1];
+          }
+        }
+        else if (ua.indexOf('Mac OS X') !== -1) {
+          var mm = ua.match(/Mac OS X (\d+[_\d]*)/);
+          if (mm) {
+            var v = mm[1].replace(/_/g, '.');
+            var macMap = { '10.15': 'Catalina', '10.14': 'Mojave', '10.13': 'High Sierra', '10.12': 'Sierra', '11': 'Big Sur', '12': 'Monterey', '13': 'Ventura', '14': 'Sonoma', '15': 'Sequoia' };
+            var parts = v.split('.');
+            var major = parts[0] + '.' + (parts[1] || '0');
+            os = 'macOS ' + (macMap[major] || v);
+            osVer = 'Darwin ' + v;
+          } else { os = 'macOS'; }
+        }
+        else if (ua.indexOf('Linux') !== -1) {
+          os = 'Linux';
+          if (ua.indexOf('Android') !== -1) {
+            var am = ua.match(/Android ([\d.]+)/);
+            os = 'Android' + (am ? ' ' + am[1] : '');
+          }
+        }
+        else if (ua.indexOf('like Mac OS X') !== -1) {
+          var im = ua.match(/OS (\d+[_\d]*)/);
+          os = 'iOS' + (im ? ' ' + im[1].replace(/_/g, '.') : '');
+        }
+        addRow('操作系统', os, 'val-os');
+        if (build) addRow('OS Build', build, 'val-ver');
+        if (osVer) addRow('版本号', osVer, '');
+        addRow('平台', navigator.platform || '—', '');
+        addRow('CPU 架构', (navigator.userAgentData && navigator.userAgentData.platform) || (navigator.hardwareConcurrency + ' 核'), '');
+      })();
+
+      /* ---- 浏览器 ---- */
+      (function () {
+        var browser = '', browserVer = '';
+        if (ua.indexOf('Edg/') !== -1) {
+          browser = 'Edge'; browserVer = (ua.match(/Edg\/([\d.]+)/) || ['', ''])[1];
+        } else if (ua.indexOf('Chrome/') !== -1) {
+          browser = 'Chrome'; browserVer = (ua.match(/Chrome\/([\d.]+)/) || ['', ''])[1];
+        } else if (ua.indexOf('Firefox/') !== -1) {
+          browser = 'Firefox'; browserVer = (ua.match(/Firefox\/([\d.]+)/) || ['', ''])[1];
+        } else if (ua.indexOf('Safari/') !== -1 && ua.indexOf('Chrome') === -1) {
+          browser = 'Safari'; browserVer = (ua.match(/Version\/([\d.]+)/) || ['', ''])[1];
+        } else {
+          browser = navigator.appName || '未知';
+        }
+        addRow('浏览器', browser + (browserVer ? ' ' + browserVer : ''), '');
+        addRow('引擎', ua.indexOf('WebKit') !== -1 ? 'WebKit' : ua.indexOf('Gecko') !== -1 ? 'Gecko' : ua.indexOf('Blink') !== -1 ? 'Blink' : '—', '');
+        addRow('语言', navigator.language || '—', '');
+      })();
+
+      /* ---- 屏幕 ---- */
+      addRow('屏幕分辨率', screen.width + '×' + screen.height + ' (' + (window.devicePixelRatio || 1).toFixed(1) + 'x)', '');
+      addRow('可视区域', window.innerWidth + '×' + window.innerHeight, '');
+      addRow('色彩深度', screen.colorDepth + ' 位', '');
+
+      /* ---- 硬件 ---- */
+      addRow('CPU 线程数', navigator.hardwareConcurrency || '—', '');
+      if (navigator.deviceMemory) addRow('设备内存', navigator.deviceMemory + ' GB', '');
+      addRow('触控支持', navigator.maxTouchPoints > 0 ? '支持（' + navigator.maxTouchPoints + ' 点）' : '不支持', '');
+      addRow('在线状态', navigator.onLine ? '已连接' : '未连接', '');
+
+      /* ---- 时区 + UA ---- */
+      var tz = 'UTC';
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        var o = new Date().getTimezoneOffset();
+        var sign = o > 0 ? '-' : '+';
+        var hh = String(Math.floor(Math.abs(o) / 60)).padStart(2, '0');
+        var mm = String(Math.abs(o) % 60).padStart(2, '0');
+        tz += ' (UTC' + sign + hh + ':' + mm + ')';
+      } catch (e) { tz = '未知'; }
+      addRow('时区', tz, '');
+      addRow('User-Agent', ua, '');
+
+      /* ---- 渲染表格 ---- */
+      var rowsHtml = '';
+      for (var i = 0; i < rawRows.length; i++) {
+        rowsHtml += '<tr><td>' + rawRows[i].label + '</td><td class="' + rawRows[i].cls + '">' + esc2(rawRows[i].val) + '</td></tr>';
+      }
+      var tbl = qs('#infoTable');
+      if (tbl) tbl.innerHTML = rowsHtml;
+      else { document.body.insertAdjacentHTML('beforeend', '<div style="color:red;padding:20px;">❌ 找不到 #infoTable 元素</div>'); }
+
+      /* ---- 复制按钮 ---- */
+      var btn = qs('#copyBtn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var report = '';
+          for (var j = 0; j < rawRows.length; j++) report += rawRows[j].label + ': ' + rawRows[j].val + '\n';
+          var done = function () { var c = qs('#copied'); if (c) { c.style.display = 'inline'; setTimeout(function () { c.style.display = 'none'; }, 2000); } };
+          if (navigator.clipboard) navigator.clipboard.writeText(report).then(done, function () { fallbackCopy(report, done); });
+          else fallbackCopy(report, done);
+        });
+      }
+      function fallbackCopy(text, cb) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          cb();
+        } catch (e) { alert('复制失败，请手动选择文本'); }
+      }
+
+      var y = qs('#year'); if (y) y.textContent = new Date().getFullYear();
+    } catch (err) {
+      document.body.insertAdjacentHTML('beforeend',
+        '<div style="position:fixed;top:60px;left:20px;right:20px;background:#fee;border:2px solid #c33;color:#600;padding:16px;border-radius:8px;z-index:9999;font-family:monospace;">' +
+        '<b>系统信息检测脚本出错：</b><br>' + esc2(err.message) + '</div>');
+    }
+  </script>
+</body>
+</html>

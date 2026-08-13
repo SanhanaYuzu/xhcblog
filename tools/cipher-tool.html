@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>加密解密工具 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.tool-page{max-width:760px;margin:0 auto;}
+.tool-page .tabs{display:flex;gap:8px;margin-bottom:20px;}
+.tool-page .tab{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:8px;cursor:pointer;font-size:15px;transition:.15s;}
+.tool-page .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.tool-page .mode-row{display:flex;gap:8px;margin-bottom:16px;}
+.tool-page .mode{flex:1;padding:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer;font-size:14px;}
+.tool-page .mode.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.tool-page label{display:block;font-size:13px;color:var(--text-3);margin:14px 0 6px;}
+.tool-page textarea,.tool-page input[type=text],.tool-page input[type=password],.tool-page input[type=number]{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.6;}
+.tool-page textarea{min-height:110px;}
+.tool-page .run-btn{margin-top:16px;width:100%;padding:12px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:15px;cursor:pointer;}
+.tool-page .run-btn:hover{opacity:.9;}
+.tool-page .copy-btn{margin-top:10px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer;}
+.tool-page .hint{margin-top:12px;font-size:13px;min-height:18px;}
+.tool-page .hint.err{color:#e74c3c;}
+.tool-page .hint.ok{color:#27ae60;}
+.tool-page .shift-row{display:flex;align-items:center;gap:12px;margin-top:6px;}
+.tool-page .shift-row input{width:90px;}
+.tool-page .caesar-note{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.5;}
+body.dark .tool-page .tab,body.dark .tool-page .mode{background:#222831;color:#e6e6e6;}
+body.dark .tool-page .mode{background:#2a313c;}
+body.dark .tool-page textarea,body.dark .tool-page input{background:#2a313c;color:#e6e6e6;}
+@media(max-width:680px){
+  .tool-page .panel{padding:16px;}
+  .tool-page .tabs{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">🔐 加密 / 解密</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">支持 AES-256（GCM）与凯撒密码的双向加解密</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="aes">🔒 AES-256</button>
+    <button class="tab" data-tab="caesar">🔡 凯撒密码</button>
+  </div>
+
+  <!-- AES 面板 -->
+  <div class="panel" id="aesPanel">
+    <div class="mode-row">
+      <button class="mode active" data-mode="enc">加密</button>
+      <button class="mode" data-mode="dec">解密</button>
+    </div>
+    <label>文本</label>
+    <textarea id="aesInput" placeholder="输入要加密或解密的文本"></textarea>
+    <label>密钥（密码）</label>
+    <input type="password" id="aesKey" placeholder="设置一个强密码，解密时需一致">
+    <button class="run-btn" id="aesRun">加密</button>
+    <label>结果</label>
+    <textarea id="aesOutput" readonly placeholder="结果将显示在这里"></textarea>
+    <button class="copy-btn" id="aesCopy">📋 复制结果</button>
+    <div class="hint" id="aesHint"></div>
+  </div>
+
+  <!-- 凯撒面板 -->
+  <div class="panel" id="caesarPanel" style="display:none;">
+    <div class="mode-row">
+      <button class="mode active" data-mode="enc">加密</button>
+      <button class="mode" data-mode="dec">解密</button>
+    </div>
+    <label>文本</label>
+    <textarea id="caesarInput" placeholder="输入要加密或解密的文本（仅英文字母移位，其他字符保留）"></textarea>
+    <label>移位量（0 - 25）</label>
+    <div class="shift-row">
+      <input type="number" id="caesarShift" value="3" min="0" max="25">
+      <span style="color:var(--text-3);font-size:13px;">常用偏移：3（经典凯撒）</span>
+    </div>
+    <button class="run-btn" id="caesarRun">加密</button>
+    <label>结果</label>
+    <textarea id="caesarOutput" readonly placeholder="结果将显示在这里"></textarea>
+    <button class="copy-btn" id="caesarCopy">📋 复制结果</button>
+    <div class="hint" id="caesarHint"></div>
+    <div class="caesar-note">凯撒密码原理：将字母表中的每个字母向后（加密）或向前（解密）移动固定位数。仅对 A-Z / a-z 生效，数字、中文、符号原样保留。</div>
+  </div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function(){
+  "use strict";
+  // ---------- Tab 切换 ----------
+  var tabs = document.querySelectorAll(".tool-page .tab");
+  var panels = { aes: document.getElementById("aesPanel"), caesar: document.getElementById("caesarPanel") };
+  tabs.forEach(function(t){
+    t.addEventListener("click", function(){
+      tabs.forEach(function(x){ x.classList.remove("active"); });
+      t.classList.add("active");
+      var which = t.getAttribute("data-tab");
+      Object.keys(panels).forEach(function(k){ panels[k].style.display = (k===which) ? "block" : "none"; });
+    });
+  });
+  function bindMode(row, runBtn){
+    var modes = row.querySelectorAll(".mode");
+    modes.forEach(function(m){
+      m.addEventListener("click", function(){
+        modes.forEach(function(x){ x.classList.remove("active"); });
+        m.classList.add("active");
+        runBtn.textContent = (m.getAttribute("data-mode")==="enc") ? "加密" : "解密";
+      });
+    });
+    return function(){ return row.querySelector(".mode.active").getAttribute("data-mode"); };
+  }
+
+  // ---------- AES-256-GCM（Web Crypto） ----------
+  function bytesToB64(bytes){
+    var bin = "";
+    for (var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function b64ToBytes(b64){
+    var bin = atob(b64);
+    var arr = new Uint8Array(bin.length);
+    for (var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+  function deriveKey(pass, salt){
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]).then(function(km){
+      return crypto.subtle.deriveKey(
+        { name:"PBKDF2", salt: salt, iterations:100000, hash:"SHA-256" },
+        km, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]
+      );
+    });
+  }
+  function aesEncrypt(text, pass){
+    var enc = new TextEncoder();
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(pass, salt).then(function(key){
+      return crypto.subtle.encrypt({ name:"AES-GCM", iv:iv }, key, enc.encode(text));
+    }).then(function(ct){
+      var ctBytes = new Uint8Array(ct);
+      var out = new Uint8Array(16 + 12 + ctBytes.length);
+      out.set(salt, 0); out.set(iv, 16); out.set(ctBytes, 28);
+      return bytesToB64(out);
+    });
+  }
+  function aesDecrypt(b64, pass){
+    var buf = b64ToBytes(b64);
+    if (buf.length < 28 + 1) throw new Error("密文格式不正确");
+    var salt = buf.slice(0,16);
+    var iv = buf.slice(16,28);
+    var ct = buf.slice(28);
+    return deriveKey(pass, salt).then(function(key){
+      return crypto.subtle.decrypt({ name:"AES-GCM", iv:iv }, key, ct);
+    }).then(function(pt){
+      return new TextDecoder().decode(pt);
+    });
+  }
+
+  var getAesMode = bindMode(document.querySelector("#aesPanel .mode-row"), document.getElementById("aesRun"));
+  document.getElementById("aesRun").addEventListener("click", function(){
+    var hint = document.getElementById("aesHint");
+    var input = document.getElementById("aesInput").value;
+    var pass = document.getElementById("aesKey").value;
+    hint.className = "hint"; hint.textContent = "";
+    if (!input) { hint.className="hint err"; hint.textContent="请先输入文本"; return; }
+    if (!pass) { hint.className="hint err"; hint.textContent="请输入密钥"; return; }
+    if (typeof crypto === "undefined" || !crypto.subtle) {
+      hint.className="hint err"; hint.textContent="当前环境不支持 Web Crypto（需 HTTPS 或 localhost）"; return;
+    }
+    var mode = getAesMode();
+    var outEl = document.getElementById("aesOutput");
+    outEl.value = "处理中…";
+    var p = (mode==="enc") ? aesEncrypt(input, pass) : aesDecrypt(input.trim(), pass);
+    p.then(function(res){ outEl.value = res; hint.className="hint ok"; hint.textContent = (mode==="enc")?"加密成功":"解密成功"; })
+     .catch(function(e){ outEl.value=""; hint.className="hint err"; hint.textContent = (mode==="dec") ? "解密失败：密码错误或密文损坏" : ("加密失败：" + e.message); });
+  });
+  document.getElementById("aesCopy").addEventListener("click", function(){
+    var v = document.getElementById("aesOutput").value;
+    if (!v) return;
+    navigator.clipboard.writeText(v).then(function(){ var h=document.getElementById("aesHint"); h.className="hint ok"; h.textContent="已复制结果"; });
+  });
+
+  // ---------- 凯撒密码 ----------
+  function caesar(text, shift, decrypt){
+    shift = ((decrypt ? -shift : shift) % 26 + 26) % 26;
+    return text.replace(/[a-zA-Z]/g, function(c){
+      var base = (c <= "Z") ? 65 : 97;
+      return String.fromCharCode((c.charCodeAt(0) - base + shift) % 26 + base);
+    });
+  }
+  var getCaesarMode = bindMode(document.querySelector("#caesarPanel .mode-row"), document.getElementById("caesarRun"));
+  document.getElementById("caesarRun").addEventListener("click", function(){
+    var hint = document.getElementById("caesarHint");
+    var input = document.getElementById("caesarInput").value;
+    var shiftRaw = parseInt(document.getElementById("caesarShift").value, 10);
+    hint.className="hint"; hint.textContent="";
+    if (!input) { hint.className="hint err"; hint.textContent="请先输入文本"; return; }
+    if (isNaN(shiftRaw)) { hint.className="hint err"; hint.textContent="移位量必须是数字"; return; }
+    var shift = ((shiftRaw % 26) + 26) % 26;
+    var mode = getCaesarMode();
+    var res = caesar(input, shift, mode==="dec");
+    document.getElementById("caesarOutput").value = res;
+    hint.className="hint ok"; hint.textContent = (mode==="enc")?"加密成功":"解密成功";
+  });
+  document.getElementById("caesarCopy").addEventListener("click", function(){
+    var v = document.getElementById("caesarOutput").value;
+    if (!v) return;
+    navigator.clipboard.writeText(v).then(function(){ var h=document.getElementById("caesarHint"); h.className="hint ok"; h.textContent="已复制结果"; });
+  });
+})();
+</script>
+</body>
+</html>

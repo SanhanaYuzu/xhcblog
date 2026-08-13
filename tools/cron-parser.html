@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cron 表达式解析器 - XHC 工具箱</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:760px;margin:0 auto;padding:30px 20px 56px;}
+    .tool-page h1{margin:0 0 6px;font-size:26px;font-weight:800;color:#3498db;}
+    .tool-page .desc{color:var(--text-3);font-size:14px;margin:0 0 24px;}
+    .card{padding:24px;margin-bottom:20px;}
+    .input-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+    .input-row input{padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:Consolas,monospace;flex:1;min-width:200px;background:var(--bg);color:var(--text-1);}
+    .input-row input:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15);}
+    .input-row button{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #3498db;background:#3498db;color:#fff;transition:.15s;}
+    .input-row button:hover{background:#2c81ba;}
+    .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+    .presets button{padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-1);transition:.15s;}
+    .presets button:hover{border-color:#3498db;background:#e8f4fd;color:#3498db;}
+    body.dark .presets button:hover{background:#1a3a4a;}
+    #errMsg{color:#c0392b;font-size:13px;margin-top:6px;display:none;}
+    #humanDesc{font-size:15px;padding:14px;background:#f0f3f7;border-radius:12px;line-height:1.6;margin-top:14px;color:#2c3e50;}
+    .next-list{margin-top:16px;}
+    .next-list h3{font-size:15px;color:#3498db;margin-bottom:10px;}
+    .next-list ol{margin:0;padding-left:20px;line-height:1.8;font-family:Consolas,monospace;font-size:13px;}
+    .next-list ol li{border-bottom:1px solid var(--border);padding:6px 0;color:var(--text-1);}
+    .field-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+    .field-table td{padding:6px 10px;border-bottom:1px solid var(--border);}
+    .field-table td:first-child{font-weight:700;color:#3498db;width:80px;white-space:nowrap;}
+    body.dark #humanDesc{background:#161b22;color:#d0d0d0;}
+      .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+  </style>
+</head>
+<body>
+  <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <h1>⏱️ Cron 表达式解析器</h1>
+    <p class="desc">解析 5 段式 Cron 表达式（分 时 日 月 周），用人类可读的语言描述执行计划，并列出接下来若干次执行时间。</p>
+    <div class="card">
+      <div class="presets">
+        <button data-cron="*/5 * * * *">每 5 分钟</button>
+        <button data-cron="0 * * * *">每小时整点</button>
+        <button data-cron="0 8 * * *">每天 8:00</button>
+        <button data-cron="30 9 * * 1-5">工作日 9:30</button>
+        <button data-cron="0 0 1 * *">每月 1 日 0:00</button>
+        <button data-cron="0 0 * * 0">每周日 0:00</button>
+      </div>
+      <div class="input-row">
+        <input id="cronInput" type="text" placeholder="请输入 Cron 表达式，如 */5 * * * *" value="*/5 * * * *">
+        <button id="parseBtn">解析</button>
+      </div>
+      <div id="errMsg"></div>
+      <div id="humanDesc"></div>
+      <table class="field-table" id="fieldTable" style="display:none;">
+        <tr><td>分钟</td><td id="fMin"></td></tr>
+        <tr><td>小时</td><td id="fHour"></td></tr>
+        <tr><td>日期</td><td id="fDay"></td></tr>
+        <tr><td>月份</td><td id="fMon"></td></tr>
+        <tr><td>星期</td><td id="fDow"></td></tr>
+      </table>
+      <div class="next-list" id="nextList" style="display:none;"></div>
+    </div>
+  </main>
+  <footer class="footer"><div class="container">&copy; <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>本站由 XHC 制作</div></footer>
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>    /* app.js 把 qs/qsa/esc 包在 IIFE 内，本地定义自己的助手以避免 ReferenceError */
+    function qs(s, r) { return (r || document).querySelector(s); }
+    function qsa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]; }); }
+
+
+    var fields=['min','hour','day','month','dow'];
+    var labels=['分','时','日','月','周'];
+    var ranges=[{min:0,max:59},{min:0,max:23},{min:1,max:31},{min:1,max:12},{min:0,max:7}];
+    var dowNames=['日','一','二','三','四','五','六'];
+    function parseField(s,range){if(s==='*')return'每'+labels[fields.indexOf(Object.keys({min:0})[0])];var v=s.replace(/\*/g,range.min+'-'+range.max);var parts=v.split(',');var r=[];for(var i=0;i<parts.length;i++){var p=parts[i];if(p.indexOf('/')!==-1){var sp=p.split('/');r.push('每'+sp[1]+sp[1]);}else if(p.indexOf('-')!==-1)r.push(p.replace('-',' 到 '));else r.push(p);}return r.join('、');}
+    function humanDesc(){var raw=qs('#cronInput').value.trim();var parts=raw.split(/\s+/);if(parts.length!==5)return'需要 5 个字段（分 时 日 月 周）';var m=parts[0],h=parts[1],d=parts[2],mon=parts[3],dow=parts[4];var desc='';if(d!=='*'&&dow!=='*')desc='在 ';if(dow!=='*'){var dowParts=dow.replace(/\*/g,'0-7').split(',').map(function(x){var r=x.replace('-',' 到 ').replace('/','每');return r;}).join('、');desc+='星期'+dowParts+' ';}if(d!=='*'){var dParts=d.replace(/\*/g,'1-31').split(',').map(function(x){var r=x.replace('-',' 到 ').replace('/','每');return r;}).join('、');desc+='每月 '+dParts+' 日 ';}if(mon!=='*')desc+='在 '+mon+' 月 ';desc+='的 '+h+' 时 '+m+' 分';return desc.replace(/\s+/g,' ');}
+    function nextN(n){var raw=qs('#cronInput').value.trim();var parts=raw.split(/\s+/);if(parts.length!==5)return[];var f=[];for(var i=0;i<5;i++){var r=parseInt(parts[i]);if(!isNaN(r))f.push([r]);else{var set=[];var v=parts[i].replace(/\*/g,ranges[i].min+'-'+ranges[i].max);var segs=v.split(',');for(var j=0;j<segs.length;j++){var s=segs[j];var step=1;if(s.indexOf('/')!==-1){var sp=s.split('/');s=sp[0];step=parseInt(sp[1]);}var rng=s.split('-');var lo=parseInt(rng[0]),hi=parseInt(rng[rng.length-1]||rng[0]);for(var k=lo;k<=hi;k+=step)set.push(k);}f.push(set);}}
+      var dates=[];var now=new Date();now.setSeconds(0,0);var start=Math.floor(now.getTime()/60000)*60000+60000;
+      var MAX=525600*5;for(var t=start;t<start+MAX*60000&&dates.length<n;t+=60000){
+        var dt=new Date(t);
+        var vals=[dt.getMinutes(),dt.getHours(),dt.getDate(),dt.getMonth()+1,dt.getDay()];
+        var match=true;for(var i=0;i<5;i++){if(f[i].indexOf(vals[i])===-1){match=false;break;}}
+        if(match)dates.push(dt);
+      }
+      return dates;
+    }
+    function fillFields(raw){
+      var parts=raw.split(/\s+/);
+      qs('#fMin').textContent=parts[0]||'—';
+      qs('#fHour').textContent=parts[1]||'—';
+      qs('#fDay').textContent=parts[2]||'—';
+      qs('#fMon').textContent=parts[3]||'—';
+      qs('#fDow').textContent=parts[4]||'—';
+    }
+    function parse(){
+      var err=qs('#errMsg');err.style.display='none';
+      var raw=qs('#cronInput').value.trim();
+      if(!raw){err.style.display='block';err.textContent='请输入 Cron 表达式';return;}
+      var parts=raw.split(/\s+/);
+      if(parts.length!==5){err.style.display='block';err.textContent='Cron 表达式需要 5 个字段，用空格分隔（分 时 日 月 周）';return;}
+      var desc=humanDesc();
+      qs('#humanDesc').textContent='📋 '+desc;
+      fillFields(raw);
+      qs('#fieldTable').style.display='';
+      var next=nextN(10);
+      var nl=qs('#nextList');nl.style.display='';
+      if(next.length===0){nl.innerHTML='<h3>接下来 10 次执行时间</h3><p style="color:var(--text-3);font-size:13px;">未找到执行时间（可能在近期无法匹配）</p>';return;}
+      var fmt=function(d){var p=function(x){return(x<10?'0':'')+x;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+' 周'+dowNames[d.getDay()];};
+      nl.innerHTML='<h3>接下来 '+next.length+' 次执行时间</h3><ol>'+next.map(function(d){return'<li>'+fmt(d)+'</li>';}).join('')+'</ol>';
+    }
+    qs('#parseBtn').addEventListener('click',parse);
+    qs('#cronInput').addEventListener('keydown',function(e){if(e.key==='Enter')parse();});
+    qsa('.presets button').forEach(function(b){b.addEventListener('click',function(){qs('#cronInput').value=b.dataset.cron;parse();});});
+    parse();
+    qs('#year').textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

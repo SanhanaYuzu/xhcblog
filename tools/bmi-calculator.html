@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BMI 计算 - XHC 博客</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+/* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
+.tool-page{max-width:940px;margin:0 auto;}
+.tool-page .grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start;}
+.tool-page .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:20px;}
+
+.tool-page .fld{margin-bottom:16px;}
+.tool-page .fld label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px;}
+.tool-page .ipt{display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:var(--bg);overflow:hidden;transition:.15s;}
+.tool-page .ipt:focus-within{border-color:var(--primary);}
+.tool-page .ipt input{flex:1;min-width:0;border:none;background:transparent;padding:11px 13px;font-size:17px;font-weight:700;color:var(--text);outline:none;font-family:inherit;font-variant-numeric:tabular-nums;}
+.tool-page .ipt .unit{padding:0 13px;font-size:13px;color:var(--text-3);font-weight:600;}
+.tool-page input[type=range]{width:100%;accent-color:var(--primary);cursor:pointer;margin-top:8px;}
+
+.tool-page .chips{display:flex;gap:8px;flex-wrap:wrap;}
+.tool-page .chip{flex:1;min-width:70px;text-align:center;border:1px solid var(--border);background:var(--bg);color:var(--text-2);border-radius:10px;padding:8px 6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .chip:hover{border-color:var(--primary);color:var(--primary);}
+.tool-page .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+.tool-page .btn{width:100%;border:1px solid var(--primary);background:var(--primary);color:#fff;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+.tool-page .btn:hover{background:var(--primary-dark);}
+.tool-page .btn.ghost{background:var(--card);border-color:var(--border);color:var(--text-2);margin-top:10px;font-weight:600;font-size:14px;}
+.tool-page .btn.ghost:hover{border-color:var(--primary);color:var(--primary);background:var(--card);}
+
+.tool-page .res-top{text-align:center;padding:6px 0 18px;}
+.tool-page .res-top .num{font-size:56px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--text);}
+.tool-page .res-top .tagbox{margin-top:8px;}
+.tool-page .res-top .tag{display:inline-block;padding:5px 18px;border-radius:20px;font-size:14px;font-weight:700;color:#fff;background:var(--text-3);}
+.tool-page .res-top .hint{font-size:12.5px;color:var(--text-3);margin-top:8px;}
+
+.tool-page .scale{margin:6px 0 4px;}
+.tool-page .scale-bar{display:flex;height:14px;border-radius:8px;overflow:hidden;}
+.tool-page .scale-bar i{display:block;height:100%;}
+.tool-page .scale-marks{position:relative;height:26px;margin-top:4px;}
+.tool-page .scale-marks .m{position:absolute;top:0;transform:translateX(-50%);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.tool-page .pointer-wrap{position:relative;height:18px;}
+.tool-page .pointer{position:absolute;top:0;transform:translateX(-50%);transition:left .45s cubic-bezier(.22,1,.36,1);font-size:14px;line-height:1;color:var(--text);}
+.tool-page .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px;}
+.tool-page .legend span{font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:5px;}
+.tool-page .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+.tool-page .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;}
+.tool-page .card2{border:1px solid var(--border);border-radius:10px;background:var(--bg);padding:11px 10px;text-align:center;}
+.tool-page .card2 .k{font-size:11.5px;color:var(--text-3);}
+.tool-page .card2 .v{font-size:15px;font-weight:700;color:var(--text);margin-top:4px;font-variant-numeric:tabular-nums;}
+
+.tool-page .advice{margin-top:18px;border-left:3px solid var(--primary);background:var(--bg);border-radius:0 10px 10px 0;padding:13px 15px;}
+.tool-page .advice h3{font-size:14px;margin:0 0 8px;color:var(--text);}
+.tool-page .advice ul{margin:0;padding-left:18px;}
+.tool-page .advice li{font-size:13px;color:var(--text-2);line-height:1.85;}
+.tool-page .note{font-size:11.5px;color:var(--text-3);margin-top:14px;line-height:1.7;}
+
+@media(max-width:680px){
+  .tool-page .grid{grid-template-columns:1fr;}
+  .tool-page .panel{padding:16px;}
+  .tool-page .res-top .num{font-size:44px;}
+  .tool-page .cards{grid-template-columns:1fr;}
+}
+
+/* 深色模式适配 */
+body.dark .tool-page .panel{box-shadow:none;}
+body.dark .tool-page .ipt,
+body.dark .tool-page .chip,
+body.dark .tool-page .card2,
+body.dark .tool-page .advice{background:#12151b;}
+body.dark .tool-page .chip.on{background:var(--primary);color:#fff;}
+body.dark .tool-page .btn.ghost{background:var(--card);}
+body.dark .tool-page .res-top .num{color:var(--text);}
+</style>
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
+<header class="header"><div class="container">
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<nav class="nav" id="navCats"></nav>
+<div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
+<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+<span id="accountSlot"></span>
+</div></header>
+<main class="container" style="padding:28px 0 40px;">
+<a class="back-link" href="../tools.html" style="display:inline-block;margin-bottom:16px;color:var(--primary);text-decoration:none;">← 返回工具箱</a>
+<section class="tool-page">
+  <h1 style="font-size:24px;margin-bottom:6px;">⚖️ BMI 计算</h1>
+  <p class="sub" style="color:var(--text-3);margin-bottom:20px;">输入身高体重，即时算出身体质量指数（BMI），并给出所处区间与健康建议。</p>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="fld">
+        <label for="hIn">身高</label>
+        <div class="ipt"><input type="number" id="hIn" value="170" min="80" max="250" step="0.5"><span class="unit">cm</span></div>
+        <input type="range" id="hRange" min="120" max="220" step="0.5" value="170">
+      </div>
+      <div class="fld">
+        <label for="wIn">体重</label>
+        <div class="ipt"><input type="number" id="wIn" value="65" min="20" max="300" step="0.1"><span class="unit">kg</span></div>
+        <input type="range" id="wRange" min="30" max="150" step="0.5" value="65">
+      </div>
+      <div class="fld">
+        <label>性别</label>
+        <div class="chips" id="sexChips">
+          <button class="chip on" data-sex="male">👨 男</button>
+          <button class="chip" data-sex="female">👩 女</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label>判定标准</label>
+        <div class="chips" id="stdChips">
+          <button class="chip on" data-std="cn">中国标准</button>
+          <button class="chip" data-std="who">WHO 标准</button>
+        </div>
+      </div>
+      <button class="btn" id="calcBtn">立即计算</button>
+      <button class="btn ghost" id="resetBtn">恢复默认</button>
+    </div>
+
+    <div class="panel">
+      <div class="res-top">
+        <div class="num" id="bmiNum">—</div>
+        <div class="tagbox"><span class="tag" id="bmiTag">请输入身高体重</span></div>
+        <div class="hint" id="bmiHint">BMI = 体重(kg) ÷ 身高(m)²</div>
+      </div>
+
+      <div class="scale">
+        <div class="pointer-wrap"><div class="pointer" id="pointer" style="left:0%;">▼</div></div>
+        <div class="scale-bar" id="scaleBar"></div>
+        <div class="scale-marks" id="scaleMarks"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="cards">
+        <div class="card2"><div class="k">理想体重区间</div><div class="v" id="cIdeal">—</div></div>
+        <div class="card2"><div class="k">标准体重</div><div class="v" id="cStd">—</div></div>
+        <div class="card2"><div class="k">与标准差值</div><div class="v" id="cDiff">—</div></div>
+      </div>
+
+      <div class="advice">
+        <h3 id="advTitle">健康建议</h3>
+        <ul id="advList"><li>填写身高与体重后，这里会显示针对你的建议。</li></ul>
+      </div>
+
+      <p class="note">说明：BMI 适用于 18 岁以上成年人，不适用于孕妇、运动员、肌肉量极高或极低人群；结果仅供参考，不能替代医生诊断。</p>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var hIn = $("hIn"), wIn = $("wIn"), hRange = $("hRange"), wRange = $("wRange");
+  var bmiNum = $("bmiNum"), bmiTag = $("bmiTag"), bmiHint = $("bmiHint");
+  var scaleBar = $("scaleBar"), scaleMarks = $("scaleMarks"), legend = $("legend"), pointer = $("pointer");
+  var cIdeal = $("cIdeal"), cStd = $("cStd"), cDiff = $("cDiff");
+  var advTitle = $("advTitle"), advList = $("advList");
+
+  var MINB = 14, MAXB = 36;
+  var sex = "male", std = "cn";
+
+  var STANDARDS = {
+    cn: [
+      { name: "偏瘦", max: 18.5, color: "#4aa3ff" },
+      { name: "正常", max: 24, color: "#21ba72" },
+      { name: "超重", max: 28, color: "#f5a524" },
+      { name: "肥胖", max: 99, color: "#ef4444" }
+    ],
+    who: [
+      { name: "偏瘦", max: 18.5, color: "#4aa3ff" },
+      { name: "正常", max: 25, color: "#21ba72" },
+      { name: "超重", max: 30, color: "#f5a524" },
+      { name: "肥胖", max: 99, color: "#ef4444" }
+    ]
+  };
+
+  var ADVICE = {
+    "偏瘦": [
+      "适当增加优质蛋白摄入：鸡蛋、牛奶、鱼肉、豆制品。",
+      "少食多餐，可在三餐之间加坚果、酸奶等健康加餐。",
+      "配合抗阻训练（如深蹲、俯卧撑）增加肌肉量，而不是单纯长脂肪。",
+      "若短期内明显消瘦，建议就医排查甲状腺、消化系统等问题。"
+    ],
+    "正常": [
+      "保持现在的饮食结构与运动习惯，继续加油。",
+      "每周至少 150 分钟中等强度有氧运动（快走、慢跑、游泳）。",
+      "注意腰围同样重要：男性 < 90cm、女性 < 85cm 更健康。",
+      "保证每天 7–8 小时睡眠，规律作息有助于维持体重。"
+    ],
+    "超重": [
+      "控制每日总热量，减少含糖饮料、油炸食品与精制主食。",
+      "每周运动 3–5 次，有氧 + 力量结合，减脂同时保住肌肉。",
+      "把减重目标设为每周 0.5–1kg，快速掉秤容易反弹。",
+      "多吃蔬菜与粗粮，提高饱腹感，吃饭放慢速度。"
+    ],
+    "肥胖": [
+      "建议在医生或营养师指导下制定系统的减重方案。",
+      "优先选择低冲击运动（快走、椭圆机、游泳），保护膝关节。",
+      "定期监测血压、血糖、血脂，肥胖是多种慢病的危险因素。",
+      "循序渐进，先从每天多走 2000 步、戒掉一杯甜饮开始。"
+    ]
+  };
+
+  function pct(bmi) {
+    var v = Math.min(MAXB, Math.max(MINB, bmi));
+    return (v - MINB) / (MAXB - MINB) * 100;
+  }
+
+  function buildScale() {
+    var list = STANDARDS[std];
+    var barHtml = "", markHtml = "", legHtml = "";
+    var prev = MINB;
+    for (var i = 0; i < list.length; i++) {
+      var top = Math.min(list[i].max, MAXB);
+      var w = (top - prev) / (MAXB - MINB) * 100;
+      if (w < 0) w = 0;
+      barHtml += '<i style="width:' + w.toFixed(2) + '%;background:' + list[i].color + ';"></i>';
+      legHtml += '<span><i style="background:' + list[i].color + '"></i>' + list[i].name +
+        (list[i].max >= 99 ? " ≥ " + prev : " " + prev + "–" + list[i].max) + "</span>";
+      if (list[i].max < 99) {
+        markHtml += '<div class="m" style="left:' + pct(list[i].max).toFixed(2) + '%;">' + list[i].max + "</div>";
+      }
+      prev = top;
+    }
+    markHtml = '<div class="m" style="left:0%;">' + MINB + "</div>" + markHtml +
+      '<div class="m" style="left:100%;">' + MAXB + "</div>";
+    scaleBar.innerHTML = barHtml;
+    scaleMarks.innerHTML = markHtml;
+    legend.innerHTML = legHtml;
+  }
+
+  function categoryOf(bmi) {
+    var list = STANDARDS[std];
+    for (var i = 0; i < list.length; i++) {
+      if (bmi < list[i].max) return list[i];
+    }
+    return list[list.length - 1];
+  }
+
+  function normalRange() {
+    var list = STANDARDS[std];
+    return { low: list[0].max, high: list[1].max };
+  }
+
+  function calc() {
+    var h = parseFloat(hIn.value), w = parseFloat(wIn.value);
+    if (!h || !w || h <= 0 || w <= 0) {
+      bmiNum.textContent = "—";
+      bmiTag.textContent = "请输入有效数值";
+      bmiTag.style.background = "var(--text-3)";
+      bmiHint.textContent = "BMI = 体重(kg) ÷ 身高(m)²";
+      pointer.style.left = "0%";
+      cIdeal.textContent = "—"; cStd.textContent = "—"; cDiff.textContent = "—";
+      return;
+    }
+    var m = h / 100;
+    var bmi = w / (m * m);
+    var cat = categoryOf(bmi);
+    bmiNum.textContent = bmi.toFixed(1);
+    bmiNum.style.color = cat.color;
+    bmiTag.textContent = cat.name;
+    bmiTag.style.background = cat.color;
+    pointer.style.left = pct(bmi).toFixed(2) + "%";
+    pointer.style.color = cat.color;
+
+    var nr = normalRange();
+    var lowW = nr.low * m * m, highW = nr.high * m * m;
+    cIdeal.textContent = lowW.toFixed(1) + " ~ " + highW.toFixed(1) + " kg";
+
+    var stdW = sex === "male" ? (h - 80) * 0.7 : (h - 70) * 0.6;
+    if (stdW < 20) stdW = lowW;
+    cStd.textContent = stdW.toFixed(1) + " kg";
+
+    var diff = w - stdW;
+    cDiff.textContent = (diff >= 0 ? "+" : "") + diff.toFixed(1) + " kg";
+    cDiff.style.color = Math.abs(diff / stdW) <= 0.1 ? "#21ba72" : (diff > 0 ? "#f5a524" : "#4aa3ff");
+
+    var gapTxt;
+    if (bmi < nr.low) gapTxt = "距离正常区间下限还差 " + (lowW - w).toFixed(1) + " kg";
+    else if (bmi > nr.high) gapTxt = "超出正常区间上限 " + (w - highW).toFixed(1) + " kg";
+    else gapTxt = "处于健康区间，距上限还有 " + (highW - w).toFixed(1) + " kg 空间";
+    bmiHint.textContent = gapTxt + "（" + (std === "cn" ? "中国标准" : "WHO 标准") + "）";
+
+    var who = sex === "male" ? "男性" : "女性";
+    advTitle.textContent = "健康建议 · " + who + " · " + cat.name;
+    var items = ADVICE[cat.name] || [];
+    var html = "";
+    for (var i = 0; i < items.length; i++) html += "<li>" + items[i] + "</li>";
+    html += "<li>参考标准体重公式：" + (sex === "male" ? "（身高cm − 80）× 0.7" : "（身高cm − 70）× 0.6") + "。</li>";
+    advList.innerHTML = html;
+  }
+
+  function bindPair(numEl, rangeEl) {
+    numEl.addEventListener("input", function () {
+      var v = parseFloat(numEl.value);
+      if (!isNaN(v)) rangeEl.value = Math.min(parseFloat(rangeEl.max), Math.max(parseFloat(rangeEl.min), v));
+      calc();
+    });
+    rangeEl.addEventListener("input", function () {
+      numEl.value = rangeEl.value;
+      calc();
+    });
+  }
+  bindPair(hIn, hRange);
+  bindPair(wIn, wRange);
+
+  function bindChips(wrapId, handler) {
+    var wrap = $(wrapId);
+    var chips = wrap.getElementsByTagName("button");
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].addEventListener("click", function () {
+        for (var j = 0; j < chips.length; j++) chips[j].classList.remove("on");
+        this.classList.add("on");
+        handler(this);
+      });
+    }
+  }
+  bindChips("sexChips", function (el) { sex = el.getAttribute("data-sex"); calc(); });
+  bindChips("stdChips", function (el) { std = el.getAttribute("data-std"); buildScale(); calc(); });
+
+  $("calcBtn").addEventListener("click", calc);
+  $("resetBtn").addEventListener("click", function () {
+    hIn.value = 170; hRange.value = 170;
+    wIn.value = 65; wRange.value = 65;
+    calc();
+  });
+
+  buildScale();
+  calc();
+})();
+</script>
+</body>
+</html>

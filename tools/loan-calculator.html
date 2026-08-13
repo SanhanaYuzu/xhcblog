@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>房贷计算器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:720px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px;}
+    .panel h2{font-size:14.5px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+    .field{flex:1;min-width:160px;}
+    .field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+    .field .input-wrap{position:relative;}
+    .field input{
+      width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);
+      color:var(--text);border-radius:10px;padding:11px 38px 11px 13px;font-size:15px;font-family:inherit;
+    }
+    .field input:focus{outline:none;border-color:var(--primary);}
+    .field .unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-3);}
+
+    .seg{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+    .seg button{flex:1;border:none;background:var(--bg);color:var(--text-2);padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+    .seg button.active{background:var(--primary);color:#fff;}
+    .seg button:not(.active):hover{color:var(--primary);}
+
+    .btn-primary{width:100%;border:none;background:var(--primary);color:#fff;border-radius:12px;padding:13px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;}
+    .btn-primary:hover{background:var(--primary-dark);}
+
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+    .stat{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+    .stat .v{font-size:22px;font-weight:800;color:var(--primary);font-variant-numeric:tabular-nums;}
+    .stat .l{font-size:12px;color:var(--text-3);margin-top:4px;}
+    .stat.full{grid-column:span 3;}
+    .stat.full .v{color:var(--text);}
+
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+    th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
+    th{color:var(--text-3);font-weight:600;background:var(--bg);position:sticky;top:0;}
+    td:first-child,th:first-child{text-align:left;}
+    .table-wrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:12px;}
+
+    .tip-toast{position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.22s;z-index:9999;}
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:560px){
+      .summary{grid-template-columns:1fr 1fr;}
+      .stat.full{grid-column:span 2;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">🏠</span>
+      <h1>房贷计算器</h1>
+    </div>
+    <p class="tool-sub">输入贷款金额、年限与年利率，自动计算等额本息或等额本金每月还款额、总利息与还款明细。</p>
+
+    <div class="panel">
+      <h2><span class="bar"></span> 贷款参数</h2>
+      <div class="seg" id="methodSeg">
+        <button data-m="bx" class="active">等额本息</button>
+        <button data-m="bj">等额本金</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>贷款总额</label>
+          <div class="input-wrap"><input type="number" id="amount" value="100" min="1"><span class="unit">万元</span></div>
+        </div>
+        <div class="field">
+          <label>贷款年限</label>
+          <div class="input-wrap"><input type="number" id="years" value="30" min="1" max="40"><span class="unit">年</span></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>年利率</label>
+        <div class="input-wrap"><input type="number" id="rate" value="3.95" step="0.01" min="0"><span class="unit">%</span></div>
+      </div>
+      <button class="btn-primary" id="calcBtn">📊 计算还款计划</button>
+    </div>
+
+    <div class="panel" id="resultPanel" style="display:none;">
+      <h2><span class="bar"></span> 计算结果</h2>
+      <div class="summary" id="summary"></div>
+      <div class="table-wrap">
+        <table id="schedule">
+          <thead><tr><th>期数</th><th>月供</th><th>本金</th><th>利息</th><th>剩余本金</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var method = "bx";
+      var seg = document.getElementById("methodSeg");
+      seg.addEventListener("click", function(e){
+        var b = e.target.closest("button"); if(!b) return;
+        method = b.dataset.m;
+        Array.prototype.forEach.call(seg.querySelectorAll("button"),function(x){x.classList.toggle("active",x===b);});
+      });
+
+      function fmtMoney(v){
+        v = Math.round(v);
+        return v.toLocaleString("zh-CN");
+      }
+
+      function calc(){
+        var amountWan = parseFloat(document.getElementById("amount").value);
+        var years = parseInt(document.getElementById("years").value,10);
+        var rate = parseFloat(document.getElementById("rate").value);
+        if(isNaN(amountWan)||amountWan<=0){toast("请输入有效的贷款总额");return;}
+        if(isNaN(years)||years<=0){toast("请输入有效的贷款年限");return;}
+        if(isNaN(rate)||rate<0){toast("请输入有效的年利率");return;}
+
+        var P = amountWan * 10000;          // 本金（元）
+        var n = years * 12;                 // 月数
+        var mr = rate / 100 / 12;           // 月利率
+        var rows = [];
+        var totalPay = 0, totalInterest = 0;
+
+        if(method==="bx"){
+          // 等额本息
+          var monthly;
+          if(mr===0){ monthly = P/n; }
+          else{
+            var f = Math.pow(1+mr, n);
+            monthly = P * mr * f / (f - 1);
+          }
+          var remain = P;
+          for(var i=1;i<=n;i++){
+            var interest = remain * mr;
+            var principal = monthly - interest;
+            remain -= principal;
+            if(i===n){ principal += remain; remain = 0; } // 末期修正
+            totalPay += monthly;
+            totalInterest += interest;
+            rows.push({idx:i, pay:monthly, principal:principal, interest:interest, remain:Math.max(remain,0)});
+          }
+        }else{
+          // 等额本金
+          var base = P / n;
+          var remain2 = P;
+          for(var j=1;j<=n;j++){
+            var interest2 = remain2 * mr;
+            var principal2 = base;
+            remain2 -= principal2;
+            if(j===n){ principal2 += remain2; remain2 = 0; }
+            var pay2 = principal2 + interest2;
+            totalPay += pay2;
+            totalInterest += interest2;
+            rows.push({idx:j, pay:pay2, principal:principal2, interest:interest2, remain:Math.max(remain2,0)});
+          }
+        }
+
+        renderSummary(P, totalInterest, totalPay, rows[0].pay);
+        renderTable(rows);
+        document.getElementById("resultPanel").style.display = "block";
+        if(rows.length) document.getElementById("resultPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+      }
+
+      function renderSummary(P, interest, totalPay, firstPay){
+        var el = document.getElementById("summary");
+        var payLabel = method==="bx" ? "每月月供(元)" : "首月月供(元)";
+        el.innerHTML =
+          '<div class="stat"><div class="v">'+fmtMoney(firstPay)+'</div><div class="l">'+payLabel+'</div></div>'+
+          '<div class="stat"><div class="v">'+fmtMoney(interest)+'</div><div class="l">总利息(元)</div></div>'+
+          '<div class="stat"><div class="v">'+fmtMoney(totalPay)+'</div><div class="l">还款总额(元)</div></div>'+
+          '<div class="stat full"><div class="v">'+fmtMoney(P)+' 元</div><div class="l">贷款本金</div></div>';
+      }
+
+      function renderTable(rows){
+        var tbody = document.querySelector("#schedule tbody");
+        tbody.innerHTML = "";
+        rows.forEach(function(r){
+          var tr = document.createElement("tr");
+          tr.innerHTML = "<td>"+r.idx+"</td><td>"+fmtMoney(r.pay)+"</td><td>"+fmtMoney(r.principal)+"</td><td>"+fmtMoney(r.interest)+"</td><td>"+fmtMoney(r.remain)+"</td>";
+          tbody.appendChild(tr);
+        });
+      }
+
+      var toastEl = document.getElementById("tipToast");
+      function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove("show");},1700);}
+
+      document.getElementById("calcBtn").addEventListener("click", calc);
+
+      // 初始计算一次
+      calc();
+    })();
+  </script>
+
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

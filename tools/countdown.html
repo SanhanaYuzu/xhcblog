@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>倒计时器 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:780px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px;}
+    .panel h2{font-size:15px;margin:0 0 15px;display:flex;align-items:center;gap:8px;}
+    .panel h2 .bar{width:4px;height:15px;background:var(--primary);border-radius:3px;display:inline-block;}
+
+    /* 倒计时显示 */
+    .cd-title{text-align:center;font-size:14px;color:var(--text-2);margin-bottom:4px;min-height:20px;}
+    .cd-target{text-align:center;font-size:12.5px;color:var(--text-3);margin-bottom:18px;min-height:18px;}
+    .cd-grid{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+    .cd-cell{
+      background:var(--bg);border:1px solid var(--border);border-radius:14px;
+      min-width:98px;padding:16px 10px;text-align:center;transition:.2s;
+    }
+    .cd-cell .n{
+      font-size:42px;font-weight:800;line-height:1;color:var(--text);
+      font-variant-numeric:tabular-nums;
+      font-family:"SFMono-Regular",Consolas,"Courier New",monospace;
+    }
+    .cd-cell .u{font-size:12px;color:var(--text-3);margin-top:7px;font-weight:600;}
+    .cd-grid.running .cd-cell{border-color:var(--primary);}
+    .cd-grid.ended .cd-cell{border-color:#e5484d;}
+    .cd-grid.ended .cd-cell .n{color:#e5484d;}
+
+    .cd-prog{height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin:20px 0 4px;}
+    .cd-prog i{display:block;height:100%;width:0;background:var(--primary);border-radius:4px;transition:width .3s linear;}
+    .cd-prog-txt{text-align:center;font-size:12px;color:var(--text-3);}
+
+    /* 控制 */
+    .ctrl{display:flex;gap:11px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:11px;
+      padding:11px 24px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;min-width:120px;}
+    .btn.primary:hover{background:var(--primary-dark);color:#fff;}
+    .btn.small{padding:8px 15px;font-size:13.5px;font-weight:600;}
+
+    /* 预设 */
+    .preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px;}
+    .preset-grid button{
+      border:1px solid var(--border);background:var(--bg);color:var(--text-2);border-radius:11px;
+      padding:11px 6px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .preset-grid button:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);}
+
+    /* 自定义 */
+    .cus-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:16px;}
+    .cus-item{flex:1;min-width:96px;}
+    .cus-item label{display:block;font-size:12.5px;color:var(--text-2);font-weight:600;margin-bottom:7px;}
+    .cus-item input{
+      width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;
+      background:var(--bg);color:var(--text);font-size:14.5px;font-family:inherit;outline:none;text-align:center;
+    }
+    .cus-item input:focus{border-color:var(--primary);background:var(--card);}
+
+    .dt-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+    .dt-row .cus-item{flex:2;min-width:210px;}
+    .dt-row input[type="datetime-local"]{text-align:left;}
+    .dt-row input[type="text"]{text-align:left;}
+
+    .opt-line{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13.5px;color:var(--text-2);cursor:pointer;}
+    .opt-line input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @keyframes cdFlash{0%,100%{opacity:1;}50%{opacity:.35;}}
+    .cd-grid.ended{animation:cdFlash 1s ease-in-out 3;}
+
+    @media(max-width:600px){
+      .panel{padding:18px 14px;}
+      .cd-grid{gap:8px;}
+      .cd-cell{min-width:68px;padding:12px 6px;border-radius:11px;}
+      .cd-cell .n{font-size:28px;}
+      .btn{padding:10px 18px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">⏳</span>
+      <h1>倒计时器</h1>
+    </div>
+    <p class="tool-sub">既可倒数一段时长，也可倒数到指定日期时间。支持暂停 / 继续 / 重置，结束时发出提示音。</p>
+
+    <!-- 显示区 -->
+    <div class="panel">
+      <div class="cd-title" id="cdTitle">未设置倒计时</div>
+      <div class="cd-target" id="cdTarget"></div>
+      <div class="cd-grid" id="cdGrid">
+        <div class="cd-cell"><div class="n" id="dD">00</div><div class="u">天</div></div>
+        <div class="cd-cell"><div class="n" id="dH">00</div><div class="u">时</div></div>
+        <div class="cd-cell"><div class="n" id="dM">00</div><div class="u">分</div></div>
+        <div class="cd-cell"><div class="n" id="dS">00</div><div class="u">秒</div></div>
+      </div>
+      <div class="cd-prog"><i id="cdProg"></i></div>
+      <div class="cd-prog-txt" id="cdProgTxt">等待开始</div>
+
+      <div class="ctrl">
+        <button class="btn primary" id="startBtn">▶ 开始</button>
+        <button class="btn" id="resetBtn">↺ 重置</button>
+        <button class="btn small" id="stopSoundBtn" style="display:none;">🔇 停止提示音</button>
+      </div>
+    </div>
+
+    <!-- 快捷预设 -->
+    <div class="panel">
+      <h2><span class="bar"></span> 快捷倒计时</h2>
+      <div class="preset-grid">
+        <button type="button" data-sec="60">1 分钟</button>
+        <button type="button" data-sec="180">3 分钟</button>
+        <button type="button" data-sec="300">5 分钟</button>
+        <button type="button" data-sec="600">10 分钟</button>
+        <button type="button" data-sec="1800">30 分钟</button>
+        <button type="button" data-sec="2700">45 分钟</button>
+        <button type="button" data-sec="3600">1 小时</button>
+        <button type="button" data-sec="7200">2 小时</button>
+      </div>
+
+      <div class="cus-row">
+        <div class="cus-item">
+          <label for="inH">自定义 · 时</label>
+          <input type="number" id="inH" min="0" max="999" value="0">
+        </div>
+        <div class="cus-item">
+          <label for="inM">分</label>
+          <input type="number" id="inM" min="0" max="59" value="25">
+        </div>
+        <div class="cus-item">
+          <label for="inS">秒</label>
+          <input type="number" id="inS" min="0" max="59" value="0">
+        </div>
+        <button class="btn" id="applyCustom">设为倒计时</button>
+      </div>
+    </div>
+
+    <!-- 目标时间 -->
+    <div class="panel">
+      <h2><span class="bar"></span> 倒数到指定时间</h2>
+      <div class="dt-row">
+        <div class="cus-item">
+          <label for="dtInput">目标日期时间</label>
+          <input type="datetime-local" id="dtInput">
+        </div>
+        <div class="cus-item" style="flex:1;">
+          <label for="titleInput">事件名称（可选）</label>
+          <input type="text" id="titleInput" placeholder="例如：项目截止" maxlength="30">
+        </div>
+        <button class="btn" id="applyDate">开始倒数</button>
+      </div>
+      <label class="opt-line"><input type="checkbox" id="soundOn" checked> 倒计时结束时播放提示音</label>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var dD = document.getElementById("dD"), dH = document.getElementById("dH");
+      var dM = document.getElementById("dM"), dS = document.getElementById("dS");
+      var cdGrid = document.getElementById("cdGrid");
+      var cdTitle = document.getElementById("cdTitle");
+      var cdTarget = document.getElementById("cdTarget");
+      var cdProg = document.getElementById("cdProg");
+      var cdProgTxt = document.getElementById("cdProgTxt");
+      var startBtn = document.getElementById("startBtn");
+      var resetBtn = document.getElementById("resetBtn");
+      var stopSoundBtn = document.getElementById("stopSoundBtn");
+      var soundOn = document.getElementById("soundOn");
+      var toastEl = document.getElementById("tipToast");
+
+      var totalMs = 0;      // 本轮总时长
+      var remainMs = 0;     // 剩余
+      var endAt = 0;        // 运行时的结束时间戳
+      var running = false;
+      var ended = false;
+      var ticker = null;
+      var label = "";
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 2000);
+      }
+      function pad(n, w) {
+        var s = String(Math.floor(n));
+        while (s.length < (w || 2)) s = "0" + s;
+        return s;
+      }
+
+      /* ---------- 提示音 ---------- */
+      var audioCtx = null, alarmTimer = null;
+      function ensureCtx() {
+        try {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audioCtx) audioCtx = new AC();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          return audioCtx;
+        } catch (e) { return null; }
+      }
+      function tone(freq, at, dur) {
+        var ctx = audioCtx;
+        if (!ctx) return;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, at);
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.3, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(at);
+        osc.stop(at + dur + 0.02);
+      }
+      function playAlarm() {
+        if (!soundOn.checked) return;
+        var ctx = ensureCtx();
+        if (!ctx) return;
+        stopSoundBtn.style.display = "inline-block";
+        var round = 0;
+        var fire = function () {
+          if (round++ >= 6) { stopAlarm(); return; }
+          var t = ctx.currentTime;
+          tone(880, t, 0.16);
+          tone(1180, t + 0.22, 0.16);
+          tone(880, t + 0.44, 0.2);
+        };
+        fire();
+        clearInterval(alarmTimer);
+        alarmTimer = setInterval(fire, 1000);
+      }
+      function stopAlarm() {
+        clearInterval(alarmTimer);
+        alarmTimer = null;
+        stopSoundBtn.style.display = "none";
+      }
+
+      /* ---------- 渲染 ---------- */
+      function renderTime(ms) {
+        if (ms < 0) ms = 0;
+        var s = Math.floor(ms / 1000);
+        var d = Math.floor(s / 86400);
+        var h = Math.floor((s % 86400) / 3600);
+        var m = Math.floor((s % 3600) / 60);
+        var sec = s % 60;
+        dD.textContent = pad(d);
+        dH.textContent = pad(h);
+        dM.textContent = pad(m);
+        dS.textContent = pad(sec);
+
+        var ratio = totalMs > 0 ? (1 - ms / totalMs) : 0;
+        cdProg.style.width = Math.max(0, Math.min(100, ratio * 100)).toFixed(2) + "%";
+
+        if (running) {
+          var titleTxt = (d > 0 ? d + "天" : "") + pad(h) + ":" + pad(m) + ":" + pad(sec);
+          document.title = titleTxt + " · 倒计时器 - XHC 博客";
+        }
+      }
+
+      function setState(txt) { cdProgTxt.textContent = txt; }
+
+      /* ---------- 控制 ---------- */
+      function setDuration(ms, name) {
+        stopAlarm();
+        stop();
+        ended = false;
+        cdGrid.classList.remove("ended");
+        totalMs = ms;
+        remainMs = ms;
+        label = name || "";
+        cdTitle.textContent = label || "倒计时已就绪";
+        cdTarget.textContent = "总时长 " + humanize(ms);
+        renderTime(remainMs);
+        setState("等待开始 · 点击「开始」");
+        startBtn.textContent = "▶ 开始";
+      }
+
+      function setTargetDate(date, name) {
+        var diff = date.getTime() - Date.now();
+        if (diff <= 0) { toast("目标时间必须晚于当前时间"); return false; }
+        stopAlarm();
+        stop();
+        ended = false;
+        cdGrid.classList.remove("ended");
+        totalMs = diff;
+        remainMs = diff;
+        label = name || "";
+        cdTitle.textContent = label || "距离目标时间还有";
+        cdTarget.textContent = "目标：" + fmtDate(date);
+        renderTime(remainMs);
+        setState("等待开始 · 点击「开始」");
+        startBtn.textContent = "▶ 开始";
+        return true;
+      }
+
+      function humanize(ms) {
+        var s = Math.round(ms / 1000);
+        var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+        var m = Math.floor((s % 3600) / 60), sec = s % 60;
+        var out = "";
+        if (d) out += d + " 天 ";
+        if (h) out += h + " 小时 ";
+        if (m) out += m + " 分 ";
+        if (sec || !out) out += sec + " 秒";
+        return out.trim();
+      }
+      function fmtDate(d) {
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+          " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      }
+
+      function tick() {
+        remainMs = endAt - Date.now();
+        if (remainMs <= 0) {
+          remainMs = 0;
+          renderTime(0);
+          finish();
+          return;
+        }
+        renderTime(remainMs);
+      }
+
+      function start() {
+        if (running) return;
+        if (totalMs <= 0) { toast("请先设置倒计时时长或目标时间"); return; }
+        if (remainMs <= 0) { toast("倒计时已结束，请重置后再开始"); return; }
+        ensureCtx();
+        running = true;
+        ended = false;
+        endAt = Date.now() + remainMs;
+        clearInterval(ticker);
+        ticker = setInterval(tick, 100);
+        cdGrid.classList.add("running");
+        startBtn.textContent = "⏸ 暂停";
+        setState("倒计时进行中…");
+      }
+
+      function pause() {
+        if (!running) return;
+        running = false;
+        remainMs = Math.max(0, endAt - Date.now());
+        clearInterval(ticker);
+        cdGrid.classList.remove("running");
+        startBtn.textContent = "▶ 继续";
+        setState("已暂停 · 剩余 " + humanize(remainMs));
+        document.title = "倒计时器 - XHC 博客";
+      }
+
+      function stop() {
+        running = false;
+        clearInterval(ticker);
+        cdGrid.classList.remove("running");
+        document.title = "倒计时器 - XHC 博客";
+      }
+
+      function finish() {
+        stop();
+        ended = true;
+        cdGrid.classList.add("ended");
+        startBtn.textContent = "▶ 开始";
+        cdProg.style.width = "100%";
+        setState("⏰ 时间到！");
+        cdTitle.textContent = label ? ("「" + label + "」时间到！") : "⏰ 倒计时结束";
+        toast("⏰ 倒计时结束" + (label ? "：" + label : ""));
+        playAlarm();
+      }
+
+      /* ---------- 事件 ---------- */
+      startBtn.addEventListener("click", function () {
+        stopAlarm();
+        running ? pause() : start();
+      });
+      resetBtn.addEventListener("click", function () {
+        stopAlarm();
+        stop();
+        ended = false;
+        cdGrid.classList.remove("ended");
+        remainMs = totalMs;
+        renderTime(remainMs);
+        startBtn.textContent = "▶ 开始";
+        setState(totalMs > 0 ? "已重置 · 等待开始" : "等待开始");
+        if (label) cdTitle.textContent = label;
+        toast("已重置");
+      });
+      stopSoundBtn.addEventListener("click", stopAlarm);
+
+      Array.prototype.forEach.call(document.querySelectorAll(".preset-grid button"), function (b) {
+        b.addEventListener("click", function () {
+          var sec = parseInt(b.dataset.sec, 10);
+          setDuration(sec * 1000, b.textContent.trim() + "倒计时");
+          start();
+        });
+      });
+
+      document.getElementById("applyCustom").addEventListener("click", function () {
+        var h = parseInt(document.getElementById("inH").value, 10) || 0;
+        var m = parseInt(document.getElementById("inM").value, 10) || 0;
+        var s = parseInt(document.getElementById("inS").value, 10) || 0;
+        var ms = ((h * 3600) + (m * 60) + s) * 1000;
+        if (ms <= 0) { toast("请输入大于 0 的时长"); return; }
+        setDuration(ms, "自定义倒计时");
+        start();
+      });
+
+      document.getElementById("applyDate").addEventListener("click", function () {
+        var v = document.getElementById("dtInput").value;
+        if (!v) { toast("请先选择目标日期时间"); return; }
+        var d = new Date(v);
+        if (isNaN(d.getTime())) { toast("日期格式无效"); return; }
+        var name = document.getElementById("titleInput").value.trim();
+        if (setTargetDate(d, name)) start();
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          stopAlarm();
+          running ? pause() : start();
+        }
+      });
+
+      function boot() {
+        // 默认目标时间填入 1 小时后
+        var d = new Date(Date.now() + 3600000 - new Date().getTimezoneOffset() * 60000);
+        document.getElementById("dtInput").value = d.toISOString().slice(0, 16);
+        setDuration(25 * 60 * 1000, "");
+        cdTitle.textContent = "未开始 · 默认 25 分钟";
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>

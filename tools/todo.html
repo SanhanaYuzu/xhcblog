@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>待办清单 - XHC 博客</title>
+  <link rel="icon" href="../assets/images/xhc-96x96.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-page{max-width:720px;margin:0 auto;padding:22px 16px 60px;}
+    .back-link{display:inline-block;font-size:14px;color:var(--text-2);margin-bottom:12px;}
+    .back-link:hover{color:var(--primary);}
+    .tool-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+    .tool-head .ico{font-size:30px;line-height:1;}
+    .tool-head h1{font-size:23px;margin:0;}
+    .tool-sub{color:var(--text-3);font-size:14px;margin:0 0 20px;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:20px;}
+
+    /* 添加区 */
+    .add-row{display:flex;gap:10px;margin-bottom:16px;}
+    .add-row input{
+      flex:1;padding:12px 15px;border:1px solid var(--border);border-radius:11px;
+      background:var(--bg);color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:.15s;
+    }
+    .add-row input:focus{border-color:var(--primary);background:var(--card);}
+    .add-row button{
+      border:0;background:var(--primary);color:#fff;border-radius:11px;
+      padding:0 22px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;
+    }
+    .add-row button:hover{background:var(--primary-dark);}
+
+    /* 统计 + 筛选 */
+    .bar-row{
+      display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+      padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--border-2);
+    }
+    .stat{font-size:13.5px;color:var(--text-2);}
+    .stat b{color:var(--primary);font-size:15px;}
+    .filters{display:flex;gap:4px;margin-left:auto;}
+    .filters button{
+      border:0;background:transparent;color:var(--text-2);border-radius:8px;
+      padding:6px 13px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .filters button:hover{background:var(--bg);color:var(--primary);}
+    .filters button.active{background:var(--primary-soft);color:var(--primary);}
+
+    /* 列表 */
+    .todo-list{list-style:none;padding:0;margin:0;}
+    .todo-item{
+      display:flex;align-items:flex-start;gap:12px;padding:13px 4px;
+      border-bottom:1px solid var(--border-2);transition:.15s;
+    }
+    .todo-item:last-child{border-bottom:0;}
+    .todo-item:hover{background:var(--bg);border-radius:9px;padding-left:10px;padding-right:10px;}
+    .todo-item .box{
+      width:20px;height:20px;border:2px solid var(--border);border-radius:6px;flex-shrink:0;
+      cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;
+      font-size:12px;color:#fff;transition:.15s;background:transparent;
+    }
+    .todo-item .box:hover{border-color:var(--primary);}
+    .todo-item.done .box{background:var(--green);border-color:var(--green);}
+    .todo-item .txt{
+      flex:1;font-size:14.5px;line-height:1.6;word-break:break-word;cursor:pointer;color:var(--text);
+    }
+    .todo-item.done .txt{text-decoration:line-through;color:var(--text-3);}
+    .todo-item .time{font-size:11.5px;color:var(--text-3);flex-shrink:0;margin-top:3px;}
+    .todo-item .del{
+      border:0;background:transparent;color:var(--text-3);cursor:pointer;
+      font-size:15px;padding:2px 6px;border-radius:6px;flex-shrink:0;transition:.15s;opacity:.55;
+    }
+    .todo-item:hover .del{opacity:1;}
+    .todo-item .del:hover{color:#e5484d;background:rgba(229,72,77,.1);}
+
+    .empty{text-align:center;color:var(--text-3);font-size:14px;padding:44px 0;line-height:1.9;}
+    .empty .big{font-size:44px;display:block;margin-bottom:6px;}
+
+    .foot-row{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-2);}
+    .btn{
+      border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:10px;
+      padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+    }
+    .btn:hover{border-color:var(--primary);color:var(--primary);}
+    .btn.danger:hover{border-color:#e5484d;color:#e5484d;}
+
+    .tip-toast{
+      position:fixed;left:50%;bottom:38px;transform:translateX(-50%) translateY(10px);
+      background:rgba(20,22,28,.92);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;
+      opacity:0;pointer-events:none;transition:.22s;z-index:9999;
+    }
+    .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @media(max-width:560px){
+      .panel{padding:16px 14px;}
+      .add-row button{padding:0 16px;}
+      .filters{margin-left:0;width:100%;}
+      .todo-item .time{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面跳转加载动画 -->
+  <div class="page-loader" id="pageLoader">
+    <div class="loader-content">
+      <img src="../assets/images/loading-logo.png" alt="Loading" class="loader-logo">
+      <div class="loader-bar"><div class="loader-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="header">
+    <div class="container">
+      <a class="brand" href="../index.html">
+        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
+        <span class="brand-name">XHC<b>博客</b></span>
+      </a>
+      <nav class="nav" id="navCats"></nav>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
+        <button id="searchBtn" title="搜索">🔍</button>
+      </div>
+      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      <span id="accountSlot"></span>
+    </div>
+  </header>
+
+  <main class="tool-page">
+    <a class="back-link" href="../tools.html">← 返回工具箱</a>
+    <div class="tool-head">
+      <span class="ico">✅</span>
+      <h1>待办清单</h1>
+    </div>
+    <p class="tool-sub">记录每日待办，勾选即完成。所有数据保存在浏览器本地（localStorage），刷新或关闭页面都不会丢失。</p>
+
+    <div class="panel">
+      <div class="add-row">
+        <input type="text" id="addInput" placeholder="添加一个新任务，回车即可保存…" maxlength="200" autocomplete="off">
+        <button id="addBtn">+ 添加</button>
+      </div>
+
+      <div class="bar-row">
+        <span class="stat" id="statText">共 0 项</span>
+        <div class="filters" id="filters">
+          <button data-f="all" class="active">全部</button>
+          <button data-f="active">未完成</button>
+          <button data-f="done">已完成</button>
+        </div>
+      </div>
+
+      <ul class="todo-list" id="todoList"></ul>
+      <div class="empty" id="emptyBox">
+        <span class="big">📋</span>
+        还没有任务<br>在上方输入框添加第一条待办吧
+      </div>
+
+      <div class="foot-row">
+        <button class="btn" id="doneAllBtn">✔️ 全部标记完成</button>
+        <button class="btn danger" id="clearDoneBtn">🧹 清除已完成</button>
+        <button class="btn danger" id="clearAllBtn" style="margin-left:auto;">🗑️ 清空全部</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
+      本站由 XHC 制作
+    </div>
+  </footer>
+
+  <div class="tip-toast" id="tipToast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/data.js"></script>
+  <script src="../assets/js/app.js"></script>
+
+  <!-- 子目录站内链接修正 -->
+  <script>
+    (function () {
+      function fix(h) {
+        if (!h || /^(https?:|data:|javascript:|mailto:|tel:|#|\.\.\/|\/)/i.test(h)) return null;
+        return /\.html(\?|#|$)/i.test(h) ? "../" + h : null;
+      }
+      document.addEventListener("click", function (e) {
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!a) return;
+        var n = fix(a.getAttribute("href"));
+        if (n) a.setAttribute("href", n);
+      }, true);
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var si = document.getElementById("searchInput"), sb = document.getElementById("searchBtn");
+          if (!si || !sb) return;
+          var go = function () { location.href = "../index.html?q=" + encodeURIComponent(si.value.trim()); };
+          sb.onclick = go;
+          si.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.stopPropagation(); go(); } }, true);
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- 工具逻辑 -->
+  <script>
+    (function () {
+      var KEY = "xhc_todo_list";
+      var addInput = document.getElementById("addInput");
+      var addBtn = document.getElementById("addBtn");
+      var listEl = document.getElementById("todoList");
+      var emptyBox = document.getElementById("emptyBox");
+      var statText = document.getElementById("statText");
+      var toastEl = document.getElementById("tipToast");
+
+      var todos = [];
+      var filter = "all";
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastEl._t);
+        toastEl._t = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      function load() {
+        try {
+          var raw = localStorage.getItem(KEY);
+          todos = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(todos)) todos = [];
+        } catch (e) { todos = []; }
+      }
+      function save() {
+        try { localStorage.setItem(KEY, JSON.stringify(todos)); } catch (e) {}
+      }
+
+      function fmtTime(ts) {
+        var d = new Date(ts), n = new Date();
+        var p = function (x) { return x < 10 ? "0" + x : "" + x; };
+        if (d.toDateString() === n.toDateString()) return p(d.getHours()) + ":" + p(d.getMinutes());
+        return (d.getMonth() + 1) + "/" + d.getDate();
+      }
+
+      function visible() {
+        if (filter === "active") return todos.filter(function (t) { return !t.done; });
+        if (filter === "done") return todos.filter(function (t) { return t.done; });
+        return todos;
+      }
+
+      function render() {
+        var items = visible();
+        listEl.innerHTML = "";
+
+        var total = todos.length;
+        var doneN = todos.filter(function (t) { return t.done; }).length;
+        var left = total - doneN;
+        statText.innerHTML = total
+          ? "共 " + total + " 项 · 未完成 <b>" + left + "</b> 项 · 已完成 " + doneN + " 项"
+          : "共 0 项";
+
+        if (!items.length) {
+          emptyBox.style.display = "block";
+          emptyBox.innerHTML = total === 0
+            ? '<span class="big">📋</span>还没有任务<br>在上方输入框添加第一条待办吧'
+            : (filter === "done"
+              ? '<span class="big">🕓</span>还没有已完成的任务'
+              : '<span class="big">🎉</span>太棒了，任务全部完成！');
+          return;
+        }
+        emptyBox.style.display = "none";
+
+        items.forEach(function (t) {
+          var li = document.createElement("li");
+          li.className = "todo-item" + (t.done ? " done" : "");
+
+          var box = document.createElement("span");
+          box.className = "box";
+          box.textContent = t.done ? "✓" : "";
+          box.title = t.done ? "标记为未完成" : "标记为已完成";
+          box.addEventListener("click", function () { toggle(t.id); });
+
+          var txt = document.createElement("span");
+          txt.className = "txt";
+          txt.textContent = t.text;
+          txt.title = "点击切换完成状态";
+          txt.addEventListener("click", function () { toggle(t.id); });
+
+          var time = document.createElement("span");
+          time.className = "time";
+          time.textContent = fmtTime(t.created);
+
+          var del = document.createElement("button");
+          del.className = "del";
+          del.textContent = "✕";
+          del.title = "删除任务";
+          del.addEventListener("click", function () { remove(t.id); });
+
+          li.appendChild(box);
+          li.appendChild(txt);
+          li.appendChild(time);
+          li.appendChild(del);
+          listEl.appendChild(li);
+        });
+      }
+
+      function add() {
+        var text = addInput.value.trim();
+        if (!text) { addInput.focus(); return; }
+        todos.unshift({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 7), text: text, done: false, created: Date.now() });
+        addInput.value = "";
+        save();
+        render();
+        addInput.focus();
+      }
+      function toggle(id) {
+        todos.forEach(function (t) { if (t.id === id) t.done = !t.done; });
+        save();
+        render();
+      }
+      function remove(id) {
+        todos = todos.filter(function (t) { return t.id !== id; });
+        save();
+        render();
+        toast("任务已删除");
+      }
+
+      addBtn.addEventListener("click", add);
+      addInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.stopPropagation(); add(); }
+      });
+
+      Array.prototype.forEach.call(document.querySelectorAll("#filters button"), function (b) {
+        b.addEventListener("click", function () {
+          Array.prototype.forEach.call(document.querySelectorAll("#filters button"), function (x) { x.classList.remove("active"); });
+          b.classList.add("active");
+          filter = b.dataset.f;
+          render();
+        });
+      });
+
+      document.getElementById("doneAllBtn").addEventListener("click", function () {
+        if (!todos.length) { toast("暂无任务"); return; }
+        var allDone = todos.every(function (t) { return t.done; });
+        todos.forEach(function (t) { t.done = !allDone; });
+        save();
+        render();
+        toast(allDone ? "已全部标记为未完成" : "已全部标记为完成");
+      });
+      document.getElementById("clearDoneBtn").addEventListener("click", function () {
+        var n = todos.filter(function (t) { return t.done; }).length;
+        if (!n) { toast("没有已完成的任务"); return; }
+        todos = todos.filter(function (t) { return !t.done; });
+        save();
+        render();
+        toast("已清除 " + n + " 项已完成任务");
+      });
+      document.getElementById("clearAllBtn").addEventListener("click", function () {
+        if (!todos.length) { toast("列表已是空的"); return; }
+        if (!confirm("确定要清空全部 " + todos.length + " 项任务吗？此操作不可恢复。")) return;
+        todos = [];
+        save();
+        render();
+        toast("已清空全部任务");
+      });
+
+      function boot() {
+        load();
+        render();
+        addInput.focus();
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+      else boot();
+    })();
+  </script>
+
+  <!-- 左下角水印 -->
+  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+</body>
+</html>
