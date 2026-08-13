@@ -51,19 +51,25 @@
   /* 北京时间 HH:MM:ss */
   function bjTimeStr(isoStr) {
     if (!isoStr) return "";
-    var d = bjDate(isoStr), px = function (x) { return (x < 10 ? "0" : "") + x; };
+    var d = bjDate(isoStr);
+    if (isNaN(d.getTime())) d = new Date(); /* 非法日期兜底当前时间，避免 NaN */
+    var px = function (x) { return (x < 10 ? "0" : "") + x; };
     return px(d.getHours()) + ":" + px(d.getMinutes());
   }
   /* 北京时间完整日期时间 YYYY-MM-DD HH:MM:SS */
   function bjFullStr(isoStr) {
     if (!isoStr) return "";
-    var d = bjDate(isoStr), px = function (x) { return (x < 10 ? "0" : "") + x; };
+    var d = bjDate(isoStr);
+    if (isNaN(d.getTime())) d = new Date(); /* 非法日期兜底当前时间，避免 NaN */
+    var px = function (x) { return (x < 10 ? "0" : "") + x; };
     return d.getFullYear() + "-" + px(d.getMonth() + 1) + "-" + px(d.getDate()) + " " + px(d.getHours()) + ":" + px(d.getMinutes()) + ":" + px(d.getSeconds());
   }
   function dateOf(p) {
-    var c = p.created_at || "";
-    if (!c) return p.date || "";
-    var d = bjDate(c), px = function (x) { return (x < 10 ? "0" : "") + x; };
+    var c = (p && p.created_at) || "";
+    if (!c) return (p && p.date) || "";
+    var d = bjDate(c);
+    if (isNaN(d.getTime())) return (p && p.date) || "";
+    var px = function (x) { return (x < 10 ? "0" : "") + x; };
     return d.getFullYear() + "-" + px(d.getMonth() + 1) + "-" + px(d.getDate());
   }
   function withTimeout(p, ms, label) {
@@ -1925,11 +1931,17 @@
       return "hsl(" + h + ",60%,55%)";
     }
     function timeOf(t) {
-      var d = t ? bjDate(t) : new Date(); var p = function (x) { return (x < 10 ? "0" : "") + x; };
+      var d = t ? bjDate(t) : new Date();
+      if (isNaN(d.getTime())) d = new Date(); /* 非法日期兜底当前时间，避免 NaN:NaN */
+      var p = function (x) { return (x < 10 ? "0" : "") + x; };
       return p(d.getHours()) + ":" + p(d.getMinutes());
     }
     function appendMsg(m) {
       if (rendered[m.id]) return; rendered[m.id] = 1;
+      /* 兜底：实时推送的新消息可能缺 created_at 或格式非法，给当前时间，避免时间显示 NaN */
+      if (!m.created_at || isNaN(bjDate(m.created_at).getTime())) {
+        m.created_at = new Date().toISOString();
+      }
       var mine = (m.user_id === user.id);
       var el = document.createElement("div");
       el.className = "msg" + (mine ? " mine" : "");
