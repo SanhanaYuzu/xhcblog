@@ -41,8 +41,27 @@
     .pj-stat .k{font-size:11.5px;color:var(--text-3);}
     .pj-stat .v{font-size:16px;font-weight:700;color:var(--text);margin-top:3px;font-variant-numeric:tabular-nums;}
 
-    .pj-canvas-wrap{background:var(--bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-    #pjCanvas{display:block;width:100%;height:440px;}
+    .pj-canvas-wrap{background:var(--bg);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;}
+    #pjCanvas{display:block;width:100%;height:440px;cursor:grab;touch-action:none;}
+    #pjCanvas.dragging{cursor:grabbing;}
+    .pj-zoom-bar{position:absolute;right:10px;bottom:10px;display:flex;gap:6px;z-index:5;}
+    .zbtn{
+      width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
+      background:rgba(255,255,255,.88);backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      color:var(--text-2);cursor:pointer;font-size:17px;font-weight:700;
+      font-family:inherit;line-height:1;padding:0;transition:.15s;
+      box-shadow:0 2px 6px rgba(0,0,0,.06);
+    }
+    .zbtn:hover{border-color:var(--primary);color:var(--primary);}
+    .zbtn:active{transform:scale(.94);}
+    body.dark .zbtn{background:rgba(40,42,48,.88);box-shadow:0 2px 6px rgba(0,0,0,.4);}
+    .pj-zoom-hint{position:absolute;left:10px;bottom:10px;font-size:11.5px;color:var(--text-3);
+      background:rgba(255,255,255,.7);backdrop-filter:blur(6px);padding:4px 9px;border-radius:7px;
+      border:1px solid var(--border);pointer-events:none;z-index:4;transition:opacity .3s;}
+    body.dark .pj-zoom-hint{background:rgba(40,42,48,.7);}
+    .pj-zoom-hint.hide{opacity:0;}
+    @media(max-width:760px){.pj-zoom-hint{display:none;}}
 
     .pj-legend{font-size:12px;color:var(--text-3);margin-top:10px;}
     .pj-legend b{color:var(--text-2);}
@@ -117,6 +136,12 @@
       <div>
         <div class="pj-canvas-wrap">
           <canvas id="pjCanvas"></canvas>
+          <div class="pj-zoom-hint" id="zoomHint">滚轮缩放 · 拖动平移</div>
+          <div class="pj-zoom-bar">
+            <button class="zbtn" id="zoomInBtn" title="放大">＋</button>
+            <button class="zbtn" id="zoomOutBtn" title="缩小">－</button>
+            <button class="zbtn" id="zoomFitBtn" title="重置视图（自动 fit）">⊙</button>
+          </div>
         </div>
         <div class="pj-legend">
           轨迹说明：<b>●</b> 小球实时位置　<b style="color:#ff3b30">→</b> 速度矢量（红）　<b style="color:#34c759">┄</b> 完整抛物线　网格每格 = 10 m
@@ -173,7 +198,10 @@
       var stRange = document.getElementById("stRange"), stHeight = document.getElementById("stHeight"), stTime = document.getElementById("stTime");
 
       var DPR = window.devicePixelRatio || 1;
-      var W = 0, H = 0, scale = 1, ox = 0, oy = 0;
+      var W = 0, H = 0, baseScale = 1, scale = 1, baseOx = 0, baseOy = 0, ox = 0, oy = 0;
+      var zoom = 1, panX = 0, panY = 0;            // 用户缩放/平移（叠加在自动 fit 之上）
+      var MIN_ZOOM = 0.2, MAX_ZOOM = 8;
+      var dragging = false, dragStartX = 0, dragStartY = 0, dragStartPanX = 0, dragStartPanY = 0;
       var anim = null, t0 = 0, params = { v: 40, a: 45, g: 9.8 };
 
       function fit() {
@@ -192,6 +220,7 @@
         return { vx: vx, vy: vy, tFlight: tFlight, range: range, maxH: maxH };
       }
 
+      // 计算"自动 fit"下的基准缩放与基准原点（用于后面套 zoom/pan）
       function computeScale() {
         var p = physics();
         var marginX = 50, marginY = 50;
@@ -199,10 +228,18 @@
         var unit = 10; // 每格代表 10 m
         var sx = (availW / Math.max(p.range, unit)) / unit;
         var sy = (availH / Math.max(p.maxH, unit)) / unit;
-        scale = Math.min(sx, sy);
-        if (!isFinite(scale) || scale <= 0) scale = 1;
-        ox = marginX;
-        oy = H - marginY;
+        baseScale = Math.min(sx, sy);
+        if (!isFinite(baseScale) || baseScale <= 0) baseScale = 1;
+        baseOx = marginX;
+        baseOy = H - marginY;
+        applyView();
+      }
+
+      // 把当前 zoom / panX / panY 应用到实际绘制用的 scale / ox / oy
+      function applyView() {
+        scale = baseScale * zoom;
+        ox = baseOx + panX;
+        oy = baseOy + panY;
       }
 
       function sx(x) { return ox + x * scale; }
@@ -279,6 +316,53 @@
         stTime.textContent = p.tFlight.toFixed(2) + " s";
       }
 
+      /* ---- 视图缩放 / 平移 ---- */
+      var hintEl = document.getElementById("zoomHint"), hintTimer = null;
+      function flashHint() {
+        if (!hintEl) return;
+        hintEl.classList.remove("hide");
+        if (hintTimer) clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () { hintEl.classList.add("hide"); }, 2200);
+      }
+
+      // 以画布像素坐标 (mx, my) 为锚点，把 zoom 乘以 factor，并保持该锚点下的物理坐标不变
+      function zoomAt(mx, my, factor) {
+        var physX = (mx - ox) / scale;   // 锚点下的物理 x (米)
+        var physY = (oy - my) / scale;   // 锚点下的物理 y (米)
+        zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
+        applyView();
+        // 反算偏移，让锚点 (mx, my) 仍指向同一物理坐标
+        ox = mx - physX * scale;
+        oy = my + physY * scale;
+        // 更新 baseOx/baseOy 与 panX/panY（保持 model/pan 分离）
+        baseOx = ox - panX;
+        baseOy = oy - panY;
+        baseScale = scale / zoom;
+      }
+
+      function zoomStep(factor) {
+        zoomAt(W / 2, H / 2, factor);   // 以画布中心为锚点
+      }
+
+      function resetView() {
+        zoom = 1; panX = 0; panY = 0;
+        computeScale();   // 重新自动 fit
+      }
+
+      function repaint() {
+        if (anim) return;            // 动画在跑会自己画，这里别打断
+        var p = physics();
+        drawGrid(); drawTrajectory(p);
+        ctx.fillStyle = "rgba(52,199,89,0.9)";
+        ctx.beginPath(); ctx.arc(sx(p.range), sy(0), 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ff9500";
+        ctx.beginPath(); ctx.arc(sx(0), sy(0), 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(140,150,170,0.9)";
+        ctx.font = "12px sans-serif";
+        ctx.fillText("起点", sx(0) + 10, sy(0) - 8);
+        ctx.fillText("落点", sx(p.range) - 30, sy(0) - 8);
+      }
+
       function animate() {
         var p = physics();
         t0 = performance.now();
@@ -320,6 +404,112 @@
         });
       });
 
+      /* ---- 画布交互：滚轮缩放、拖动平移、触屏 ---- */
+      var zoomInBtn = document.getElementById("zoomInBtn");
+      var zoomOutBtn = document.getElementById("zoomOutBtn");
+      var zoomFitBtn = document.getElementById("zoomFitBtn");
+
+      function canvasMouse(e) {
+        var rect = canvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      }
+
+      canvas.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        var p = canvasMouse(e);
+        var factor = e.deltaY > 0 ? 1 / 1.15 : 1.15;
+        zoomAt(p.x, p.y, factor);
+        repaint();
+        flashHint();
+      }, { passive: false });
+
+      canvas.addEventListener("mousedown", function (e) {
+        if (anim) { cancelAnimationFrame(anim); anim = null; launchBtn.disabled = false; }
+        var p = canvasMouse(e);
+        dragging = true;
+        dragStartX = p.x; dragStartY = p.y;
+        dragStartPanX = panX; dragStartPanY = panY;
+        canvas.classList.add("dragging");
+        flashHint();
+      });
+
+      window.addEventListener("mousemove", function (e) {
+        if (!dragging) return;
+        var p = canvasMouse(e);
+        panX = dragStartPanX + (p.x - dragStartX);
+        panY = dragStartPanY + (p.y - dragStartY);
+        applyView();
+        repaint();
+      });
+
+      window.addEventListener("mouseup", function () {
+        if (!dragging) return;
+        dragging = false;
+        canvas.classList.remove("dragging");
+      });
+
+      // 触屏支持（单指拖动 / 双指缩放）
+      var touchPrevDist = 0;
+      canvas.addEventListener("touchstart", function (e) {
+        if (e.touches.length === 1) {
+          var rect = canvas.getBoundingClientRect();
+          dragging = true;
+          dragStartX = e.touches[0].clientX - rect.left;
+          dragStartY = e.touches[0].clientY - rect.top;
+          dragStartPanX = panX; dragStartPanY = panY;
+          canvas.classList.add("dragging");
+        } else if (e.touches.length === 2) {
+          touchPrevDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+        flashHint();
+      }, { passive: true });
+
+      canvas.addEventListener("touchmove", function (e) {
+        if (e.touches.length === 1 && dragging) {
+          e.preventDefault();
+          var rect = canvas.getBoundingClientRect();
+          var cx = e.touches[0].clientX - rect.left;
+          var cy = e.touches[0].clientY - rect.top;
+          panX = dragStartPanX + (cx - dragStartX);
+          panY = dragStartPanY + (cy - dragStartY);
+          applyView();
+          repaint();
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          var d = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (touchPrevDist > 0) {
+            var rect = canvas.getBoundingClientRect();
+            var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+            var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+            zoomAt(cx, cy, d / touchPrevDist);
+            repaint();
+          }
+          touchPrevDist = d;
+        }
+      }, { passive: false });
+
+      canvas.addEventListener("touchend", function () {
+        dragging = false;
+        canvas.classList.remove("dragging");
+        touchPrevDist = 0;
+      });
+
+      zoomInBtn.addEventListener("click", function () { zoomStep(1.25); repaint(); });
+      zoomOutBtn.addEventListener("click", function () { zoomStep(1 / 1.25); repaint(); });
+      zoomFitBtn.addEventListener("click", function () {
+        if (anim) { cancelAnimationFrame(anim); anim = null; launchBtn.disabled = false; }
+        resetView(); updateStats(); render();
+      });
+
+      // 进入页面后 3 秒自动隐藏提示
+      setTimeout(flashHint, 100);
+
       launchBtn.addEventListener("click", function () {
         if (anim) cancelAnimationFrame(anim);
         launchBtn.disabled = true;
@@ -329,7 +519,7 @@
       resetBtn.addEventListener("click", function () {
         if (anim) { cancelAnimationFrame(anim); anim = null; }
         launchBtn.disabled = false;
-        computeScale(); updateStats(); render();
+        resetView(); updateStats(); render();
       });
 
       window.addEventListener("resize", function () { if (anim) cancelAnimationFrame(anim); anim = null; fit(); updateStats(); render(); launchBtn.disabled = false; });

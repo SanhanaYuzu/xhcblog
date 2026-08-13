@@ -33,6 +33,22 @@
     .btn-row button.primary:hover{background:var(--primary-dark);color:#fff;}
 
     @media(max-width:720px){.layout{grid-template-columns:1fr;}}
+
+    /* 天体状态面板 */
+    .body-info-panel{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
+    .body-info-panel h2{font-size:14.5px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+    .body-info-panel h2 .bar{width:4px;height:14px;background:var(--primary);border-radius:3px;display:inline-block;}
+    .bodies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;max-height:280px;overflow-y:auto;padding-right:4px;}
+    .bodies-grid::-webkit-scrollbar{width:6px;}
+    .bodies-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+    .body-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;transition:.15s;cursor:default;}
+    .body-card:hover{border-color:var(--primary);transform:translateY(-1px);}
+    .body-card .row{display:flex;justify-content:space-between;align-items:center;line-height:1.7;gap:8px;}
+    .body-card .label{color:var(--text-3);font-size:11.5px;}
+    .body-card .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;box-shadow:0 0 4px currentColor;}
+    .body-card .id{font-weight:700;font-size:12.5px;}
+    .body-card .val{font-family:'SF Mono',Consolas,monospace;font-variant-numeric:tabular-nums;font-size:11.5px;}
+    .body-card .accent{color:var(--primary);font-weight:600;}
   </style>
 </head>
 <body>
@@ -86,11 +102,20 @@
           <label>拖尾长度 <span id="tVal">中</span></label>
           <input type="range" id="trail" min="0" max="3" step="1" value="2">
         </div>
+        <div class="ctrl">
+          <label>模拟速度 <span id="sVal">1.0×</span></label>
+          <input type="range" id="speed" min="0.1" max="4" step="0.1" value="1">
+        </div>
         <div class="btn-row">
           <button id="resetBtn">↺ 重新生成</button>
           <button id="pauseBtn" class="primary">⏸ 暂停</button>
         </div>
       </div>
+    </div>
+
+    <div class="body-info-panel">
+      <h2><span class="bar"></span> 天体状态 — 实时坐标 / 速度 / 受力</h2>
+      <div class="bodies-grid" id="bodiesGrid"></div>
     </div>
   </main>
 
@@ -137,8 +162,9 @@
       var W = cv.width, H = cv.height;
       var ox=W/2, oy=H/2;
 
-      var N=12, G=1, trailMode=2, paused=false;
+      var N=12, G=1, trailMode=2, paused=false, speedMul=1;
       var bodies=[];
+      var frameCount=0;
       var colors=["#e74c3c","#3498db","#2ecc71","#f1c40f","#9b59b6","#1abc9c","#e67e22","#ecf0f1"];
 
       function rand(a,b){return a+Math.random()*(b-a);}
@@ -153,7 +179,7 @@
           var sp=rand(0.4,1.4);
           var vx=-Math.sin(ang)*sp + rand(-0.2,0.2);
           var vy= Math.cos(ang)*sp + rand(-0.2,0.2);
-          bodies.push({x:px,y:py,vx:vx,vy:vy,m:rand(3,9),c:colors[i%colors.length],hist:[]});
+          bodies.push({x:px,y:py,vx:vx,vy:vy,m:rand(3,9),c:colors[i%colors.length],hist:[],fx:0,fy:0});
         }
       }
 
@@ -171,6 +197,8 @@
             fx[j]-=ax; fy[j]-=ay;
           }
         }
+        // 把每个天体收到的合引力存到对象上, 面板显示用
+        for(var k=0;k<N;k++){ bodies[k].fx=fx[k]; bodies[k].fy=fy[k]; }
         for(var k=0;k<N;k++){
           bodies[k].vx+=fx[k]/bodies[k].m*dt;
           bodies[k].vy+=fy[k]/bodies[k].m*dt;
@@ -209,14 +237,39 @@
       }
 
       function loop(){
-        if(!paused){ for(var i=0;i<2;i++) step(0.5); }
+        if(!paused){
+          // 速度倍数 = 子步数倍数, 保持 dt=0.5 不变, 保证数值稳定
+          var subSteps=Math.max(1,Math.round(speedMul*2));
+          for(var i=0;i<subSteps;i++) step(0.5);
+        }
         draw();
+        // 每 4 帧刷一次面板 (~15Hz), 防止频繁重排
+        if(++frameCount%4===0) renderBodyInfo();
         requestAnimationFrame(loop);
+      }
+
+      function renderBodyInfo(){
+        var html='';
+        for(var k=0;k<N;k++){
+          var b=bodies[k];
+          var v=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+          var f=Math.sqrt(b.fx*b.fx+b.fy*b.fy);
+          html+='<div class="body-card">'
+            +'<div class="row"><span class="id" style="color:'+b.c+'"><span class="dot" style="background:'+b.c+'"></span>天体 #'+(k+1)+'</span>'
+            +'<span class="accent val">m='+b.m.toFixed(1)+'</span></div>'
+            +'<div class="row"><span class="label">坐标 (x, y)</span><span class="val">'+b.x.toFixed(1)+', '+b.y.toFixed(1)+'</span></div>'
+            +'<div class="row"><span class="label">速度分量 (v<sub>x</sub>, v<sub>y</sub>)</span><span class="val">'+b.vx.toFixed(2)+', '+b.vy.toFixed(2)+'</span></div>'
+            +'<div class="row"><span class="label">速率 |v|</span><span class="val">'+v.toFixed(2)+'</span></div>'
+            +'<div class="row"><span class="label">受力 |F<sub>g</sub>|</span><span class="val">'+f.toFixed(2)+'</span></div>'
+            +'</div>';
+        }
+        document.getElementById('bodiesGrid').innerHTML=html;
       }
 
       document.getElementById("num").oninput=function(){N=+this.value;document.getElementById("nVal").textContent=N;spawn();};
       document.getElementById("grav").oninput=function(){G=+this.value;document.getElementById("gVal").textContent=G.toFixed(1);};
       document.getElementById("trail").oninput=function(){trailMode=+this.value;document.getElementById("tVal").textContent=["无","短","中","长"][trailMode];};
+      document.getElementById("speed").oninput=function(){speedMul=+this.value;document.getElementById("sVal").textContent=speedMul.toFixed(1)+"×";};
       document.getElementById("resetBtn").onclick=spawn;
       document.getElementById("pauseBtn").onclick=function(){paused=!paused;this.textContent=paused?"▶ 继续":"⏸ 暂停";};
 
