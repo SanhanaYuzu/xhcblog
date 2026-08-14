@@ -645,9 +645,12 @@
       m.innerHTML =
         '<div class="modal">' +
         '<button class="modal-x" id="authClose">×</button>' +
+        '<div class="modal-head">' +
         '<div class="tabs auth-tabs">' +
         '<a data-mode="signin" class="active">登录</a><a data-mode="signup">注册</a>' +
         '</div>' +
+        '</div>' +
+        '<div class="modal-body">' +
         '<div id="authMsg" class="auth-msg"></div>' +
         '<form id="authForm">' +
         '<input id="authEmail" type="text" placeholder="邮箱或手机号（手机号用密码注册/登录）" required autocomplete="off">' +
@@ -673,27 +676,31 @@
           '</div>' +
           '<div class="otp-hint" id="otpHint">新用户输入邮箱或手机号，验证通过即自动注册账号</div>' +
         '</div>' +
+        '<button class="more-toggle" id="moreToggle"><span>更多登录方式</span><span class="icn">▶</span></button>' +
+        '<div class="more-area" id="moreArea">' +
         '<div class="auth-divider"><span>或</span></div>' +
-        '<button class="btn btn-github" id="githubLogin">' +
+          '<button class="btn btn-github" id="githubLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
         ' GitHub 登录' +
         '</button>' +
-        '<button class="btn btn-microsoft" id="microsoftLogin">' +
+          '<button class="btn btn-microsoft" id="microsoftLogin">' +
         '<svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>' +
         ' 微软账户登录' +
         '</button>' +
-        '<button class="btn btn-wechat" id="wechatLogin">' +
+          '<button class="btn btn-wechat" id="wechatLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 2C2.46 2 0 3.98 0 6.42c0 1.4.74 2.65 1.9 3.46l-.48 1.47 1.69-.83c.7.25 1.46.38 2.39.38h.2a3.8 3.8 0 0 1-.2-1.22c0-2.2 2.06-3.99 4.6-3.99h.23C9.98 3.56 7.97 2 5.5 2zM4 4.86c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66zm3.5 0c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66z"/><path d="M16 9.87C16 7.68 13.98 5.9 11.5 5.9S7 7.68 7 9.87s2.02 3.97 4.5 3.97c.45 0 .89-.06 1.3-.18l1.38.67-.4-1.2c.75-.58 1.22-1.4 1.22-2.26zM9.75 8.68c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43zm3.5 0c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43z"/></svg>' +
         ' 微信登录' +
         '</button>' +
-        '<button class="btn btn-qq" id="qqLogin">' +
+          '<button class="btn btn-qq" id="qqLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 8.1c0-2.1-1.2-3.9-3.1-5A5.3 5.3 0 0 0 8 2.6a5.3 5.3 0 0 0-2.4.5C3.7 4.2 2.5 6 2.5 8.1c0 1 .2 1.9.6 2.7-.1.4-.3 1-.5 1.6-.2.7-.2 1.2 0 1.3.1.1.5-.1 1-.4.6-.3 1-.5 1.2-.6.4.1.8.2 1.2.2h2c.4 0 .8-.1 1.2-.2.2.1.6.3 1.2.6.5.3.9.5 1 .4.2-.1.2-.6 0-1.3-.2-.6-.4-1.2-.5-1.6.4-.8.6-1.7.6-2.7zm-7.6-.5c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8zm4.2 0c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8z"/></svg>' +
         ' QQ 登录' +
         '</button>' +
-        '<p class="hint" style="margin-top:10px;">' +
-        (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
-        '</p>' +
-        '</div>';
+          '<p class="hint" style="margin-top:10px;">' +
+          (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
+          '</p>' +
+        '</div>' +
+        '</div>' +
+      '</div>';
       document.body.appendChild(m);
       m.addEventListener("click", function (e) { if (e.target === m) closeAuth(); });
       qs("#authClose").addEventListener("click", closeAuth);
@@ -711,17 +718,29 @@
           ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
           ".btn-qq{background:#12b7f5 !important;color:#fff !important}" +
           ".otp-title{font-size:13px;color:#6b7280;font-weight:600}" +
+          ".modal-head{padding:16px 22px 8px;border-bottom:1px solid #eef0f4;flex:none}" +
+          ".modal-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:14px 22px 18px;-webkit-overflow-scrolling:touch}" +
+          ".modal-foot{padding:0 22px 16px;flex:none}" +
+          ".more-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f7f8fa;border:1px solid #e2e8f0;border-radius:8px;color:#5f6368;font-size:13px;cursor:pointer;margin:8px 0;width:100%}" +
+          ".more-toggle:hover{background:#eef1f5}" +
+          ".more-toggle .icn{transition:transform .2s}" +
+          ".more-toggle.open .icn{transform:rotate(90deg)}" +
+          ".more-area{max-height:0;overflow:hidden;transition:max-height .25s ease}" +
+          ".more-area.open{max-height:520px}" +
           ".captcha-box{margin:12px 0 4px;user-select:none}" +
-          ".cap-bg{position:relative;height:118px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#e8f0fe,#f6e8ff 60%,#e8fdf1);border:1px solid #e2e8f0}" +
+          ".cap-bg{position:relative;height:130px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde7fd,#efe4fa 55%,#defce6);border:1px solid #c8d0da}" +
           ".cap-bg span{position:absolute;border-radius:50%;pointer-events:none}" +
-          ".cap-piece{position:absolute;top:9px;width:44px;height:100px;border-radius:6px;background:rgba(255,255,255,.5);box-shadow:0 0 0 1px rgba(255,255,255,.85),0 2px 10px rgba(0,0,0,.18);display:none}" +
-          ".cap-bar{position:relative;height:36px;margin-top:8px;border-radius:8px;background:#eef1f5;border:1px solid #dbe1e8;overflow:hidden}" +
-          ".cap-fill{position:absolute;left:0;top:0;bottom:0;background:#c7e7d1;width:0}" +
-          ".cap-slider{position:absolute;left:0;top:0;bottom:0;width:40px;background:#fff;border:1px solid #c8d0da;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:grab;color:#4b5563;font-size:13px;z-index:2;touch-action:none}" +
-          ".cap-slider:active{cursor:grabbing}" +
-          ".cap-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px}" +
-          ".cap-msg{font-size:12px;color:#8c959f}" +
-          ".cap-reset{font-size:12px;color:#1a73e8;background:none;border:none;cursor:pointer}";
+          ".cap-piece{position:absolute;top:8px;width:48px;height:114px;border-radius:6px;background:rgba(255,255,255,.45);box-shadow:inset 0 0 0 2px rgba(25,118,210,.85),0 2px 12px rgba(0,0,0,.22);display:none;backdrop-filter:blur(1px)}" +
+          ".cap-bar{position:relative;height:42px;margin-top:10px;border-radius:21px;background:linear-gradient(180deg,#e8edf3,#dfe5ee);border:1px solid #cdd5e0;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}" +
+          ".cap-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#7dd393,#34c759);width:0;border-radius:21px;transition:width .15s}" +
+          ".cap-slider{position:absolute;left:0;top:-2px;bottom:-2px;width:48px;background:linear-gradient(180deg,#fff,#f3f4f6);border:1px solid #b8c2cf;border-radius:21px;display:flex;align-items:center;justify-content:center;cursor:grab;color:#4b5563;font-size:16px;z-index:2;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.18)}" +
+          ".cap-slider:active{cursor:grabbing;background:linear-gradient(180deg,#f3f4f6,#fff)}" +
+          ".cap-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}" +
+          ".cap-msg{font-size:12px;color:#6b7280}" +
+          ".cap-msg.ok{color:#10b981;font-weight:600}" +
+          ".cap-msg.err{color:#ef4444;font-weight:600}" +
+          ".cap-reset{font-size:12px;color:#1a73e8;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}" +
+          ".cap-reset:hover{background:rgba(26,115,232,.08)}";
         document.head.appendChild(st);
 
         var otpTimer = null;
@@ -838,6 +857,15 @@
           reset.addEventListener("click", gen);
           gen();
         };
+
+        /* ---- 更多登录方式折叠 ---- */
+        var mt = qs("#moreToggle"), ma = qs("#moreArea");
+        if (mt && ma) {
+          mt.addEventListener("click", function () {
+            var open = ma.classList.toggle("open");
+            mt.classList.toggle("open", open);
+          });
+        }
       })();
       qsa(".auth-tabs a", m).forEach(function (a) {
         a.addEventListener("click", function () { switchAuthMode(a.dataset.mode); });
