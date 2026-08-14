@@ -727,7 +727,8 @@ document.body.appendChild(m);
           ".cf-label{font-size:14px;color:#374151}" +
           ".cf-badge{position:absolute;right:12px;top:10px;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.5px}" +
           ".cf-q{width:16px;height:16px;border:1.5px solid #9ca3af;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af}" +
-          "@keyframes cfspin{to{transform:rotate(360deg)}}";
+          "@keyframes cfspin{to{transform:rotate(360deg)}}" +
+          ".modal{display:flex;flex-direction:column;max-height:min(85vh,720px);overflow:hidden;padding:0}";
         document.head.appendChild(st);
 
         var otpTimer = null;
