@@ -222,6 +222,25 @@
       localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
       return { data: { user: u } };
     },
+    async signUpWithPhone(phone, pwd, name) {
+      if (REAL) {
+        return sb.auth.signUp({ phone: phone, password: pwd, options: { data: { display_name: name || ("用户" + phone.slice(-4)) } } });
+      }
+      var users = this._dget("users", []);
+      if (users.some(function (u) { return u.phone === phone; })) return { error: { message: "该手机号已注册，请直接登录" } };
+      var u = { id: uid(), phone: phone, email: "", pwd: pwd, display_name: name || ("用户" + phone.slice(-4)),
+        username: "user_" + Math.random().toString(36).slice(2, 8), bio: "", avatar_url: "", created_at: nowISO() };
+      users.push(u); this._dset("users", users);
+      localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
+      return { data: { user: u } };
+    },
+    async signInWithPhone(phone, pwd) {
+      if (REAL) return sb.auth.signInWithPassword({ phone: phone, password: pwd });
+      var u = this._dget("users", []).filter(function (x) { return x.phone === phone && x.pwd === pwd; })[0];
+      if (!u) return { error: { message: "手机号或密码错误" } };
+      localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
+      return { data: { user: u } };
+    },
     async signIn(email, pwd) {
       if (REAL) return sb.auth.signInWithPassword({ email: email, password: pwd });
       var u = this._dget("users", []).filter(function (x) { return x.email === email && x.pwd === pwd; })[0];
@@ -631,11 +650,29 @@
         '</div>' +
         '<div id="authMsg" class="auth-msg"></div>' +
         '<form id="authForm">' +
-        '<input id="authEmail" type="email" placeholder="邮箱" required>' +
+        '<input id="authEmail" type="text" placeholder="邮箱或手机号（手机号用密码注册/登录）" required autocomplete="off">' +
         '<input id="authPwd" type="password" placeholder="密码（至少 6 位）" required minlength="6">' +
         '<input id="authName" type="text" placeholder="昵称（注册时可选）" style="display:none">' +
         '<button type="submit" class="btn btn-primary" id="authSubmit">登录</button>' +
         '</form>' +
+        '<div class="captcha-box" id="captchaBox" style="display:none">' +
+          '<div class="cap-bg" id="capBg"><div class="cap-piece" id="capPiece"></div></div>' +
+          '<div class="cap-bar"><div class="cap-fill" id="capFill"></div><div class="cap-slider" id="capSlider">▶</div></div>' +
+          '<div class="cap-foot"><span class="cap-msg" id="capMsg">按住滑块拖动完成人机验证</span><button type="button" class="cap-reset" id="capReset">↻ 换一张</button></div>' +
+        '</div>' +
+        '<div class="auth-divider"><span>或使用验证码</span></div>' +
+        '<div class="otp-box">' +
+          '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
+          '<div class="otp-row">' +
+            '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false">' +
+            '<button type="button" class="btn btn-otp" id="otpSend">发送验证码</button>' +
+          '</div>' +
+          '<div class="otp-row">' +
+            '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code">' +
+            '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
+          '</div>' +
+          '<div class="otp-hint" id="otpHint">新用户输入邮箱或手机号，验证通过即自动注册账号</div>' +
+        '</div>' +
         '<div class="auth-divider"><span>或</span></div>' +
         '<button class="btn btn-github" id="githubLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
@@ -645,6 +682,14 @@
         '<svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>' +
         ' 微软账户登录' +
         '</button>' +
+        '<button class="btn btn-wechat" id="wechatLogin">' +
+        '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 2C2.46 2 0 3.98 0 6.42c0 1.4.74 2.65 1.9 3.46l-.48 1.47 1.69-.83c.7.25 1.46.38 2.39.38h.2a3.8 3.8 0 0 1-.2-1.22c0-2.2 2.06-3.99 4.6-3.99h.23C9.98 3.56 7.97 2 5.5 2zM4 4.86c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66zm3.5 0c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66z"/><path d="M16 9.87C16 7.68 13.98 5.9 11.5 5.9S7 7.68 7 9.87s2.02 3.97 4.5 3.97c.45 0 .89-.06 1.3-.18l1.38.67-.4-1.2c.75-.58 1.22-1.4 1.22-2.26zM9.75 8.68c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43zm3.5 0c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43z"/></svg>' +
+        ' 微信登录' +
+        '</button>' +
+        '<button class="btn btn-qq" id="qqLogin">' +
+        '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 8.1c0-2.1-1.2-3.9-3.1-5A5.3 5.3 0 0 0 8 2.6a5.3 5.3 0 0 0-2.4.5C3.7 4.2 2.5 6 2.5 8.1c0 1 .2 1.9.6 2.7-.1.4-.3 1-.5 1.6-.2.7-.2 1.2 0 1.3.1.1.5-.1 1-.4.6-.3 1-.5 1.2-.6.4.1.8.2 1.2.2h2c.4 0 .8-.1 1.2-.2.2.1.6.3 1.2.6.5.3.9.5 1 .4.2-.1.2-.6 0-1.3-.2-.6-.4-1.2-.5-1.6.4-.8.6-1.7.6-2.7zm-7.6-.5c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8zm4.2 0c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8z"/></svg>' +
+        ' QQ 登录' +
+        '</button>' +
         '<p class="hint" style="margin-top:10px;">' +
         (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
         '</p>' +
@@ -652,6 +697,148 @@
       document.body.appendChild(m);
       m.addEventListener("click", function (e) { if (e.target === m) closeAuth(); });
       qs("#authClose").addEventListener("click", closeAuth);
+      /* ---- 验证码登录 / 微信 / QQ（国内常用） ---- */
+      (function () {
+        var st = document.createElement("style");
+        st.textContent =
+          ".otp-box{margin:10px 0 2px;display:flex;flex-direction:column;gap:8px}" +
+          ".otp-row{display:flex;gap:8px}" +
+          ".otp-row input{flex:1;min-width:0}" +
+          ".otp-sel{flex:1;height:38px;border:1px solid #d8dee6;border-radius:8px;padding:0 10px;font-size:14px;background:#fff;color:#2b3440;outline:none}" +
+          ".btn-otp{flex:none;background:#10b981;color:#fff;border:none;border-radius:8px;padding:0 12px;height:38px;cursor:pointer;font-size:13px;white-space:nowrap}" +
+          ".btn-otp:disabled{opacity:.6;cursor:default}" +
+          ".otp-hint{font-size:12px;color:#8c959f;margin:2px 0 4px}" +
+          ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
+          ".btn-qq{background:#12b7f5 !important;color:#fff !important}" +
+          ".otp-title{font-size:13px;color:#6b7280;font-weight:600}" +
+          ".captcha-box{margin:12px 0 4px;user-select:none}" +
+          ".cap-bg{position:relative;height:118px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#e8f0fe,#f6e8ff 60%,#e8fdf1);border:1px solid #e2e8f0}" +
+          ".cap-bg span{position:absolute;border-radius:50%;pointer-events:none}" +
+          ".cap-piece{position:absolute;top:9px;width:44px;height:100px;border-radius:6px;background:rgba(255,255,255,.5);box-shadow:0 0 0 1px rgba(255,255,255,.85),0 2px 10px rgba(0,0,0,.18);display:none}" +
+          ".cap-bar{position:relative;height:36px;margin-top:8px;border-radius:8px;background:#eef1f5;border:1px solid #dbe1e8;overflow:hidden}" +
+          ".cap-fill{position:absolute;left:0;top:0;bottom:0;background:#c7e7d1;width:0}" +
+          ".cap-slider{position:absolute;left:0;top:0;bottom:0;width:40px;background:#fff;border:1px solid #c8d0da;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:grab;color:#4b5563;font-size:13px;z-index:2;touch-action:none}" +
+          ".cap-slider:active{cursor:grabbing}" +
+          ".cap-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px}" +
+          ".cap-msg{font-size:12px;color:#8c959f}" +
+          ".cap-reset{font-size:12px;color:#1a73e8;background:none;border:none;cursor:pointer}";
+        document.head.appendChild(st);
+
+        var otpTimer = null;
+        function otpHint(t) { var h = qs("#otpHint"); if (h) h.textContent = t; }
+        function startCountdown(n) {
+          var b = qs("#otpSend"), left = n;
+          b.disabled = true; b.textContent = "重新发送(" + left + "s)";
+          if (otpTimer) clearInterval(otpTimer);
+          otpTimer = setInterval(function () {
+            left--;
+            if (left <= 0) { clearInterval(otpTimer); b.disabled = false; b.textContent = "发送验证码"; }
+            else b.textContent = "重新发送(" + left + "s)";
+          }, 1000);
+        }
+        qs("#otpSend").addEventListener("click", async function () {
+          var acc = qs("#otpAccount").value.trim();
+          if (!acc) { otpHint("请输入邮箱或手机号"); return; }
+          var type = "email";
+          if (!REAL) { otpHint("演示模式：验证码固定为 123456"); startCountdown(30); return; }
+          var b = qs("#otpSend"); b.disabled = true; b.textContent = "发送中…";
+          try {
+            if (type === "phone") {
+              var r = await sb.auth.signInWithOtp({ phone: acc, options: { shouldCreateUser: true } });
+              if (r.error) throw r.error;
+              otpHint("验证码已发送至手机（若未收到请先配置短信服务商）");
+            } else {
+              var r2 = await sb.auth.signInWithOtp({ email: acc, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname } });
+              if (r2.error) throw r2.error;
+              otpHint("验证码已发送至邮箱（请到邮件中查看 6 位验证码）");
+            }
+            startCountdown(60);
+          } catch (e) {
+            b.disabled = false; b.textContent = "发送验证码";
+            otpHint("发送失败：" + ((e && e.message) || e) + "（邮箱验证码需在 Supabase 邮件模板中显示 Token）");
+          }
+        });
+        qs("#otpLogin").addEventListener("click", async function () {
+          var acc = qs("#otpAccount").value.trim(), code = qs("#otpCode").value.trim();
+          if (!acc || !code) { otpHint("请填写账号和验证码"); return; }
+          var type = "email";
+          if (!REAL) {
+            if (code !== "123456") { otpHint("演示模式验证码为 123456"); return; }
+            closeAuth(); toast("验证码登录成功（演示）"); return;
+          }
+          var b = qs("#otpLogin"); b.disabled = true;
+          try {
+            var payload = type === "phone"
+              ? { phone: acc, token: code, type: "sms" }
+              : { email: acc, token: code, type: "email" };
+            var r = await sb.auth.verifyOtp(payload);
+            if (r.error) throw r.error;
+            closeAuth(); toast("验证码登录成功");
+          } catch (e) {
+            b.disabled = false;
+            otpHint("验证失败：" + ((e && e.message) || e));
+          }
+        });
+        qs("#wechatLogin").addEventListener("click", function () {
+          toast("微信登录需要微信开放平台的企业资质与审核，暂未开放，敬请期待", "warn");
+        });
+        qs("#qqLogin").addEventListener("click", function () {
+          toast("QQ 登录需要 QQ 互联的企业资质与审核，暂未开放，敬请期待", "warn");
+        });
+
+        /* ---- 滑块人机验证 ---- */
+        window.__capOk = false; window.__capExpire = 0;
+        window.captchaOk = function () { return !!(window.__capOk && Date.now() < window.__capExpire); };
+        window.initCaptcha = function () {
+          var box = qs("#captchaBox");
+          if (!box || box.dataset.init) return;
+          box.dataset.init = "1";
+          var bg = qs("#capBg"), piece = qs("#capPiece"), slider = qs("#capSlider"),
+              fill = qs("#capFill"), msg = qs("#capMsg"), reset = qs("#capReset");
+          var W = 260;
+          function gen() {
+            bg.innerHTML = "";
+            for (var i = 0; i < 42; i++) {
+              var d = document.createElement("span");
+              d.style.cssText = "width:" + (1 + Math.random() * 2.5) + "px;height:" + (1 + Math.random() * 2.5) + "px;background:rgba(30,60,120," + (0.04 + Math.random() * 0.16) + ");left:" + (Math.random() * 100) + "%;top:" + (Math.random() * 100) + "%;";
+              bg.appendChild(d);
+            }
+            var gap = 30 + Math.random() * 175;
+            piece.style.left = gap + "px"; piece.style.display = "block"; piece.dataset.gap = gap;
+            fill.style.width = "0"; slider.style.left = "0"; slider.textContent = "▶";
+            msg.textContent = "按住滑块拖动完成人机验证"; msg.style.color = "#8c959f";
+            window.__capOk = false;
+          }
+          function tryVerify() {
+            var gap = parseFloat(piece.dataset.gap);
+            var x = parseFloat(slider.style.left) || 0;
+            if (Math.abs(x - gap) < 9) {
+              window.__capOk = true; window.__capExpire = Date.now() + 5 * 60 * 1000;
+              fill.style.width = "100%"; msg.textContent = "✅ 验证通过"; msg.style.color = "#10b981";
+              slider.textContent = "✓"; slider.style.left = "calc(100% - 40px)";
+              return true;
+            }
+            msg.textContent = "❌ 未对准缺口，请重试"; msg.style.color = "#ef4444";
+            setTimeout(gen, 650);
+            return false;
+          }
+          var dragging = false, startX = 0, startL = 0;
+          slider.addEventListener("pointerdown", function (e) {
+            dragging = true; startX = e.clientX; startL = parseFloat(slider.style.left) || 0;
+            try { slider.setPointerCapture(e.pointerId); } catch (e2) {}
+          });
+          slider.addEventListener("pointermove", function (e) {
+            if (!dragging) return;
+            var x = Math.max(0, Math.min(W - 40, startL + (e.clientX - startX)));
+            slider.style.left = x + "px"; fill.style.width = x + "px";
+          });
+          function up() { if (dragging) { dragging = false; tryVerify(); } }
+          slider.addEventListener("pointerup", up);
+          slider.addEventListener("pointercancel", up);
+          reset.addEventListener("click", gen);
+          gen();
+        };
+      })();
       qsa(".auth-tabs a", m).forEach(function (a) {
         a.addEventListener("click", function () { switchAuthMode(a.dataset.mode); });
       });
@@ -660,7 +847,14 @@
         var email = qs("#authEmail").value.trim(), pwd = qs("#authPwd").value, name = qs("#authName").value.trim();
         var mode = m.dataset.mode || "signin";
         var btn = qs("#authSubmit"); btn.disabled = true; qs("#authMsg").textContent = "处理中…";
-        var task = (mode === "signup") ? Store.signUp(email, pwd, { display_name: name }) : Store.signIn(email, pwd);
+        if (mode === "signup" && !captchaOk()) {
+          qs("#authMsg").textContent = "请先完成人机验证（拖动滑块到缺口位置）";
+          btn.disabled = false; return;
+        }
+        var isPhone = /^1[3-9]\d{9}$/.test(email);
+        var task = isPhone
+          ? ((mode === "signup") ? Store.signUpWithPhone(email, pwd, name) : Store.signInWithPhone(email, pwd))
+          : ((mode === "signup") ? Store.signUp(email, pwd, { display_name: name }) : Store.signIn(email, pwd));
         Promise.resolve(task).then(function (r) {
           btn.disabled = false;
           if (r.error) { qs("#authMsg").textContent = r.error.message || "操作失败"; return; }
@@ -757,6 +951,9 @@
     qs("#authName").style.display = (mode === "signup") ? "block" : "none";
     qs("#authSubmit").textContent = (mode === "signup") ? "注册并登录" : "登录";
     qs("#authMsg").textContent = "";
+    var cb = qs("#captchaBox");
+    if (cb) cb.style.display = (mode === "signup") ? "block" : "none";
+    if (mode === "signup") try { initCaptcha(); } catch (e) {}
   }
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
