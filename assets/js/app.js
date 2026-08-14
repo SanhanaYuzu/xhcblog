@@ -658,50 +658,39 @@
         '<input id="authName" type="text" placeholder="昵称（注册时可选）" style="display:none">' +
         '<button type="submit" class="btn btn-primary" id="authSubmit">登录</button>' +
         '</form>' +
-        '<div class="captcha-box" id="captchaBox" style="display:none">' +
-          '<div class="cap-bg" id="capBg"><div class="cap-piece" id="capPiece"></div></div>' +
-          '<div class="cap-bar"><div class="cap-fill" id="capFill"></div><div class="cap-slider" id="capSlider">▶</div></div>' +
-          '<div class="cap-foot"><span class="cap-msg" id="capMsg">按住滑块拖动完成人机验证</span><button type="button" class="cap-reset" id="capReset">↻ 换一张</button></div>' +
+        '<div class="cf-box" id="cfBox">' +
+        '<span class="cf-checkbox" id="cfCheckbox" title="点击完成验证"></span>' +
+        '<span class="cf-label" id="cfLabel">我不是机器人</span>' +
+        '<span class="cf-badge">XHC<span class="cf-q">?</span></span>' +
         '</div>' +
-        '<div class="auth-divider"><span>或使用验证码</span></div>' +
-        '<div class="otp-box">' +
-          '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
-          '<div class="otp-row">' +
-            '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false">' +
-            '<button type="button" class="btn btn-otp" id="otpSend">发送验证码</button>' +
-          '</div>' +
-          '<div class="otp-row">' +
-            '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code">' +
-            '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
-          '</div>' +
-          '<div class="otp-hint" id="otpHint">新用户输入邮箱或手机号，验证通过即自动注册账号</div>' +
-        '</div>' +
-        '<button class="more-toggle" id="moreToggle"><span>更多登录方式</span><span class="icn">▶</span></button>' +
-        '<div class="more-area" id="moreArea">' +
         '<div class="auth-divider"><span>或</span></div>' +
-          '<button class="btn btn-github" id="githubLogin">' +
+        '<button class="btn btn-github" id="githubLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
         ' GitHub 登录' +
-        '</button>' +
-          '<button class="btn btn-microsoft" id="microsoftLogin">' +
+        '<button class="btn btn-microsoft" id="microsoftLogin">' +
         '<svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>' +
         ' 微软账户登录' +
-        '</button>' +
-          '<button class="btn btn-wechat" id="wechatLogin">' +
-        '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 2C2.46 2 0 3.98 0 6.42c0 1.4.74 2.65 1.9 3.46l-.48 1.47 1.69-.83c.7.25 1.46.38 2.39.38h.2a3.8 3.8 0 0 1-.2-1.22c0-2.2 2.06-3.99 4.6-3.99h.23C9.98 3.56 7.97 2 5.5 2zM4 4.86c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66zm3.5 0c.36 0 .65.3.65.66a.65.65 0 1 1-1.3 0c0-.36.29-.66.65-.66z"/><path d="M16 9.87C16 7.68 13.98 5.9 11.5 5.9S7 7.68 7 9.87s2.02 3.97 4.5 3.97c.45 0 .89-.06 1.3-.18l1.38.67-.4-1.2c.75-.58 1.22-1.4 1.22-2.26zM9.75 8.68c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43zm3.5 0c.23 0 .42.2.42.43a.43.43 0 0 1-.42.43.43.43 0 0 1-.42-.43c0-.24.19-.43.42-.43z"/></svg>' +
-        ' 微信登录' +
-        '</button>' +
-          '<button class="btn btn-qq" id="qqLogin">' +
-        '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 8.1c0-2.1-1.2-3.9-3.1-5A5.3 5.3 0 0 0 8 2.6a5.3 5.3 0 0 0-2.4.5C3.7 4.2 2.5 6 2.5 8.1c0 1 .2 1.9.6 2.7-.1.4-.3 1-.5 1.6-.2.7-.2 1.2 0 1.3.1.1.5-.1 1-.4.6-.3 1-.5 1.2-.6.4.1.8.2 1.2.2h2c.4 0 .8-.1 1.2-.2.2.1.6.3 1.2.6.5.3.9.5 1 .4.2-.1.2-.6 0-1.3-.2-.6-.4-1.2-.5-1.6.4-.8.6-1.7.6-2.7zm-7.6-.5c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8zm4.2 0c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.8.4.8.8-.4.8-.8.8z"/></svg>' +
-        ' QQ 登录' +
-        '</button>' +
-          '<p class="hint" style="margin-top:10px;">' +
-          (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
-          '</p>' +
+'<button class="more-toggle" id="moreToggle"><span>邮箱验证码（免密登录）</span><span class="icn">▶</span></button>' +
+        '<div class="more-area" id="moreArea">' +
+        '<div class="otp-box">' +
+        '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
+        '<div class="otp-row">' +
+        '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false">' +
+        '<button type="button" class="btn btn-otp" id="otpSend">发送验证码</button>' +
+        '</div>' +
+        '<div class="otp-row">' +
+        '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code">' +
+        '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
+        '</div>' +
+        '<div class="otp-hint" id="otpHint">新用户输入邮箱，验证通过即自动注册账号</div>' +
         '</div>' +
         '</div>' +
-      '</div>';
-      document.body.appendChild(m);
+        '<p class="hint" style="margin-top:10px;">' +
+        (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
+        '</p>' +
+        '</div>' +
+        '</div>';
+document.body.appendChild(m);
       m.addEventListener("click", function (e) { if (e.target === m) closeAuth(); });
       qs("#authClose").addEventListener("click", closeAuth);
       /* ---- 验证码登录 / 微信 / QQ（国内常用） ---- */
@@ -727,21 +716,18 @@
           ".more-toggle.open .icn{transform:rotate(90deg)}" +
           ".more-area{max-height:0;overflow:hidden;transition:max-height .25s ease}" +
           ".more-area.open{max-height:520px}" +
-          ".captcha-box{margin:12px 0 4px;user-select:none}" +
-          ".cap-bg{position:relative;height:130px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#dde7fd,#efe4fa 55%,#defce6);border:1px solid #c8d0da}" +
-          ".cap-bg span{position:absolute;border-radius:50%;pointer-events:none}" +
-          ".cap-piece{position:absolute;top:8px;width:50px;height:114px;border-radius:8px;background:rgba(30,80,180,.32);box-shadow:inset 0 0 0 3px #1565c0,inset 0 0 12px rgba(20,40,120,.35),0 4px 14px rgba(21,101,192,.5);display:none}" +
-          ".cap-piece::after{content:'缺口';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;color:#0d47a1;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:3px;opacity:.75}" +
-          ".cap-bar{position:relative;height:44px;margin-top:12px;border-radius:22px;background:linear-gradient(180deg,#e8edf3,#dfe5ee);border:1px solid #cdd5e0;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}" +
-          ".cap-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#7dd393,#34c759);width:0;border-radius:22px;transition:width .15s}" +
-          ".cap-slider{position:absolute;left:-2px;top:-2px;bottom:-2px;width:52px;background:linear-gradient(180deg,#fff,#e8eaee);border:2px solid #1976d2;border-radius:22px;display:flex;align-items:center;justify-content:center;cursor:grab;color:#1976d2;font-size:20px;font-weight:700;z-index:2;touch-action:none;box-shadow:0 4px 10px rgba(0,0,0,.22)}" +
-          ".cap-slider:active{cursor:grabbing;background:linear-gradient(180deg,#e8eaee,#fff)}" +
-          ".cap-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}" +
-          ".cap-msg{font-size:12px;color:#6b7280}" +
-          ".cap-msg.ok{color:#10b981;font-weight:600}" +
-          ".cap-msg.err{color:#ef4444;font-weight:600}" +
-          ".cap-reset{font-size:12px;color:#1a73e8;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}" +
-          ".cap-reset:hover{background:rgba(26,115,232,.08)}";
+          ".cf-box{display:flex;align-items:center;gap:10px;margin:12px 0 6px;padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;position:relative;user-select:none;cursor:default}" +
+          ".cf-box.ok{background:#f0fdf4;border-color:#86efac}" +
+          ".cf-checkbox{width:24px;height:24px;border:2px solid #cbd5e1;border-radius:5px;flex:none;cursor:pointer;position:relative;background:#fff;box-sizing:border-box}" +
+          ".cf-checkbox:hover{border-color:#94a3b8}" +
+          ".cf-checkbox.loading{border-color:#f59e0b}" +
+          ".cf-checkbox.loading::after{content:'';position:absolute;inset:5px;border:2px solid transparent;border-top-color:#f59e0b;border-radius:50%;animation:cfspin .8s linear infinite}" +
+          ".cf-checkbox.ok{border-color:#22c55e;background:#22c55e}" +
+          ".cf-checkbox.ok::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700}" +
+          ".cf-label{font-size:14px;color:#374151}" +
+          ".cf-badge{position:absolute;right:12px;top:10px;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.5px}" +
+          ".cf-q{width:16px;height:16px;border:1.5px solid #9ca3af;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af}" +
+          "@keyframes cfspin{to{transform:rotate(360deg)}}";
         document.head.appendChild(st);
 
         var otpTimer = null;
@@ -799,64 +785,27 @@
             otpHint("验证失败：" + ((e && e.message) || e));
           }
         });
-        qs("#wechatLogin").addEventListener("click", function () {
-          toast("微信登录需要微信开放平台的企业资质与审核，暂未开放，敬请期待", "warn");
-        });
-        qs("#qqLogin").addEventListener("click", function () {
-          toast("QQ 登录需要 QQ 互联的企业资质与审核，暂未开放，敬请期待", "warn");
-        });
 
         /* ---- 滑块人机验证 ---- */
         window.__capOk = false; window.__capExpire = 0;
         window.captchaOk = function () { return !!(window.__capOk && Date.now() < window.__capExpire); };
         window.initCaptcha = function () {
-          var box = qs("#captchaBox");
+          var box = qs("#cfBox");
           if (!box || box.dataset.init) return;
           box.dataset.init = "1";
-          var bg = qs("#capBg"), piece = qs("#capPiece"), slider = qs("#capSlider"),
-              fill = qs("#capFill"), msg = qs("#capMsg"), reset = qs("#capReset");
-          var W = 260;
-          function gen() {
-            bg.innerHTML = "";
-            for (var i = 0; i < 42; i++) {
-              var d = document.createElement("span");
-              d.style.cssText = "width:" + (1 + Math.random() * 2.5) + "px;height:" + (1 + Math.random() * 2.5) + "px;background:rgba(30,60,120," + (0.04 + Math.random() * 0.16) + ");left:" + (Math.random() * 100) + "%;top:" + (Math.random() * 100) + "%;";
-              bg.appendChild(d);
-            }
-            var gap = 30 + Math.random() * 175;
-            piece.style.left = gap + "px"; piece.style.display = "block"; piece.dataset.gap = gap;
-            fill.style.width = "0"; slider.style.left = "0"; slider.textContent = "▶";
-            msg.textContent = "按住滑块拖动完成人机验证"; msg.style.color = "#8c959f";
-            window.__capOk = false;
-          }
-          function tryVerify() {
-            var gap = parseFloat(piece.dataset.gap);
-            var x = parseFloat(slider.style.left) || 0;
-            if (Math.abs(x - gap) < 9) {
+          var cb = qs("#cfCheckbox"), label = qs("#cfLabel");
+          cb.addEventListener("click", function () {
+            if (window.__capOk) return;
+            cb.classList.add("loading");
+            label.textContent = "验证中…";
+            setTimeout(function () {
               window.__capOk = true; window.__capExpire = Date.now() + 5 * 60 * 1000;
-              fill.style.width = "100%"; msg.textContent = "✅ 验证通过"; msg.style.color = "#10b981";
-              slider.textContent = "✓"; slider.style.left = "calc(100% - 40px)";
-              return true;
-            }
-            msg.textContent = "❌ 未对准缺口，请重试"; msg.style.color = "#ef4444";
-            setTimeout(gen, 650);
-            return false;
-          }
-          var dragging = false, startX = 0, startL = 0;
-          slider.addEventListener("pointerdown", function (e) {
-            dragging = true; startX = e.clientX; startL = parseFloat(slider.style.left) || 0;
-            try { slider.setPointerCapture(e.pointerId); } catch (e2) {}
+              cb.classList.remove("loading");
+              cb.classList.add("ok");
+              label.textContent = "验证通过";
+              box.classList.add("ok");
+            }, 600);
           });
-          slider.addEventListener("pointermove", function (e) {
-            if (!dragging) return;
-            var x = Math.max(0, Math.min(W - 40, startL + (e.clientX - startX)));
-            slider.style.left = x + "px"; fill.style.width = x + "px";
-          });
-          function up() { if (dragging) { dragging = false; tryVerify(); } }
-          slider.addEventListener("pointerup", up);
-          slider.addEventListener("pointercancel", up);
-          reset.addEventListener("click", gen);
-          gen();
         };
 
         /* ---- 更多登录方式折叠 ---- */
@@ -980,9 +929,7 @@
     qs("#authName").style.display = (mode === "signup") ? "block" : "none";
     qs("#authSubmit").textContent = (mode === "signup") ? "注册并登录" : "登录";
     qs("#authMsg").textContent = "";
-    var cb = qs("#captchaBox");
-    if (cb) cb.style.display = (mode === "signup") ? "block" : "none";
-    if (mode === "signup") try { initCaptcha(); } catch (e) {}
+    try { initCaptcha(); } catch (e) {}
   }
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
