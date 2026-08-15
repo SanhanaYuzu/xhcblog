@@ -700,7 +700,7 @@ document.body.appendChild(m);
           ".otp-box{margin:10px 0 2px;display:flex;flex-direction:column;gap:8px}" +
           ".otp-row{display:flex;gap:8px;align-items:center}" +
           ".otp-row input{flex:1 1 auto;min-width:0}" +
-          ".otp-row button{flex:0 0 auto;flex-shrink:0}" +
+          ".otp-row button{flex:0 0 auto;flex-shrink:0;width:auto}" +
           ".otp-sel{flex:1;height:38px;border:1px solid #d8dee6;border-radius:8px;padding:0 10px;font-size:14px;background:#fff;color:#2b3440;outline:none}" +
           ".btn-otp{flex:none;background:#10b981;color:#fff;border:none;border-radius:8px;padding:0 12px;height:38px;cursor:pointer;font-size:13px;white-space:nowrap}" +
           ".btn-otp:disabled{opacity:.6;cursor:default}" +
