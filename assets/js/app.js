@@ -1119,18 +1119,31 @@ document.body.appendChild(m);
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
 
-  /* IP 地区查询（ipwho.is，https+中文；失败回调空） */
+  /* IP 地区查询（多 API 兜底，国内任一可达即返回；超时 6s） */
   window.__xhcIpLookup = function (cb) {
-    fetch("https://ipwho.is/?lang=zh-CN", { signal: AbortSignal.timeout(4000) })
-      .then(function (r) { return r.json(); })
-      .then(function (g) {
-        if (g && g.success) {
-          var parts = [g.country, g.region, g.city].filter(function (x) { return x; });
-          var uniq = [];
-          parts.forEach(function (x) { if (uniq.indexOf(x) < 0) uniq.push(x); });
-          cb(g.ip || "", uniq.join(" "));
-        } else cb("", "");
-      }).catch(function () { cb("", ""); });
+    function done(ip, region) { cb(ip || "", region || ""); }
+    var APIS = [
+      { url: "https://ipwho.is/?lang=zh-CN", ip: function (g) { return (g && g.success) ? (g.ip || "") : ""; }, parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
+      { url: "https://api.ip.sb/geoip",       ip: function (g) { return g ? (g.ip || "") : ""; },       parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
+      { url: "https://ipinfo.io/json",        ip: function (g) { return g ? (g.ip || "") : ""; },       parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
+      { url: "https://freeipapi.com/api/json",ip: function (g) { return g ? (g.ipAddress || "") : ""; }, parts: function (g) { return g ? [g.countryName, g.regionName, g.cityName] : []; } }
+    ];
+    function chain(i) {
+      if (i >= APIS.length) { done("", ""); return; }
+      var c = APIS[i];
+      fetch(c.url, { signal: AbortSignal.timeout(6000) })
+        .then(function (r) { return r.json(); })
+        .then(function (g) {
+          var ip = c.ip(g);
+          var parts = c.parts(g).filter(function (x) { return x; });
+          if (ip || parts.length) {
+            var uniq = [];
+            parts.forEach(function (x) { if (uniq.indexOf(x) < 0) uniq.push(x); });
+            done(ip, uniq.join(" "));
+          } else chain(i + 1);
+        }).catch(function () { chain(i + 1); });
+    }
+    chain(0);
   };
 
   /* 登录成功 → 上报登录记录（设备/方式/地区）到 login_sessions */
