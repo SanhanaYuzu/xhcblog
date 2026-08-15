@@ -665,8 +665,8 @@
         '</div>' +
         '<div class="auth-divider"><span>或</span></div>' +
         '<button class="btn btn-passkey" id="passkeyLogin">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12 1a7 7 0 0 0-7 7v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V8a7 7 0 0 0-7-7zm-5 9V8a5 5 0 0 1 10 0v2H7zm5 3.5a2.5 2.5 0 0 1 1.5 4.5V21h-3v-3a2.5 2.5 0 0 1 1.5-4.5z"/></svg>' +
-        ' 通行密钥登录（Passkey / 刷脸·指纹）' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M17.81 7.71 11.46 1.36a1.05 1.05 0 0 0-1.42 0L3.7 7.71A1 1 0 0 0 3.36 9H7v10a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-5h2v5a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5V9H5.14a1 1 0 0 0-.7-1.29 1 1 0 0 0 .36 0z"/></svg>' +
+        ' Passkey 通行密钥' +
         '</button>' +
         '<button class="btn btn-github" id="githubLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
@@ -710,8 +710,11 @@ document.body.appendChild(m);
           ".btn-otp:disabled{opacity:.6;cursor:default}" +
           ".otp-hint{font-size:12px;color:#8c959f;margin:2px 0 4px}" +
           ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
-          ".btn-passkey{background:#5f6368 !important;color:#fff !important}" +
-          ".btn-gitlab{background:#fc6d26 !important;color:#fff !important}" +
+          ".btn-passkey{background:#202124 !important;color:#fff !important;margin-top:10px}" +
+          ".btn-passkey:hover{background:#000 !important}" +
+          ".btn-gitlab{background:#fc6d26 !important;color:#fff !important;margin-top:10px}" +
+          ".btn-github{margin-top:10px}" +
+          ".btn-microsoft{margin-top:10px}" +
 ".btn-qq{background:#12b7f5 !important;color:#fff !important}" +
           ".otp-title{font-size:13px;color:#6b7280;font-weight:600}" +
           ".modal-head{padding:16px 22px 8px;border-bottom:1px solid #eef0f4;flex:none}" +
