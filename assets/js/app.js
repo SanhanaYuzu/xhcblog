@@ -710,6 +710,7 @@ document.body.appendChild(m);
           ".btn-otp:disabled{opacity:.6;cursor:default}" +
           ".otp-hint{font-size:12px;color:#8c959f;margin:2px 0 4px}" +
           ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
+          ".btn-passkey,.btn-github,.btn-microsoft,.btn-gitlab{width:100%}" +
           ".btn-passkey{background:#202124 !important;color:#fff !important;margin-top:10px}" +
           ".btn-passkey:hover{background:#000 !important}" +
           ".btn-gitlab{background:#fc6d26 !important;color:#fff !important;margin-top:10px}" +
