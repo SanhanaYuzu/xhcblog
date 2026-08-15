@@ -1038,8 +1038,26 @@ document.body.appendChild(m);
       fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions?user_id=eq." + encodeURIComponent(sess.user.id) + "&order=created_at.desc&limit=50", {
         headers: { "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token }
       }).then(function (r) { return r.json(); }).then(function (rows) {
-        if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">暂无登录记录（登录成功后会在这里显示设备、方式和地区）</div>'; return; }
-        var provNames = { password: "密码", email: "邮箱密码", phone: "手机号密码", signup: "注册", otp: "邮箱验证码", passkey: "Passkey 通行密钥", github: "GitHub", azure: "微软账户", gitlab: "GitLab", oauth: "第三方" };
+        if (!Array.isArray(rows) || !rows.length) {
+          // 旧登录没有上报记录 → 自动补记当前会话一条（避免空白），并重新查询
+          body.innerHTML = '<div style="text-align:center;color:#6b7280;padding:20px 0;">暂无记录，正在补记当前登录…</div>';
+          var back = { user_id: sess.user.id, provider: "restored", client: (window.top !== window) ? "网页（内嵌）" : "网页" };
+          back.device = (navigator.userAgent || "").slice(0, 300);
+          fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token, "Prefer": "return=minimal" },
+            body: JSON.stringify(back)
+          }).then(function (r2) {
+            if (r2.ok) { refreshSessions(); return; }
+            return r2.text().then(function (t2) {
+              body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px 0;line-height:1.8;">补记失败（HTTP ' + r2.status + '）<br><span style="font-size:11px;color:#9ca3af;word-break:break-all;">' + esc(t2 || "").slice(0, 150) + '</span></div>';
+            });
+          }).catch(function () {
+            body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px 0;">补记失败：网络错误</div>';
+          });
+          return;
+        }
+        var provNames = { password: "密码", email: "邮箱密码", phone: "手机号密码", signup: "注册", otp: "邮箱验证码", passkey: "Passkey 通行密钥", github: "GitHub", azure: "微软账户", gitlab: "GitLab", oauth: "第三方", restored: "会话恢复" };
         body.innerHTML = rows.map(function (row) {
           var d = new Date(row.created_at);
           var t = isNaN(d.getTime()) ? String(row.created_at) : d.toLocaleString("zh-CN", { hour12: false });
