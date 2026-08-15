@@ -53,6 +53,13 @@
       <label>简介</label>
       <textarea id="setBio" rows="3" placeholder="一句话介绍自己"></textarea>
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
+      <label>更换登录邮箱</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="setNewEmail" type="email" placeholder="新邮箱（将发送确认链接）" style="flex:1;">
+        <button type="button" class="btn btn-outline" id="changeEmailBtn" style="flex:none;">发送确认</button>
+      </div>
+      <div class="hint">⚠️ 点击新邮箱里的确认链接后才完成更换；链接 1 小时有效；旧邮箱仍可登录直到确认。</div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
       <label>修改密码（留空表示不修改）</label>
       <input id="setPwd" type="password" placeholder="新密码（至少 6 位）">
       <div class="row" style="margin-top:18px;">
