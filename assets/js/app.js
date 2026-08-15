@@ -1378,42 +1378,17 @@ document.body.appendChild(m);
     } catch (e) {}
   }
 
-  /* 置顶密码校验弹窗（密码：baby2009）。校验通过才允许设置置顶 */
-  var PIN_PASSWORD = "baby2009";
-  function askPinPassword(onOk) {
-    var m = qs("#pinModal");
-    if (!m) {
-      m = document.createElement("div");
-      m.id = "pinModal"; m.className = "modal-mask";
-      m.innerHTML =
-        '<div class="modal" style="max-width:340px;">' +
-        '<h3 style="margin-top:0;">🔒 置顶需要密码</h3>' +
-        '<p style="color:var(--text-2);font-size:13px;margin:4px 0 12px;">请输入置顶密码才能设置/取消置顶。</p>' +
-        '<input id="pinInput" type="password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;" placeholder="置顶密码">' +
-        '<div id="pinErr" style="color:#dc3545;font-size:13px;min-height:18px;margin:8px 0;"></div>' +
-        '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button class="btn btn-outline" id="pinCancel">取消</button>' +
-        '<button class="btn btn-primary" id="pinOk">确定</button>' +
-        '</div></div>';
-      document.body.appendChild(m);
-      m.addEventListener("click", function (e) { if (e.target === m) m.style.display = "none"; });
-      qs("#pinCancel", m).addEventListener("click", function () { m.style.display = "none"; });
-    }
-    m.style.display = "flex";
-    var input = qs("#pinInput", m), err = qs("#pinErr", m), ok = qs("#pinOk", m);
-    input.value = ""; err.textContent = ""; input.focus();
-    var check = function () {
-      if (input.value === PIN_PASSWORD) { m.style.display = "none"; onOk(); }
-      else { err.textContent = "密码错误，无法设置置顶"; }
-    };
-    ok.onclick = check;
-    input.onkeydown = function (e) { if (e.key === "Enter") check(); };
+  /* 置顶已合并进管理员模式：非管理员先弹管理员登录，验证成功后执行操作 */
+  function requireAdminThen(fn) {
+    if (isAdmin()) { fn(); return; }
+    toast("请先进入管理员模式", "warn");
+    showAdminLogin(fn);
   }
 
   /* ===========================================================
-     管理员系统（密码 xihaochen2014）
+     管理员系统（密码 admin1234）
      =========================================================== */
-  var ADMIN_PASSWORD = "xihaochen2014";
+  var ADMIN_PASSWORD = "admin1234";
   var ADMIN_KEY = "xhc_admin_auth";
 
   function isAdmin() {
@@ -2021,7 +1996,7 @@ document.body.appendChild(m);
     setupCommentForm(id, user);
     renderComments(id, user);
 
-    /* ---- 置顶按钮（需密码 baby2009） + 管理员操作 ---- */
+    /* ---- 置顶按钮（管理员权限） + 管理员操作 ---- */
     var act = qs("#articleActions");
     if (act) {
       var states = await Store.getStates([id]);
@@ -2048,7 +2023,7 @@ document.body.appendChild(m);
 
       qs("#pinToggle").addEventListener("click", function () {
         if (!user) { toast("请先登录再操作", "warn"); openAuth(); return; }
-        askPinPassword(function () {
+        requireAdminThen(function () {
           Store.pin(id, !pinned).then(function (res) {
             if (res && res.error) { toast("置顶失败：" + (res.error.message || "错误"), "warn"); return; }
             toast(pinned ? "已取消置顶" : "已置顶 ✓");
@@ -2426,7 +2401,7 @@ document.body.appendChild(m);
     });
     qsa("[data-pin]", box).forEach(function (b) {
       b.addEventListener("click", function () {
-        askPinPassword(function () {
+        requireAdminThen(function () {
           var id = b.dataset.pin, val = b.dataset.state !== "1";
           Store.pin(id, val).then(function (res) {
             if (res && res.error) { toast("置顶失败：" + (res.error.message || "错误"), "warn"); return; }
