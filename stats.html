@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据统计 - XHC 博客</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f1f4f8;color:#1f2937;}
+  .s-wrap{max-width:860px;margin:0 auto;padding:18px 14px 40px;}
+  .s-card{background:#fff;border-radius:16px;box-shadow:0 2px 14px rgba(15,40,80,.06);padding:20px 22px;margin-bottom:16px;}
+  .s-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .s-head h1{margin:0;font-size:17px;}
+  .s-back{color:#1a73e8;text-decoration:none;font-size:13px;font-weight:600;}
+  .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .num{background:#f8fafc;border:1px solid #eef0f4;border-radius:12px;padding:14px 8px;text-align:center;}
+  .num b{display:block;font-size:22px;color:#111827;margin-bottom:4px;}
+  .num span{font-size:12px;color:#8a94a3;}
+  .chart-box{position:relative;height:230px;}
+  .rank{display:flex;flex-direction:column;gap:8px;}
+  .rank-item{display:flex;align-items:center;gap:10px;font-size:13px;}
+  .rank-idx{width:22px;height:22px;border-radius:6px;background:#eef1f5;color:#6b7280;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;font-size:12px;}
+  .rank-item:nth-child(1) .rank-idx{background:#fbbf24;color:#7c4a03;}
+  .rank-item:nth-child(2) .rank-idx{background:#cbd5e1;color:#475569;}
+  .rank-item:nth-child(3) .rank-idx{background:#f59e0b;color:#7c2d12;}
+  .rank-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#374151;}
+  .rank-v{color:#1a73e8;font-weight:700;flex:none;}
+  .empty{text-align:center;color:#9ca3af;padding:40px 0;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="s-wrap">
+  <div class="s-card">
+    <div class="s-head">
+      <h1>📊 数据统计</h1>
+      <a class="s-back" href="javascript:history.length>1?history.back():'index.html'">← 返回</a>
+    </div>
+    <div id="sBody"><div class="empty">加载中…</div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script>
+const SB_URL = (typeof CFG !== "undefined" && CFG.SUPABASE_URL) || "https://ckitmwadwtoavnigsxag.supabase.co";
+const ANON   = (typeof CFG !== "undefined" && CFG.SUPABASE_ANON_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraXRtd2Fkd3RvYXZuaWdzeGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzIwNjcsImV4cCI6MjEwMTA0ODA2N30.juUoJi66E7Td5Q-QPA-BUoHa7d4iywwDmaj2B7AIpqY";
+const sb = supabase.createClient(SB_URL, ANON);
+const body = document.getElementById("sBody");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+async function init(){
+  var q = new URLSearchParams(location.search);
+  var uid = q.get("uid");
+  if (!uid) {
+    var { data } = await sb.auth.getSession();
+    var sess = data && data.session;
+    if (!sess) { body.innerHTML = '<div class="empty">请先 <a href="index.html" style="color:#1a73e8;font-weight:700;">登录</a> 后查看自己的统计</div>'; return; }
+    uid = sess.user.id;
+  }
+  var pr = await sb.from("profiles").select("display_name, username").eq("id", uid).single();
+  var nm = (pr.data && (pr.data.display_name || pr.data.username)) || "该用户";
+  var posts = await sb.from("posts").select("title, views, likes_count, favorites_count, created_at").eq("user_id", uid).order("created_at",{ascending:false}).limit(500);
+  var rows = (posts.data || []);
+  var total = rows.length;
+  var views = rows.reduce(function(a,p){return a+(p.views||0);},0);
+  var likes = rows.reduce(function(a,p){return a+(p.likes_count||0);},0);
+  var favs  = rows.reduce(function(a,p){return a+(p.favorites_count||0);},0);
+  /* 近 30 天发帖趋势 */
+  var days = [];
+  for (var i=29;i>=0;i--){ var d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  var counts = {};
+  rows.forEach(function(p){ var k=(p.created_at||"").slice(0,10); if(counts[k]) counts[k]++; else counts[k]=1; });
+  var trend = days.map(function(d){ return counts[d]||0; });
+  var labels = days.map(function(d){ return d.slice(5); });
+  /* 热度排行 */
+  var hot = rows.slice().sort(function(a,b){ return (b.views||0)-(a.views||0); }).slice(0,10);
+  body.innerHTML =
+    '<div class="nums">' +
+    '<div class="num"><b>'+total+'</b><span>📄 文章</span></div>' +
+    '<div class="num"><b>'+views+'</b><span>👁 浏览量</span></div>' +
+    '<div class="num"><b>'+likes+'</b><span>👍 获赞</span></div>' +
+    '<div class="num"><b>'+favs+'</b><span>⭐ 收藏</span></div></div>' +
+    '<div style="margin-top:18px;font-size:13px;color:#6b7280;">正在查看：<b style="color:#111827;">'+esc(nm)+'</b> 的统计' + (total ? '' : '（暂无文章）') + '</div>';
+  if (total) {
+    body.insertAdjacentHTML("beforeend",
+      '<div style="margin-top:18px;"><div style="font-weight:700;font-size:14px;margin-bottom:8px;">📈 近 30 天发文趋势</div><div class="chart-box"><canvas id="chTrend"></canvas></div></div>' +
+      '<div style="margin-top:20px;"><div style="font-weight:700;font-size:14px;margin-bottom:8px;">🔥 热度 TOP10（按浏览量）</div><div class="rank">' +
+      hot.map(function(p,i){ return '<div class="rank-item"><span class="rank-idx">'+(i+1)+'</span><a class="rank-title" href="article.html?id='+encodeURIComponent(p.id)+'" style="text-decoration:none;">'+esc(p.title||"无标题")+'</a><span class="rank-v">'+(p.views||0)+' 阅读</span></div>'; }).join("") +
+      '</div></div>'
+    );
+    if (typeof Chart !== "undefined") {
+      new Chart(document.getElementById("chTrend"), { type:"line", data:{ labels:labels, datasets:[{ label:"发文数", data:trend, borderColor:"#1a73e8", backgroundColor:"rgba(26,115,232,.12)", fill:true, tension:.35, pointRadius:2 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } } });
+    }
+  } else {
+    body.insertAdjacentHTML("beforeend", '<div class="empty">还没有发布过文章</div>');
+  }
+}
+init();
+</script>
+</body>
+</html>
