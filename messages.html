@@ -279,7 +279,10 @@ function send(){
   /* 敏感词检测 */
   if (window.XHCSW) {
     var swHits = window.XHCSW.check(v);
-    if (swHits.length) { toast("⛔ 消息包含敏感词：" + swHits.slice(0, 6).join("、") + "，请修改后再发送"); return; }
+    if (swHits.length) {
+      if (window.XHCSW.report) { try { window.XHCSW.report(swHits, "私信", v); } catch (e) {} }
+      toast("⛔ 消息包含敏感词：" + swHits.slice(0, 6).join("、") + "，请修改后再发送"); return;
+    }
   }
   sb.from("messages").insert({ sender_id: ME.id, receiver_id: curChat, content: v }).then(function(r){
     if (r.error) { toast("发送失败："+(r.error.message||"")); return; }
