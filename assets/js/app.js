@@ -203,6 +203,9 @@
             OAUTH_RETURN = false;
             toast("第三方登录成功，欢迎回来！");
             var am = qs("#authModal"); if (am) am.style.display = "none";
+            var pp = "";
+            try { pp = sessionStorage.getItem("xhc_pending_provider") || "oauth"; sessionStorage.removeItem("xhc_pending_provider"); } catch (err) { pp = "oauth"; }
+            reportLogin(pp);
           }
           cb(user);
         });
@@ -843,6 +846,7 @@ document.body.appendChild(m);
             var r = await sb.auth.verifyOtp(payload);
             if (r.error) throw r.error;
             closeAuth(); toast("验证码登录成功");
+            reportLogin("otp");
           } catch (e) {
             b.disabled = false;
             otpHint("验证失败：" + ((e && e.message) || e));
@@ -903,6 +907,7 @@ document.body.appendChild(m);
             qs("#authMsg").textContent = "注册成功！请到邮箱点击确认链接后再登录。"; return;
           }
           closeAuth(); toast(mode === "signup" ? "注册成功，已登录" : "登录成功");
+          reportLogin(isPhone ? "phone" : (mode === "signup" ? "signup" : "email"));
         });
       });
 
@@ -910,6 +915,7 @@ document.body.appendChild(m);
       qs("#githubLogin").addEventListener("click", function () {
         if (!REAL) { toast("演示模式不支持 GitHub 登录", "warn"); return; }
         var btn = qs("#githubLogin"); btn.disabled = true; btn.textContent = "跳转至 GitHub…";
+        try { sessionStorage.setItem("xhc_pending_provider", "github"); } catch (err) {}
         sb.auth.signInWithOAuth({
           provider: "github",
           options: { redirectTo: oauthRedirectUrl() }
@@ -924,6 +930,7 @@ document.body.appendChild(m);
       qs("#microsoftLogin").addEventListener("click", function () {
         if (!REAL) { toast("演示模式不支持微软账户登录", "warn"); return; }
         var btn = qs("#microsoftLogin"); btn.disabled = true; btn.textContent = "跳转至微软账户…";
+        try { sessionStorage.setItem("xhc_pending_provider", "azure"); } catch (err) {}
         sb.auth.signInWithOAuth({
           provider: "azure",
           options: { redirectTo: oauthRedirectUrl() }
@@ -942,6 +949,7 @@ document.body.appendChild(m);
           btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12 1a7 7 0 0 0-7 7v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V8a7 7 0 0 0-7-7zm-5 9V8a5 5 0 0 1 10 0v2H7zm5 3.5a2.5 2.5 0 0 1 1.5 4.5V21h-3v-3a2.5 2.5 0 0 1 1.5-4.5z"/></svg> 通行密钥登录（Passkey / 刷脸·指纹）';
           if (r.error) { qs("#authMsg").textContent = "Passkey 失败：" + (r.error.message || ""); return; }
           closeAuth(); toast("Passkey 登录成功");
+          reportLogin("passkey");
         });
       });
 
@@ -949,6 +957,7 @@ document.body.appendChild(m);
       qs("#gitlabLogin").addEventListener("click", function () {
         if (!REAL) { toast("演示模式不支持 GitLab 登录", "warn"); return; }
         var btn = qs("#gitlabLogin"); btn.disabled = true; btn.textContent = "跳转至 GitLab…";
+        try { sessionStorage.setItem("xhc_pending_provider", "gitlab"); } catch (err) {}
         sb.auth.signInWithOAuth({
           provider: "gitlab",
           options: { redirectTo: oauthRedirectUrl() }
@@ -970,6 +979,7 @@ document.body.appendChild(m);
         '<a href="forum.html">💬 论坛</a>' +
         '<a href="tools.html">🧰 工具箱</a>' +
         '<a href="settings.html">⚙️ 设置</a>' +
+        '<a id="sessionsLink">🖥️ 登录设备</a>' +
         '<a id="mysteryBtn">🎁 神秘按钮</a>' +
         '<div class="sep"></div>' +
         '<a id="adminModeLink" style="color:var(--primary);font-weight:600;">🛡️ 管理员模式</a>' +
@@ -989,7 +999,73 @@ document.body.appendChild(m);
         menu.classList.remove("open");
         openMysteryBox();
       });
+      qs("#sessionsLink").addEventListener("click", function () {
+        menu.classList.remove("open");
+        openSessionsPanel();
+      });
     }
+  }
+
+  /* 登录设备面板：展示 login_sessions，可移除记录 */
+  function openSessionsPanel() {
+    var id = "sessionsPanel";
+    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; refreshSessions(); return; }
+    var panel = document.createElement("div");
+    panel.id = id;
+    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:20px";
+    panel.innerHTML =
+      '<div style="position:relative;width:520px;max-width:94vw;max-height:84vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
+      '<span style="font-weight:700;color:#111827;font-size:15px;">🖥️ 登录设备记录</span>' +
+      '<button type="button" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;" id="sessionsClose">×</button>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:12px;color:#6b7280;" id="sessionsBody">加载中…</div>' +
+      '</div>';
+    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
+    panel.querySelector("#sessionsClose").addEventListener("click", function () { panel.style.display = "none"; });
+    document.addEventListener("keydown", function escS(e) { if (e.key === "Escape" && panel.style.display !== "none") { panel.style.display = "none"; document.removeEventListener("keydown", escS); } });
+    document.body.appendChild(panel);
+    refreshSessions();
+  }
+
+  function refreshSessions() {
+    var body = qs("#sessionsBody");
+    if (!body) return;
+    body.innerHTML = "加载中…";
+    sb.auth.getSession().then(function (sr) {
+      var sess = sr && sr.data && sr.data.session;
+      if (!sess) { body.innerHTML = '<div class="empty">未登录</div>'; return; }
+      fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions?user_id=eq." + encodeURIComponent(sess.user.id) + "&order=created_at.desc&limit=50", {
+        headers: { "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token }
+      }).then(function (r) { return r.json(); }).then(function (rows) {
+        if (!Array.isArray(rows) || !rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">暂无登录记录（登录成功后会在这里显示设备、方式和地区）</div>'; return; }
+        var provNames = { password: "密码", email: "邮箱密码", phone: "手机号密码", signup: "注册", otp: "邮箱验证码", passkey: "Passkey 通行密钥", github: "GitHub", azure: "微软账户", gitlab: "GitLab", oauth: "第三方" };
+        body.innerHTML = rows.map(function (row) {
+          var d = new Date(row.created_at);
+          var t = isNaN(d.getTime()) ? String(row.created_at) : d.toLocaleString("zh-CN", { hour12: false });
+          var isWeb = (row.client === "网页") && (window.top === window);
+          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04);">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-weight:600;font-size:14px;color:#111827;">' + esc(row.client || "未知客户端") +
+            (isWeb ? ' <span style="font-size:11px;color:#1a73e8;background:#e8f0fe;padding:1px 6px;border-radius:10px;font-weight:700;">当前设备</span>' : "") + '</div>' +
+            '<div style="font-size:12px;color:#6b7280;margin-top:3px;">' + esc(provNames[row.provider] || row.provider || "密码") + ' · ' + esc(t) + '</div>' +
+            '<div style="font-size:12px;color:#9ca3af;margin-top:2px;word-break:break-all;">' + esc(row.region || "地区未知") + (row.ip ? " · IP " + esc(row.ip) : "") + '</div>' +
+            '</div>' +
+            '<button type="button" data-sid="' + esc(row.id) + '" style="flex:none;border:none;background:#fef2f2;color:#dc2626;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">移除</button>' +
+            '</div>';
+        }).join("");
+        qsa("[data-sid]", body).forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var sid = btn.getAttribute("data-sid");
+            if (!window.confirm("确定移除这条登录记录？")) return;
+            fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions?id=eq." + encodeURIComponent(sid), {
+              method: "DELETE",
+              headers: { "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token }
+            }).then(function () { toast("已移除该记录"); refreshSessions(); }).catch(function () { toast("移除失败", "warn"); });
+          });
+        });
+      }).catch(function () { body.innerHTML = "加载失败"; });
+    }).catch(function () { body.innerHTML = "加载失败"; });
   }
 
   function openMysteryBox() {
@@ -1021,6 +1097,42 @@ document.body.appendChild(m);
   }
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
+
+  /* 登录成功 → 上报登录记录（设备/方式/地区）到 login_sessions */
+  function reportLogin(provider, client) {
+    provider = provider || "password"; client = client || "网页";
+    try {
+      sb.auth.getSession().then(function (sr) {
+        var sess = sr && sr.data && sr.data.session;
+        if (!sess || !sess.user) return;
+        var info = { user_id: sess.user.id, provider: provider, client: client };
+        function doPost(payload) {
+          payload.device = (navigator.userAgent || "").slice(0, 300);
+          fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": CFG.SUPABASE_ANON_KEY,
+              "Authorization": "Bearer " + sess.access_token,
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify(payload)
+          }).catch(function () {});
+        }
+        try {
+          fetch("https://ip-api.com/json/?fields=query,regionName,city", { signal: AbortSignal.timeout(4000) })
+            .then(function (r) { return r.json(); })
+            .then(function (g) {
+              if (g && g.query) {
+                info.ip = g.query;
+                info.region = ((g.regionName || "") + (g.city ? " " + g.city : "")).trim();
+              }
+              doPost(info);
+            }).catch(function () { doPost(info); });
+        } catch (e) { doPost(info); }
+      }).catch(function () {});
+    } catch (e) {}
+  }
 
   /* 置顶密码校验弹窗（密码：baby2009）。校验通过才允许设置置顶 */
   var PIN_PASSWORD = "baby2009";
