@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>私信 - XHC 博客</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f1f4f8;color:#1f2937;}
+  .m-wrap{max-width:820px;margin:0 auto;padding:18px 14px 40px;}
+  .m-card{background:#fff;border-radius:16px;box-shadow:0 2px 14px rgba(15,40,80,.06);overflow:hidden;min-height:70vh;display:flex;flex-direction:column;}
+  .m-head{padding:14px 20px;background:#fff;border-bottom:1px solid #eef0f4;display:flex;align-items:center;justify-content:space-between;flex:none;}
+  .m-head h1{margin:0;font-size:16px;}
+  .m-back{color:#1a73e8;text-decoration:none;font-size:13px;font-weight:600;}
+  .m-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:300px;background:#f8fafc;}
+  .conv{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid #eef0f4;border-radius:12px;cursor:pointer;transition:background .15s;}
+  .conv:hover{background:#f6f9ff;}
+  .conv.act{border-color:#1a73e8;background:#f0f6ff;}
+  .conv-ava{width:40px;height:40px;border-radius:50%;background:#e6ecf3;display:flex;align-items:center;justify-content:center;font-size:17px;color:#8a94a3;overflow:hidden;flex:none;}
+  .conv-ava img{width:100%;height:100%;object-fit:cover;}
+  .conv-main{flex:1;min-width:0;}
+  .conv-name{font-weight:600;font-size:14px;color:#111827;}
+  .conv-last{font-size:12px;color:#8a94a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .conv-unread{margin-left:8px;background:#ef4444;color:#fff;border-radius:10px;font-size:11px;padding:2px 7px;font-weight:700;flex:none;}
+  .msg{max-width:72%;padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.55;word-break:break-word;}
+  .msg.me{align-self:flex-end;background:#1a73e8;color:#fff;border-bottom-right-radius:4px;}
+  .msg.other{align-self:flex-start;background:#fff;border:1px solid #e8edf3;border-bottom-left-radius:4px;}
+  .msg-time{font-size:10px;opacity:.7;margin-top:3px;}
+  .m-input{display:flex;gap:8px;padding:12px 14px;background:#fff;border-top:1px solid #eef0f4;flex:none;}
+  .m-input input{flex:1;border:1px solid #dfe4ec;border-radius:10px;padding:10px 13px;font-size:14px;outline:none;}
+  .m-input input:focus{border-color:#1a73e8;}
+  .m-input button{border:none;background:#1a73e8;color:#fff;border-radius:10px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer;}
+  .empty{text-align:center;color:#9ca3af;padding:50px 0;font-size:13px;line-height:1.8;}
+  .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.25);}
+</style>
+</head>
+<body>
+<div class="m-wrap">
+  <div class="m-card">
+    <div class="m-head">
+      <h1>💬 站内私信</h1>
+      <a class="m-back" href="javascript:history.length>1?history.back():'index.html'">← 返回</a>
+    </div>
+    <div id="mBody" class="m-body">
+      <div class="empty">加载中…</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script>
+const SB_URL = (typeof CFG !== "undefined" && CFG.SUPABASE_URL) || "https://ckitmwadwtoavnigsxag.supabase.co";
+const ANON   = (typeof CFG !== "undefined" && CFG.SUPABASE_ANON_KEY) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraXRtd2Fkd3RvYXZuaWdzeGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzIwNjcsImV4cCI6MjEwMTA0ODA2N30.juUoJi66E7Td5Q-QPA-BUoHa7d4iywwDmaj2B7AIpqY";
+const sb = supabase.createClient(SB_URL, ANON);
+const body = document.getElementById("mBody");
+let ME = null;
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function toast(msg){ var t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); },2200); }
+function fmt(t){ var d=new Date(t); if(isNaN(d.getTime())) return t||""; var now=new Date(); if(d.toDateString()===now.toDateString()) return d.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); return d.toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
+async function init(){
+  var { data } = await sb.auth.getSession();
+  ME = data && data.session && data.session.user;
+  if (!ME) { body.innerHTML = '<div class="empty">请先<a href="javascript:void(0)" id="gLogin" style="color:#1a73e8;font-weight:700;">登录</a>后查看私信</div>'; var gl=document.getElementById("gLogin"); if(gl) gl.onclick=function(){ location.href="index.html"; }; return; }
+  var to = new URLSearchParams(location.search).get("to");
+  if (to) await openChat(to);
+  else await loadConvs();
+}
+async function loadConvs(){
+  var { data, error } = await sb.from("messages").select("*, sender:profiles!messages_sender_id_fkey(display_name, avatar_url, username)").or("sender_id.eq."+ME.id+",receiver_id.eq."+ME.id).order("created_at",{ascending:false}).limit(300);
+  if (error) { body.innerHTML = '<div class="empty">加载失败：' + esc(error.message || "") + '</div>'; return; }
+  var rows = data || [];
+  if (!rows.length) { body.innerHTML = '<div class="empty">还没有私信<br><span style="font-size:12px;">在文章页点作者头像 → 「💬 发私信」即可开始对话</span></div>'; return; }
+  var map = {};
+  rows.forEach(function (m) {
+    var other = m.sender_id === ME.id ? m.receiver_id : m.sender_id;
+    var o = m.sender_id === ME.id ? null : m.sender;
+    if (!map[other]) map[other] = { msgs: [], name: o && (o.display_name || o.username) || "用户", ava: o && o.avatar_url || "", unread: 0 };
+    map[other].msgs.push(m);
+    if (m.receiver_id === ME.id && !m.read) map[other].unread++;
+  });
+  var html = Object.keys(map).map(function (uid) {
+    var c = map[uid];
+    var last = c.msgs[0] || {};
+    return '<div class="conv" data-uid="' + esc(uid) + '">' +
+      '<div class="conv-ava">' + (c.ava ? '<img src="' + esc(c.ava) + '" alt="">' : (c.name[0] || "?")) + '</div>' +
+      '<div class="conv-main"><div class="conv-name">' + esc(c.name) + '</div>' +
+      '<div class="conv-last">' + esc((last.sender_id === ME.id ? "我：" : "") + (last.content || "")) + '</div></div>' +
+      (c.unread ? '<span class="conv-unread">' + c.unread + '</span>' : '') + '</div>';
+  }).join("");
+  body.innerHTML = html + '<div class="empty" style="padding:18px 0;font-size:12px;">💡 在文章页点作者头像 → 「发私信」可发起新对话</div>';
+  body.querySelectorAll(".conv").forEach(function (el) {
+    el.addEventListener("click", function () { openChat(el.getAttribute("data-uid")); });
+  });
+}
+async function openChat(uid){
+  /* 标记对方发来的未读为已读 */
+  try { await sb.from("messages").update({ read: true }).eq("receiver_id", ME.id).eq("sender_id", uid).eq("read", false); } catch (e) {}
+  var pr = await sb.from("profiles").select("display_name, avatar_url, username").eq("id", uid).single();
+  var nm = (pr.data && (pr.data.display_name || pr.data.username)) || "用户";
+  var ava = (pr.data && pr.data.avatar_url) || "";
+  body.innerHTML = '<div style="flex:none;display:flex;align-items:center;gap:10px;padding:10px 4px;">' +
+    '<div style="width:34px;height:34px;border-radius:50%;background:#e6ecf3;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:15px;color:#8a94a3;">' + (ava ? '<img src="' + esc(ava) + '" style="width:100%;height:100%;object-fit:cover;">' : (nm[0] || "?")) + '</div>' +
+    '<b style="font-size:14px;">' + esc(nm) + '</b></div>';
+  var list = document.createElement("div");
+  list.style.cssText = "flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:200px;padding:6px 2px;";
+  body.appendChild(list);
+  var { data, error } = await sb.from("messages").select("*").or("and(sender_id.eq."+ME.id+",receiver_id.eq."+uid+"),and(sender_id.eq."+uid+",receiver_id.eq."+ME.id+")").order("created_at",{ascending:true}).limit(200);
+  if (!error && data && data.length) {
+    list.innerHTML = data.map(function (m) {
+      return '<div class="msg ' + (m.sender_id === ME.id ? "me" : "other") + '">' + esc(m.content) + '<div class="msg-time">' + fmt(m.created_at) + '</div></div>';
+    }).join("");
+    list.scrollTop = list.scrollHeight;
+  } else { list.innerHTML = '<div class="empty" style="padding:24px 0;">开始你们的对话吧 👋</div>'; }
+  var inp = document.createElement("div");
+  inp.className = "m-input";
+  inp.innerHTML = '<input id="msgIn" placeholder="输入消息，回车发送…" autocomplete="off"><button id="msgSend">发送</button>';
+  body.appendChild(inp);
+  var input = inp.querySelector("#msgIn"), send = inp.querySelector("#msgSend");
+  function doSend(){
+    var v = input.value.trim();
+    if (!v) return;
+    sb.from("messages").insert({ sender_id: ME.id, receiver_id: uid, content: v }).then(function (r) {
+      if (r.error) { toast("发送失败：" + (r.error.message || "")); return; }
+      var d = r.data && r.data[0] ? r.data[0] : { content: v, created_at: new Date().toISOString() };
+      list.insertAdjacentHTML("beforeend", '<div class="msg me">' + esc(v) + '<div class="msg-time">' + fmt(d.created_at) + '</div></div>');
+      input.value = ""; list.scrollTop = list.scrollHeight;
+    });
+  }
+  send.addEventListener("click", doSend);
+  input.addEventListener("keydown", function (e) { if (e.key === "Enter") doSend(); });
+}
+init();
+</script>
+</body>
+</html>
