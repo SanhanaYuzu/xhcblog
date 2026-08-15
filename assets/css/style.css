@@ -364,6 +364,15 @@ form .row{display:flex;gap:12px;align-items:center;}
 .login-hint a{color:var(--primary);text-decoration:underline;cursor:pointer;}
 .cdel{margin-left:auto;border:0;background:transparent;color:var(--text-3);font-size:12px;cursor:pointer;}
 .cdel:hover{color:#d23f3f;}
+/* 评论：回复 + 点赞 */
+.comment-item.rep{margin-left:52px;padding:10px 0;border-top:1px dashed var(--border-2);}
+.comment-item.rep .cava{width:30px;height:30px;font-size:13px;}
+.comment-item .cbtns{display:flex;gap:10px;margin-top:6px;align-items:center;}
+.cbtn{border:0;background:transparent;color:var(--text-3);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:6px;}
+.cbtn:hover{color:var(--primary);background:rgba(37,99,235,.08);}
+.cbtn.on{color:#e0245e;font-weight:600;}
+.cbtn.creply{color:var(--text-2);}
+.comment-item .ctext .cat{color:var(--primary);font-weight:600;}
 
 /* ---------------- 我的帖子 ---------------- */
 .mypost{display:flex;align-items:center;gap:12px;padding:16px 18px;margin-bottom:12px;}
