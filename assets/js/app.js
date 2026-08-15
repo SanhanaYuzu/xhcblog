@@ -1070,7 +1070,7 @@ document.body.appendChild(m);
             '<div style="font-weight:600;font-size:14px;color:#111827;">' + esc(row.client || "未知客户端") +
             (isWeb ? ' <span style="font-size:11px;color:#1a73e8;background:#e8f0fe;padding:1px 6px;border-radius:10px;font-weight:700;">当前设备</span>' : "") + '</div>' +
             '<div style="font-size:12px;color:#6b7280;margin-top:3px;">' + esc(provNames[row.provider] || row.provider || "密码") + ' · ' + esc(t) + '</div>' +
-            '<div style="font-size:12px;color:#9ca3af;margin-top:2px;word-break:break-all;">' + esc(row.region || "地区未知") + (row.ip ? " · IP " + esc(row.ip) : "") + '</div>' +
+            '<div style="font-size:12px;color:#9ca3af;margin-top:2px;word-break:break-all;">📡 设备 IP：' + esc(row.ip || "未知") + (row.region ? ' <span style="color:#cbd5e1;">(' + esc(row.region) + ")</span>" : "") + '</div>' +
             '</div>' +
             '<button type="button" data-sid="' + esc(row.id) + '" style="flex:none;border:none;background:#fef2f2;color:#dc2626;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">移除</button>' +
             '</div>';
