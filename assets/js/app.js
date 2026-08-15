@@ -25,6 +25,28 @@
     }
   } catch (e) {}
 
+  /* 动态加载敏感词检测脚本（全站任意页面生效，幂等） */
+  try {
+    if (!document.getElementById("xhc-sw-script")) {
+      var _sw = document.createElement("script");
+      _sw.id = "xhc-sw-script";
+      _sw.src = "assets/js/sensitive_words.js";
+      _sw.async = true;
+      document.head.appendChild(_sw);
+    }
+  } catch (e) {}
+
+  /* 敏感词检测工具：命中返回词数组，未命中返回 [] */
+  function swCheck(text) {
+    if (window.XHCSW) {
+      try { return window.XHCSW.check(text); } catch (e) {}
+    }
+    return [];
+  }
+  function swHint(hits) {
+    return "⛔ 内容包含敏感词：" + hits.slice(0, 6).join("、") + "，请修改后再发布";
+  }
+
   /* ---- OAuth 回跳检测（必须在 createClient 处理 URL 之前抓取）---- */
   function _oauthErr() {
     var e = getParam("error");
@@ -1025,7 +1047,7 @@ document.body.appendChild(m);
             item("📊", "我的统计", "stats.html") +
             item("📝", "我的草稿", null, "drafts") +
             item("🎁", "神秘按钮", null, "mystery") +
-            (isAdmin() ? sep() + item("🛡️", "管理员模式", null, "admin") + item("👥", "用户管理", "users.html") : "") +
+            (isAdmin() ? sep() + item("🛡️", "管理员模式", null, "admin") + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") : "") +
             item("📥", "导入示例", "seed.html") +
             sep() +
             '<a href="javascript:void(0)" data-act="logout" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;">' +
@@ -1057,6 +1079,12 @@ document.body.appendChild(m);
             }
           }
           else if (act === "mystery") { openMysteryBox(); }
+          else if (act === "sw-manage") {
+            requireAdminThen(function () {
+              if (window.XHCSW) window.XHCSW.manage(ADMIN_PASSWORD);
+              else toast("敏感词脚本未加载，请刷新页面", "warn");
+            });
+          }
           else if (act === "admin") { showAdminLogin(); }
         });
       });
@@ -1971,6 +1999,8 @@ document.body.appendChild(m);
     qs("#commentSubmit").addEventListener("click", function () {
       var ta = qs("#commentText"); var text = ta.value.trim();
       if (!text) { ta.focus(); return; }
+      var swHits = swCheck(text);
+      if (swHits.length) { toast(swHint(swHits), "warn"); ta.focus(); return; }
       Store.addComment(postId, text).then(function () {
         ta.value = ""; renderComments(postId, user);
         notifyAuthor(postId, "comment", text);
@@ -2160,6 +2190,10 @@ document.body.appendChild(m);
         })()
       };
       if (!data.title) { toast("请填写标题", "warn"); return; }
+      /* 敏感词检测：标题/摘要/标签/正文（正文自动转纯文本） */
+      var swRaw = [data.title, data.summary, (data.tags || []).join(" "), data.content].join(" ");
+      var swHits = swCheck(swRaw);
+      if (swHits.length) { toast(swHint(swHits), "warn"); return; }
       var btn = qs("#publishBtn"); btn.disabled = true;
       var task = editId ? Store.update(editId, data) : Store.create(data);
       Promise.resolve(task).then(function (res) {
