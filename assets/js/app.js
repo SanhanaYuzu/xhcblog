@@ -675,32 +675,12 @@
       });
       document.body.appendChild(mask);
     }
-    /* 顶部全局注入「🖥️ 在本地 XHC 浏览器打开」按钮（守护进程唤起） */
-    if (hc && !qs("#openLocalBtn")) {
+    /* 顶部全局注入「💬 私信」按钮（原「打开浏览器」按钮已替换为私信） */
+    if (hc && !qs("#openDmBtn")) {
       var lb = document.createElement("a");
-      lb.id = "openLocalBtn"; lb.className = "btn-home";
-      lb.href = "#"; lb.textContent = "🖥️ 打开浏览器";
-      lb.title = "在已安装的 XHC 浏览器中打开本页";
-      lb.addEventListener("click", async function (e) {
-        e.preventDefault();
-        if (window.top !== window) {
-          toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再点「打开浏览器」", "warn");
-          return;
-        }
-        var url = location.href;
-        // 优先：HTTP 守护（launcher --daemon 监听 127.0.0.1:45123）—— 浏览器不拦截
-        try {
-          var r = await fetch("http://127.0.0.1:45123/open", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: url })
-          });
-          var txt = await r.text();
-          if (txt.indexOf("opened:") === 0) { toast("已在 XHC 浏览器中打开"); return; }
-          showXhcNoInstalled("XHC 浏览器已安装但启动失败，请重跑安装程序修复后再试。");
-        } catch (e) { /* 守护没跑/端口不通 → 未安装或未启动 */ }
-        showXhcNoInstalled();
-      });
+      lb.id = "openDmBtn"; lb.className = "btn-home";
+      lb.href = "messages.html"; lb.textContent = "💬 私信";
+      lb.title = "进入私信";
       var slot = qs("#accountSlot", hc);
       if (slot) hc.insertBefore(lb, slot);
       else hc.appendChild(lb);
@@ -1816,6 +1796,15 @@ document.body.appendChild(m);
     var tagArr = Object.keys(tags);
     hot = hot.sort(function (a, b) { return (b.views || 0) - (a.views || 0); }).slice(0, 5);
 
+    /* 私信快捷卡（深蓝卡片样式，仿 .btn-home 风格） */
+    var dmCard = '<div class="card"><div class="card-h"><span class="bar"></span> 私信</div><div class="card-b" style="padding:0;">' +
+      '<a href="messages.html" id="sidebarDmBtn" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:#fff;border-radius:0 0 12px 12px;text-decoration:none;font-weight:600;position:relative;transition:opacity .15s;" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">' +
+      '<span style="font-size:22px;background:rgba(255,255,255,.18);width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;">💬</span>' +
+      '<span style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;">我的私信</div><div style="font-size:11px;opacity:.85;margin-top:2px;">查看 / 发起新对话</div></span>' +
+      '<span style="font-size:18px;opacity:.7;flex:none;">›</span>' +
+      '<span id="sidebarDmDot" style="display:none;position:absolute;top:8px;right:10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;line-height:1;box-sizing:border-box;">0</span>' +
+      '</a></div></div>';
+
     var author = '<div class="card author-card"><div class="card-h"><span class="bar"></span> 站长</div><div class="card-b">' +
       '<img class="ava" src="' + esc("assets/images/master-avatar.png") + '" alt="">' +
       '<div class="name">' + esc(SITE.author || "XHC") + "</div>" +
@@ -1834,9 +1823,27 @@ document.body.appendChild(m);
 
     var clockCard = '<div class="card" id="clockCard"><div class="card-h"><span class="bar"></span> 北京时间</div><div class="card-b" style="text-align:center;padding:14px 0;"><div id="bjClock" style="font-size:28px;font-weight:700;font-family:\'Courier New\',monospace;letter-spacing:2px;color:var(--primary,#2563eb);">--:--:--</div><div style="font-size:12px;color:var(--muted,#888);margin-top:4px;" id="bjDate">----/--/--</div></div></div>';
 
-    sbx.innerHTML = author + catCard + hotCard + tagCard + clockCard;
+    sbx.innerHTML = dmCard + author + catCard + hotCard + tagCard + clockCard;
     startBJClock();
+    updateSidebarDmDot();
   }
+
+  /* 侧栏私信卡片未读红点（未登录隐藏；登录后实时显示未读私信数） */
+  function updateSidebarDmDot() {
+    var dot = qs("#sidebarDmDot");
+    if (!dot || !sb) return;
+    sb.auth.getSession().then(function (sr) {
+      var sess = sr && sr.data && sr.data.session;
+      if (!sess) { dot.style.display = "none"; return; }
+      sb.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", sess.user.id).eq("read", false)
+        .then(function (r) {
+          var n = (r.count != null) ? r.count : 0;
+          dot.style.display = n > 0 ? "flex" : "none";
+          dot.textContent = n > 99 ? "99+" : String(n);
+        }).catch(function () { dot.style.display = "none"; });
+    }).catch(function () { dot.style.display = "none"; });
+  }
+  window.addEventListener("xhc:dmbadge", updateSidebarDmDot);
 
   /* 实时北京时间时钟（每秒更新） */
   function startBJClock() {
