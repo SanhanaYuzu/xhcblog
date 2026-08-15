@@ -982,46 +982,64 @@ document.body.appendChild(m);
     }
     if (!qs("#accountMenu")) {
       var menu = document.createElement("div");
-      menu.id = "accountMenu"; menu.className = "account-menu";
+      menu.id = "accountMenu";
+      menu.style.cssText = "display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:20px;";
+      function item(icon, label, href, act) {
+        var body = '<span style="font-size:18px;width:24px;text-align:center;flex:none;">' + icon + '</span>' +
+                   '<span style="flex:1;">' + label + '</span>' +
+                   '<span style="color:#cbd5e1;font-size:16px;">›</span>';
+        return act
+          ? '<a href="javascript:void(0)" data-act="' + act + '" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#111827;font-size:14px;font-weight:500;cursor:pointer;">' + body + '</a>'
+          : '<a href="' + href + '" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#111827;font-size:14px;font-weight:500;">' + body + '</a>';
+      }
+      function sep() { return '<div style="height:1px;background:rgba(0,0,0,.06);margin:6px 6px;"></div>'; }
       menu.innerHTML =
-        '<a href="editor.html">✏️ 写文章</a>' +
-        '<a href="myposts.html">📋 我的帖子</a>' +
-        '<a href="favs.html">⭐ 我的收藏</a>' +
-        '<div class="sep"></div>' +
-        '<a href="forum.html">💬 论坛</a>' +
-        '<a href="tools.html">🧰 工具箱</a>' +
-        '<a href="settings.html">⚙️ 设置</a>' +
-        '<a id="sessionsLink">🖥️ 登录设备</a>' +
-        '<a href="messages.html">💬 私信</a>' +
-        '<a href="stats.html">📊 我的统计</a>' +
-        '<a id="draftsLink">📝 我的草稿</a>' +
-        '<a id="mysteryBtn">🎁 神秘按钮</a>' +
-        '<div class="sep"></div>' +
-        '<a id="adminModeLink" style="color:var(--primary);font-weight:600;">🛡️ 管理员模式</a>' +
-        (isAdmin() ? '<a href="users.html">👥 用户管理</a>' : '') +
-        '<a href="seed.html">📥 导入示例</a>' +
-        '<div class="sep"></div>' +
-        '<a id="logoutLink" class="danger">🚪 注销登录</a>';
+        '<div onclick="event.stopPropagation()" style="width:380px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.3);">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);flex:none;">' +
+            '<span style="font-weight:700;font-size:15px;color:#111827;">👤 我的账户</span>' +
+            '<button type="button" id="accountMenuClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1;padding:4px 10px;border-radius:6px;">×</button>' +
+          '</div>' +
+          '<div style="overflow-y:auto;padding:8px 8px;flex:1;background:#f8fafc;" onclick="event.stopPropagation()">' +
+            item("✏️", "写文章", "editor.html") +
+            item("📋", "我的帖子", "myposts.html") +
+            item("⭐", "我的收藏", "favs.html") +
+            sep() +
+            item("💬", "论坛", "forum.html") +
+            item("🧰", "工具箱", "tools.html") +
+            item("⚙️", "设置", "settings.html") +
+            item("🖥️", "登录设备", null, "sessions") +
+            item("💬", "私信", "messages.html") +
+            item("📊", "我的统计", "stats.html") +
+            item("📝", "我的草稿", null, "drafts") +
+            item("🎁", "神秘按钮", null, "mystery") +
+            (isAdmin() ? sep() + item("🛡️", "管理员模式", null, "admin") + item("👥", "用户管理", "users.html") : "") +
+            item("📥", "导入示例", "seed.html") +
+            sep() +
+            '<a href="javascript:void(0)" data-act="logout" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;">' +
+              '<span style="font-size:18px;width:24px;text-align:center;flex:none;">🚪</span><span style="flex:1;">注销登录</span>' +
+            '</a>' +
+          '</div>' +
+        '</div>';
       document.body.appendChild(menu);
-      qs("#logoutLink").addEventListener("click", function () {
-        Store.signOut().then(function () { toast("已注销"); menu.classList.remove("open"); });
+      /* × 关闭 */
+      qs("#accountMenuClose").addEventListener("click", function () { menu.style.display = "none"; });
+      /* 内部动作路由 */
+      qsa("[data-act]", menu).forEach(function (el) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          var act = el.getAttribute("data-act");
+          menu.style.display = "none";
+          if (act === "logout") { Store.signOut().then(function () { toast("已注销"); }); }
+          else if (act === "sessions") { openSessionsPanel(); }
+          else if (act === "drafts") { openDraftsPanel(); }
+          else if (act === "mystery") { openMysteryBox(); }
+          else if (act === "admin") { showAdminLogin(); }
+        });
       });
-      qs("#adminModeLink").addEventListener("click", function () {
-        menu.classList.remove("open");
-        showAdminLogin();
-      });
-      qs("#mysteryBtn").addEventListener("click", function () {
-        menu.classList.remove("open");
-        openMysteryBox();
-      });
-      qs("#sessionsLink").addEventListener("click", function () {
-        menu.classList.remove("open");
-        openSessionsPanel();
-      });
-      qs("#draftsLink").addEventListener("click", function () {
-        menu.classList.remove("open");
-        openDraftsPanel();
-      });
+      /* 点击遮罩关闭 */
+      menu.addEventListener("click", function (e) { if (e.target === menu) menu.style.display = "none"; });
+      /* ESC 关闭 */
+      document.addEventListener("keydown", function accEsc(e) { if (e.key === "Escape" && menu.style.display !== "none") menu.style.display = "none"; });
     }
   }
 
@@ -1619,11 +1637,10 @@ document.body.appendChild(m);
       '<span class="caret">▾</span></div>';
     var box = qs(".account", slot);
     var menu = qs("#accountMenu");
-    box.addEventListener("click", function (e) {
+    if (box) box.addEventListener("click", function (e) {
       e.stopPropagation();
-      menu.classList.toggle("open");
+      menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
     });
-    document.addEventListener("click", function () { menu.classList.remove("open"); });
   }
 
   /* 作者资料卡（点击作者打开：资料 + 统计 + 发私信） */
