@@ -87,12 +87,8 @@
     var sr = await sb.auth.getSession().catch(function () { return { data: { session: null } }; });
     var sess = sr && sr.data && sr.data.session;
     if (!sess) {
-      var ret = encodeURIComponent(location.href);
-      show('<div class="logo">🔑</div><h1>请先登录 XHC 博客</h1>' +
-        '<div class="sub">登录后才能继续授权给第三方应用</div>' +
-        '<a class="btn-link" href="/index.html?redirect=' + ret + '">前往 XHC 博客登录</a>' +
-        '<button type="button" class="approve" onclick="location.reload()">登录完成后刷新重试</button>' +
-        '<div class="hint">登录完成后回到本页会自动继续授权流程</div>');
+      /* 未登录 → 自动跳转独立登录页，登录成功后自动回本页继续授权 */
+      location.href = "/oauth/login.html?redirect=" + encodeURIComponent(location.href);
       return;
     }
 
