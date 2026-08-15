@@ -2000,7 +2000,10 @@ document.body.appendChild(m);
       var ta = qs("#commentText"); var text = ta.value.trim();
       if (!text) { ta.focus(); return; }
       var swHits = swCheck(text);
-      if (swHits.length) { toast(swHint(swHits), "warn"); ta.focus(); return; }
+      if (swHits.length) {
+        if (window.XHCSW && window.XHCSW.report) { try { window.XHCSW.report(swHits, "评论", text); } catch (e) {} }
+        toast(swHint(swHits), "warn"); ta.focus(); return;
+      }
       Store.addComment(postId, text).then(function () {
         ta.value = ""; renderComments(postId, user);
         notifyAuthor(postId, "comment", text);
@@ -2193,7 +2196,10 @@ document.body.appendChild(m);
       /* 敏感词检测：标题/摘要/标签/正文（正文自动转纯文本） */
       var swRaw = [data.title, data.summary, (data.tags || []).join(" "), data.content].join(" ");
       var swHits = swCheck(swRaw);
-      if (swHits.length) { toast(swHint(swHits), "warn"); return; }
+      if (swHits.length) {
+        if (window.XHCSW && window.XHCSW.report) { try { window.XHCSW.report(swHits, "文章发布", data.title + " " + data.summary); } catch (e) {} }
+        toast(swHint(swHits), "warn"); return;
+      }
       var btn = qs("#publishBtn"); btn.disabled = true;
       var task = editId ? Store.update(editId, data) : Store.create(data);
       Promise.resolve(task).then(function (res) {
