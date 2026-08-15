@@ -674,14 +674,10 @@
         '<div class="more-area" id="moreArea">' +
         '<div class="otp-box">' +
         '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
-        '<div class="otp-row">' +
-        '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false">' +
-        '<button type="button" class="btn btn-otp" id="otpSend">发送验证码</button>' +
-        '</div>' +
-        '<div class="otp-row">' +
-        '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code">' +
+        '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
+        '<button type="button" class="btn btn-otp" id="otpSend" style="width:100%;margin-bottom:10px">发送验证码</button>' +
+        '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
         '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
-        '</div>' +
         '<div class="otp-hint" id="otpHint">新用户输入邮箱，验证通过即自动注册账号</div>' +
         '</div>' +
         '</div>' +
@@ -702,7 +698,7 @@ document.body.appendChild(m);
           ".otp-row input{flex:1 1 auto;min-width:0}" +
           ".otp-row button{flex:0 0 auto;flex-shrink:0;width:auto}" +
           ".otp-sel{flex:1;height:38px;border:1px solid #d8dee6;border-radius:8px;padding:0 10px;font-size:14px;background:#fff;color:#2b3440;outline:none}" +
-          ".btn-otp{flex:none;background:#10b981;color:#fff;border:none;border-radius:8px;padding:0 12px;height:38px;cursor:pointer;font-size:13px;white-space:nowrap}" +
+          ".btn-otp{background:#10b981;color:#fff;border:none;border-radius:8px;padding:11px;height:auto;cursor:pointer;font-size:14px;white-space:nowrap}" +
           ".btn-otp:disabled{opacity:.6;cursor:default}" +
           ".otp-hint{font-size:12px;color:#8c959f;margin:2px 0 4px}" +
           ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
