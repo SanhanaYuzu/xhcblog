@@ -76,8 +76,20 @@
     sb.rpc("xhc_admin_word", { op: op, word: word, key: key || "" }).then(function (r) {
       if (r.error) { cb(false, r.error.message || "RPC 错误"); return; }
       var d = r.data || {};
-      if (d.ok) cb(true); else cb(false, d.error === "auth" ? "鉴权失败" : (d.error || "失败"));
+      if (d.ok) cb(true, d); else cb(false, d.error === "auth" ? "鉴权失败" : (d.error || "失败"));
     }).catch(function (e) { cb(false, (e && e.message) || "网络错误"); });
+  }
+
+  /* 上报敏感词拦截（通知管理员，静默失败） */
+  function report(hits, source, content) {
+    if (!sb || !hits || !hits.length) return;
+    try {
+      sb.rpc("xhc_report_sensitive", {
+        content: String(content == null ? "" : content).slice(0, 100),
+        source: String(source || "未知"),
+        word: hits.slice(0, 6).join("、")
+      }).then(function () {}).catch(function () {});
+    } catch (e) {}
   }
 
   /* 管理员词库管理面板 */
@@ -110,7 +122,17 @@
         '<button id="swAdd" style="border:none;background:#1a73e8;color:#fff;padding:0 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">添加</button>' +
         '</div>' +
         '<div style="font-size:12px;color:#9ca3af;margin-bottom:10px;">当前词库 ' + (BUILTIN.length + EXTRA.length) + ' 词 · 命中后发文章 / 评论 / 私信将被拦截并提示</div>' +
-        '<div id="swList"></div>';
+        '<div id="swList"></div>' +
+        '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;">' +
+        '<div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:4px;">🔔 拦截通知管理员</div>' +
+        '<div style="font-size:12px;color:#9ca3af;margin-bottom:8px;">配置后，每次有人发布内容被敏感词拦截，都会给你发一条站内通知（铃铛红点可见）。</div>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<input id="swAdminUid" placeholder="管理员账号 ID（UUID）" style="flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:10px;outline:none;font-size:12px;background:#fff;color:#111827;">' +
+        '<button id="swAdminMe" style="border:none;background:#f1f5f9;color:#111827;padding:0 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;flex:none;">用当前账号</button>' +
+        '<button id="swAdminSave" style="border:none;background:#16a34a;color:#fff;padding:0 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;flex:none;">保存</button>' +
+        '</div>' +
+        '<div id="swAdminState" style="font-size:12px;margin-top:8px;color:#9ca3af;">状态：查询中…</div>' +
+        '</div>';
       var list = document.getElementById("swList");
       var rows = [];
       EXTRA.forEach(function (w) { rows.push({ w: w, builtin: false }); });
@@ -152,10 +174,38 @@
       }
       addBtn.addEventListener("click", add);
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") add(); });
+
+      /* 管理员通知设置：查询当前配置 */
+      var stEl = document.getElementById("swAdminState");
+      var uidEl = document.getElementById("swAdminUid");
+      callRpc("get_admin", "", adminKey, function (ok, d) {
+        if (ok && d && d.uid) {
+          uidEl.value = d.uid;
+          if (stEl) { stEl.textContent = "状态：✅ 已配置，拦截将通知管理员账号（" + d.uid.slice(0, 8) + "…）"; stEl.style.color = "#16a34a"; }
+        } else if (stEl) { stEl.textContent = "状态：未配置（拦截时不会通知管理员）"; }
+      });
+      document.getElementById("swAdminMe").addEventListener("click", function () {
+        if (!sb) { toast("数据库未连接", "warn"); return; }
+        sb.auth.getUser().then(function (r) {
+          var u = r && r.data && r.data.user;
+          if (u) { uidEl.value = u.id; toast("已填入当前登录账号 ID"); }
+          else toast("请先登录", "warn");
+        }).catch(function () { toast("获取账号失败", "warn"); });
+      });
+      document.getElementById("swAdminSave").addEventListener("click", function () {
+        var uid = (uidEl.value || "").trim();
+        if (!uid) { toast("请输入管理员账号 ID", "warn"); return; }
+        callRpc("set_admin", uid, adminKey, function (ok, d) {
+          if (ok) {
+            if (stEl) { stEl.textContent = "状态：✅ 已配置，拦截将通知管理员账号（" + uid.slice(0, 8) + "…）"; stEl.style.color = "#16a34a"; }
+            toast("已保存，拦截通知将发送给该账号");
+          } else toast("保存失败：" + (d && d.error ? (d.error === "auth" ? "鉴权失败" : d.error) : ""), "warn");
+        });
+      });
     }
   }
 
-  window.XHCSW = { check: check, plain: plainText, load: loadRemote, manage: manage, words: allWords };
+  window.XHCSW = { check: check, plain: plainText, load: loadRemote, manage: manage, words: allWords, report: report };
 
   if (document.readyState === "complete") loadRemote();
   else window.addEventListener("load", function () { loadRemote(); });
