@@ -624,20 +624,32 @@
       lb.id = "openLocalBtn"; lb.className = "btn-home";
       lb.href = "#"; lb.textContent = "🖥️ 本地打开";
       lb.title = "在已安装的 XHC 浏览器中打开本页";
-      lb.addEventListener("click", function (e) {
+      lb.addEventListener("click", async function (e) {
         e.preventDefault();
         if (window.top !== window) {
           toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再点「本地打开」", "warn");
           return;
         }
-        // 优先用 <a> 标签模拟用户点击（Chromium 对自定义协议的可靠触发方式）
-        var a = document.createElement("a");
-        a.href = "xhc://open?url=" + encodeURIComponent(location.href);
-        a.style.display = "none";
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function(){ try{ document.body.removeChild(a); }catch(e){} }, 200);
+        var url = location.href;
+        // 优先：HTTP 守护（launcher --daemon 监听 127.0.0.1:45123）—— 浏览器不拦截
+        try {
+          var r = await fetch("http://127.0.0.1:45123/open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url })
+          });
+          if (r.ok) { toast("已在 XHC 浏览器中打开"); return; }
+        } catch (e) { /* 守护没跑/端口不通 → fallback 协议 */ }
+        // fallback：协议（可能仍被 Chromium 拦截）
+        try {
+          var a = document.createElement("a");
+          a.href = "xhc://open?url=" + encodeURIComponent(url);
+          a.style.display = "none"; a.rel = "noopener";
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ try{ document.body.removeChild(a); }catch(e){} }, 200);
+        } catch (err) {
+          toast("守护未运行且协议被浏览器拦截。请重跑安装程序启动守护后重试", "warn");
+        }
       });
       var slot = qs("#accountSlot", hc);
       if (slot) hc.insertBefore(lb, slot);
