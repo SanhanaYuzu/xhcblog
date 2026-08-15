@@ -52,6 +52,16 @@
           <input id="postTags" type="text" placeholder="Windows, 教程">
         </div>
       </div>
+      <div class="row">
+        <div style="flex:1">
+          <label>定时发布（可选，留空=立即发布）</label>
+          <input id="postSchedule" type="datetime-local" title="到点自动上架，未到时间列表不显示">
+        </div>
+        <div style="flex:1">
+          <label>系列 / 合集（可选）</label>
+          <input id="postSeries" type="text" placeholder="如：Windows 使用教程">
+        </div>
+      </div>
       <label>封面（图片或 emoji/文字）</label>
       <div class="cover-upload" style="display:flex;gap:12px;align-items:center;">
         <input id="postCover" type="text" placeholder="🪟 或粘贴图片 URL">
