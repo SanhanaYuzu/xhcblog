@@ -84,10 +84,8 @@ img{max-width:100%;display:block;}
 .header .btn-pill{background:var(--primary-soft);color:var(--primary);border-radius:20px;}
 .header .btn-pill:hover{background:var(--primary);color:#fff;}
 .header .btn-home:hover{background:var(--primary-dark);}
-/* 顶栏第一组按钮整体右推 */
-.search ~ .btn-home:first-of-type,.search ~ .btn-pill:first-of-type{margin-left:auto;}
-/* 把右侧按钮群整体推到右边：在第一个按钮上加 margin-left:auto */
-.search ~ .btn-home:first-of-type{margin-left:auto;}
+/* 顶栏：搜索框自身 margin-left:auto 已把搜索+按钮整体右推；按钮之间只加 6px 间距，不再用 :first-of-type（会误匹配 openLocalBtn 等） */
+.search ~ .btn-home,.search ~ .btn-pill{margin-left:6px;}
 
 /* ---------------- 布局 ---------------- */
 .layout{display:flex;gap:24px;align-items:flex-start;padding:24px 0 48px;}
