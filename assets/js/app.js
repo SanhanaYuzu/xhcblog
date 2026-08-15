@@ -626,6 +626,10 @@
       lb.title = "在已安装的 XHC 浏览器中打开本页";
       lb.addEventListener("click", function (e) {
         e.preventDefault();
+        if (window.top !== window) {
+          toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再点「本地打开」", "warn");
+          return;
+        }
         try { location.href = "xhc://open?url=" + encodeURIComponent(location.href); }
         catch (err) { toast("请先安装 XHC 浏览器（xhc:// 协议）", "warn"); }
       });
