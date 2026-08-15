@@ -1023,6 +1023,7 @@ document.body.appendChild(m);
       });
     }
     /* 账户菜单：构建（可重建）。管理员专有面板默认隐藏，连点标题 5 次验证后显示 */
+    var adminModeOn = false; /* 会话级：本次会话是否打开了管理员模式 */
     function buildAccountMenu() {
       var menu = document.createElement("div");
       menu.id = "accountMenu";
@@ -1060,7 +1061,7 @@ document.body.appendChild(m);
             item("📊", "我的统计", "stats.html") +
             item("📝", "我的草稿", null, "drafts") +
             item("🎁", "神秘按钮", null, "mystery") +
-            (isAdmin() ? sep() + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") : "") +
+            (adminModeOn ? sep() + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") + item("🔓", "退出管理员模式", null, "admin-off") : "") +
             item("📥", "导入示例", "seed.html") +
             sep() +
             '<a href="javascript:void(0)" data-act="logout" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;">' +
@@ -1102,6 +1103,13 @@ document.body.appendChild(m);
             });
           }
           else if (act === "admin") { showAdminLogin(); }
+          else if (act === "admin-off") {
+            adminModeOn = false;
+            var old = qs("#accountMenu");
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            buildAccountMenu();
+            toast("已退出管理员模式（本次会话）");
+          }
         });
       });
       /* 点击遮罩关闭 */
@@ -1119,6 +1127,7 @@ document.body.appendChild(m);
           if (clicks >= 5) {
             clicks = 0;
             showAdminLogin(function () {
+              adminModeOn = true;
               var old = qs("#accountMenu");
               if (old && old.parentNode) old.parentNode.removeChild(old);
               buildAccountMenu();
@@ -1594,6 +1603,7 @@ document.body.appendChild(m);
     if (!m) {
       m = document.createElement("div");
       m.id = "adminModal"; m.className = "modal-mask";
+      m.style.zIndex = "10001"; /* 高于账户菜单 9998 */
       m.innerHTML =
         '<div class="modal" style="max-width:380px;">' +
         '<h3 style="margin-top:0;">🛡️ 管理员模式</h3>' +
