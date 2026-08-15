@@ -607,7 +607,7 @@
     var hc = qs(".header .container");
     if (hc && !qs("#forumNavLink")) {
       var fl = document.createElement("a");
-      fl.id = "forumNavLink"; fl.className = "btn-home"; fl.href = "forum.html";
+      fl.id = "forumNavLink"; fl.className = "btn-pill"; fl.href = "forum.html";
       fl.textContent = "💬 论坛";
       var home = qs(".btn-home", hc);
       if (home) home.parentNode.insertBefore(fl, home.nextSibling);
