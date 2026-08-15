@@ -14,6 +14,17 @@
   const PER_PAGE = 5;
   const LS = "xhc_demo_";
 
+  /* 动态加载私信桌面提醒脚本（全站任意页面生效，幂等） */
+  try {
+    if (!document.getElementById("xhc-dm-notify-script")) {
+      var _dm = document.createElement("script");
+      _dm.id = "xhc-dm-notify-script";
+      _dm.src = "assets/js/dm_notify.js";
+      _dm.async = true;
+      document.head.appendChild(_dm);
+    }
+  } catch (e) {}
+
   /* ---- OAuth 回跳检测（必须在 createClient 处理 URL 之前抓取）---- */
   function _oauthErr() {
     var e = getParam("error");
@@ -1009,6 +1020,7 @@ document.body.appendChild(m);
             item("⚙️", "设置", "settings.html") +
             item("ℹ️", "关于本站", "about.html") +
             item("🖥️", "登录设备", null, "sessions") +
+            item("🔔", "桌面提醒", null, "desktop-notify") +
             item("💬", "私信", "messages.html") +
             item("📊", "我的统计", "stats.html") +
             item("📝", "我的草稿", null, "drafts") +
@@ -1033,6 +1045,17 @@ document.body.appendChild(m);
           if (act === "logout") { Store.signOut().then(function () { toast("已注销"); }); }
           else if (act === "sessions") { openSessionsPanel(); }
           else if (act === "drafts") { openDraftsPanel(); }
+          else if (act === "desktop-notify") {
+            if (window.XHCDM) {
+              window.XHCDM.ask().then(function (ok) {
+                if (ok) toast("✅ 已开启桌面提醒，收到私信会弹系统通知");
+                else if (!window.XHCDM.supported()) toast("当前浏览器不支持桌面通知");
+                else toast("⚠️ 通知权限被拒绝，请在浏览器设置中允许本站通知");
+              });
+            } else {
+              toast("桌面提醒脚本未加载，请刷新页面");
+            }
+          }
           else if (act === "mystery") { openMysteryBox(); }
           else if (act === "admin") { showAdminLogin(); }
         });
@@ -1062,7 +1085,7 @@ document.body.appendChild(m);
     } catch (e) {}
   }
 
-  /* 通知铃铛：注入 + 下拉 + 未读数 */
+  /* 通知铃铛：注入 + 下拉 + 未读数（通知 + 私信未读合并） */
   function bellUnreadCount() {
     try {
       sb.auth.getSession().then(function (sr) {
@@ -1071,14 +1094,18 @@ document.body.appendChild(m);
         if (!b) return;
         var dot = qs("#notifDot", b);
         if (!sess) { if (dot) dot.style.display = "none"; return; }
-        sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", sess.user.id).eq("read", false)
-          .then(function (r) {
-            var n = (r.count != null) ? r.count : 0;
-            if (dot) { dot.style.display = n > 0 ? "flex" : "none"; dot.textContent = n > 99 ? "99+" : String(n); }
-          }).catch(function () {});
+        var p1 = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", sess.user.id).eq("read", false);
+        var p2 = sb.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", sess.user.id).eq("read", false);
+        Promise.all([p1, p2]).then(function (rs) {
+          var n = 0;
+          rs.forEach(function (r) { if (!r.error && r.count != null) n += r.count; });
+          if (dot) { dot.style.display = n > 0 ? "flex" : "none"; dot.textContent = n > 99 ? "99+" : String(n); }
+        }).catch(function () {});
       }).catch(function () {});
     } catch (e) {}
   }
+  /* 新私信到达（dm_notify.js 广播）→ 刷新红点 */
+  window.addEventListener("xhc:dmbadge", bellUnreadCount);
   function openNotifPanel() {
     var id = "notifPanel";
     if (qs("#" + id)) { qs("#" + id).style.display = "flex"; return; }
