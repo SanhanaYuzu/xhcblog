@@ -675,6 +675,25 @@
       });
       document.body.appendChild(mask);
     }
+    /* 唤起本机 XHC 浏览器（账户菜单「打开浏览器」入口共用逻辑） */
+    async function openXhcLocal() {
+      if (window.top !== window) {
+        toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再试", "warn");
+        return;
+      }
+      var url = location.href;
+      try {
+        var r = await fetch("http://127.0.0.1:45123/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url })
+        });
+        var txt = await r.text();
+        if (txt.indexOf("opened:") === 0) { toast("已在 XHC 浏览器中打开"); return; }
+        showXhcNoInstalled("XHC 浏览器已安装但启动失败，请重跑安装程序修复后再试。");
+      } catch (e) { /* 守护没跑/端口不通 → 未安装或未启动 */ }
+      showXhcNoInstalled();
+    }
     /* 顶部全局注入「💬 私信」按钮（原「打开浏览器」按钮已替换为私信） */
     if (hc && !qs("#openDmBtn")) {
       var lb = document.createElement("a");
@@ -1022,6 +1041,7 @@ document.body.appendChild(m);
             item("⚙️", "设置", "settings.html") +
             item("ℹ️", "关于本站", "about.html") +
             item("🖥️", "登录设备", null, "sessions") +
+            item("🖥️", "打开浏览器", null, "open-browser") +
             item("🔔", "桌面提醒", null, "desktop-notify") +
             item("💬", "私信", "messages.html") +
             item("📊", "我的统计", "stats.html") +
@@ -1046,6 +1066,7 @@ document.body.appendChild(m);
           menu.style.display = "none";
           if (act === "logout") { Store.signOut().then(function () { toast("已注销"); }); }
           else if (act === "sessions") { openSessionsPanel(); }
+          else if (act === "open-browser") { openXhcLocal(); }
           else if (act === "drafts") { openDraftsPanel(); }
           else if (act === "desktop-notify") {
             if (window.XHCDM) {
