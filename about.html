@@ -71,25 +71,7 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/changelog.js"></script>
 <script src="assets/js/app.js"></script>
-<script>
-  /* 渲染更新日志 */
-  document.addEventListener("DOMContentLoaded", function () {
-    var list = document.getElementById("clList");
-    if (!list) return;
-    var logs = (window.XHC_CHANGELOG || []);
-    if (!logs.length) { list.innerHTML = '<div class="cl-item">暂无日志</div>'; return; }
-    list.innerHTML = logs.map(function (g) {
-      return '<div class="cl-item">' +
-        '<div class="cl-head"><span class="cl-date">' + esc(g.date || "") + '</span>' +
-        (g.version ? '<span class="cl-ver">' + esc(g.version) + '</span>' : '') + '</div>' +
-        '<ul>' + (g.items || []).map(function (it) { return '<li>' + it + '</li>'; }).join("") + '</ul>' +
-        '</div>';
-    }).join("");
-  });
-  /* 页脚年份 */
-  var y = document.getElementById("year");
-  if (y) y.textContent = new Date().getFullYear();
-</script>
+<script src="assets/js/about.js"></script>
 
 <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
 </body>
