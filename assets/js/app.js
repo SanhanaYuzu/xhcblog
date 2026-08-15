@@ -676,7 +676,7 @@
         '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
         '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
         '<button type="button" class="btn btn-otp" id="otpSend" style="width:100%;margin-bottom:10px">发送验证码</button>' +
-        '<input id="otpCode" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
+        '<input id="otpCode" type="text" placeholder="8 位验证码" inputmode="numeric" maxlength="8" autocomplete="one-time-code" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
         '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
         '<div class="otp-hint" id="otpHint">新用户输入邮箱，验证通过即自动注册账号</div>' +
         '</div>' +
