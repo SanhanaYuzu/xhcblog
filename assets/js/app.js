@@ -1022,7 +1022,8 @@ document.body.appendChild(m);
         });
       });
     }
-    if (!qs("#accountMenu")) {
+    /* 账户菜单：构建（可重建）。管理员专有面板默认隐藏，连点标题 5 次验证后显示 */
+    function buildAccountMenu() {
       var menu = document.createElement("div");
       menu.id = "accountMenu";
       menu.style.cssText = "display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:20px;";
@@ -1038,7 +1039,7 @@ document.body.appendChild(m);
       menu.innerHTML =
         '<div onclick="event.stopPropagation()" style="width:380px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.3);">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);flex:none;">' +
-            '<span style="font-weight:700;font-size:15px;color:#111827;">👤 我的账户</span>' +
+            '<span style="font-weight:700;font-size:15px;color:#111827;cursor:default;user-select:none;" id="acctMenuTitle" title="连点 5 次打开管理员模式">👤 我的账户</span>' +
             '<button type="button" id="accountMenuClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1;padding:4px 10px;border-radius:6px;">×</button>' +
           '</div>' +
           '<div style="overflow-y:auto;padding:8px 8px;flex:1;background:#f8fafc;" onclick="event.stopPropagation()">' +
@@ -1059,7 +1060,7 @@ document.body.appendChild(m);
             item("📊", "我的统计", "stats.html") +
             item("📝", "我的草稿", null, "drafts") +
             item("🎁", "神秘按钮", null, "mystery") +
-            (isAdmin() ? sep() + item("🛡️", "管理员模式", null, "admin") + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") : "") +
+            (isAdmin() ? sep() + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") : "") +
             item("📥", "导入示例", "seed.html") +
             sep() +
             '<a href="javascript:void(0)" data-act="logout" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;">' +
@@ -1107,7 +1108,30 @@ document.body.appendChild(m);
       menu.addEventListener("click", function (e) { if (e.target === menu) menu.style.display = "none"; });
       /* ESC 关闭 */
       document.addEventListener("keydown", function accEsc(e) { if (e.key === "Escape" && menu.style.display !== "none") menu.style.display = "none"; });
+      /* 连点标题 5 次 → 管理员登录（隐藏入口） */
+      var acTitle = qs("#acctMenuTitle", menu);
+      if (acTitle) {
+        var clicks = 0, lastClick = 0;
+        acTitle.addEventListener("click", function () {
+          var now = Date.now();
+          if (now - lastClick > 900) clicks = 0;
+          lastClick = now; clicks++;
+          if (clicks >= 5) {
+            clicks = 0;
+            showAdminLogin(function () {
+              var old = qs("#accountMenu");
+              if (old && old.parentNode) old.parentNode.removeChild(old);
+              buildAccountMenu();
+              var m2 = qs("#accountMenu");
+              if (m2) m2.style.display = "flex";
+              toast("🛡️ 管理员模式已开启");
+            });
+          }
+        });
+      }
+      return menu;
     }
+    if (!qs("#accountMenu")) buildAccountMenu();
   }
 
   /* 通知：点赞/收藏/评论时通知文章作者 */
@@ -1782,10 +1806,11 @@ document.body.appendChild(m);
       '<img class="account-ava" src="' + esc(av) + '" alt=""><span class="account-name">' + esc(name) + '</span>' +
       '<span class="caret">▾</span></div>';
     var box = qs(".account", slot);
-    var menu = qs("#accountMenu");
     if (box) box.addEventListener("click", function (e) {
       e.stopPropagation();
-      menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
+      var m = qs("#accountMenu");
+      if (!m) { buildAccountMenu(); m = qs("#accountMenu"); }
+      if (m) m.style.display = (m.style.display === "flex") ? "none" : "flex";
     });
   }
 
