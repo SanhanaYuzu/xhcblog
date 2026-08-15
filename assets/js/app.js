@@ -672,6 +672,18 @@
       if (slot) hc.insertBefore(lb, slot);
       else hc.appendChild(lb);
     }
+    /* 顶部全局注入「🔔 通知铃铛」（登录后可见，未读红点） */
+    if (hc && !qs("#notifBell")) {
+      var nb = document.createElement("button");
+      nb.id = "notifBell"; nb.type = "button"; nb.className = "btn-home";
+      nb.style.cssText = "position:relative;font-size:15px;line-height:1;";
+      nb.innerHTML = "🔔<span id=\"notifDot\" style=\"display:none;position:absolute;top:-2px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;box-sizing:border-box;\">0</span>";
+      nb.title = "消息通知";
+      var nslot = qs("#accountSlot", hc);
+      if (nslot) hc.insertBefore(nb, nslot);
+      else hc.appendChild(nb);
+      nb.addEventListener("click", openNotifPanel);
+    }
     /* 把「返回主站」和「💬 论坛」移到主题切换按钮的右侧（紧挨着），最终顺序：search | 🌙 | 返回主站 | 论坛 | 登录/注册 */
     var toggle = qs("#themeToggle", hc);
     var home = qs(".btn-home:not(#forumNavLink):not(#themeToggle)", hc);
@@ -980,6 +992,9 @@ document.body.appendChild(m);
         '<a href="tools.html">🧰 工具箱</a>' +
         '<a href="settings.html">⚙️ 设置</a>' +
         '<a id="sessionsLink">🖥️ 登录设备</a>' +
+        '<a href="messages.html">💬 私信</a>' +
+        '<a href="stats.html">📊 我的统计</a>' +
+        '<a id="draftsLink">📝 我的草稿</a>' +
         '<a id="mysteryBtn">🎁 神秘按钮</a>' +
         '<div class="sep"></div>' +
         '<a id="adminModeLink" style="color:var(--primary);font-weight:600;">🛡️ 管理员模式</a>' +
@@ -1003,7 +1018,102 @@ document.body.appendChild(m);
         menu.classList.remove("open");
         openSessionsPanel();
       });
+      qs("#draftsLink").addEventListener("click", function () {
+        menu.classList.remove("open");
+        openDraftsPanel();
+      });
     }
+  }
+
+  /* 通知：点赞/收藏/评论时通知文章作者 */
+  async function notifyAuthor(postId, type, extra) {
+    try {
+      var me = await sb.auth.getUser();
+      if (!me || !me.data || !me.data.user) return;
+      var pr = await sb.from("posts").select("user_id, title").eq("id", postId).single();
+      if (pr.error || !pr.data || !pr.data.user_id) return;
+      if (pr.data.user_id === me.data.user.id) return;
+      var t = (pr.data.title || "").slice(0, 30);
+      var content = "";
+      if (type === "like") content = "👍 赞了你的文章《" + t + "》";
+      else if (type === "favorite") content = "⭐ 收藏了你的文章《" + t + "》";
+      else if (type === "comment") content = "💬 评论了你的文章《" + t + "》：" + (extra || "").slice(0, 40);
+      if (!content) return;
+      await sb.from("notifications").insert({ user_id: pr.data.user_id, actor_id: me.data.user.id, post_id: postId, type: type, content: content });
+    } catch (e) {}
+  }
+
+  /* 通知铃铛：注入 + 下拉 + 未读数 */
+  function bellUnreadCount() {
+    try {
+      sb.auth.getSession().then(function (sr) {
+        var sess = sr && sr.data && sr.data.session;
+        var b = qs("#notifBell");
+        if (!b) return;
+        var dot = qs("#notifDot", b);
+        if (!sess) { if (dot) dot.style.display = "none"; return; }
+        sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", sess.user.id).eq("read", false)
+          .then(function (r) {
+            var n = (r.count != null) ? r.count : 0;
+            if (dot) { dot.style.display = n > 0 ? "flex" : "none"; dot.textContent = n > 99 ? "99+" : String(n); }
+          }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function openNotifPanel() {
+    var id = "notifPanel";
+    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; return; }
+    var panel = document.createElement("div");
+    panel.id = id;
+    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px";
+    panel.innerHTML =
+      '<div style="position:relative;width:480px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
+      '<span style="font-weight:700;color:#111827;font-size:15px;">🔔 消息通知</span>' +
+      '<span style="display:flex;gap:8px;align-items:center;">' +
+      '<button type="button" id="notifReadAll" style="border:none;background:#e8f0fe;color:#1a73e8;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">全部已读</button>' +
+      '<button type="button" id="notifClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;">×</button>' +
+      '</span></div>' +
+      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;" id="notifBody">加载中…</div></div>';
+    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
+    panel.querySelector("#notifClose").addEventListener("click", function () { panel.style.display = "none"; });
+    panel.querySelector("#notifReadAll").addEventListener("click", function () {
+      sb.auth.getSession().then(function (sr) {
+        var sess = sr && sr.data && sr.data.session;
+        if (!sess) return;
+        sb.from("notifications").update({ read: true }).eq("user_id", sess.user.id).eq("read", false)
+          .then(function () { loadNotif(); bellUnreadCount(); toast("已全部标记为已读"); });
+      });
+    });
+    document.body.appendChild(panel);
+    loadNotif();
+  }
+  function loadNotif() {
+    var body = qs("#notifBody");
+    if (!body) return;
+    body.innerHTML = "加载中…";
+    sb.auth.getSession().then(function (sr) {
+      var sess = sr && sr.data && sr.data.session;
+      if (!sess) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">未登录</div>'; return; }
+      sb.from("notifications").select("*, actor:profiles!notifications_actor_id_fkey(display_name, avatar_url)")
+        .eq("user_id", sess.user.id).order("created_at", { ascending: false }).limit(30)
+        .then(function (r) {
+          var rows = r.data || [];
+          if (!rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">暂无通知</div>'; return; }
+          body.innerHTML = rows.map(function (n) {
+            var d = new Date(n.created_at);
+            var t = isNaN(d.getTime()) ? String(n.created_at) : d.toLocaleString("zh-CN", { hour12: false });
+            var nm = (n.actor && (n.actor.display_name || n.actor.username)) || "有人";
+            var href = n.post_id ? 'href="article.html?id=' + encodeURIComponent(n.post_id) + '"' : 'href="javascript:void(0)"';
+            return '<a ' + href + ' style="display:block;text-decoration:none;padding:10px 12px;border-radius:10px;margin-bottom:8px;background:' + (n.read ? "#f9fafb" : "#eef4ff") + ';border:1px solid rgba(0,0,0,.05);">' +
+              '<div style="font-size:13px;color:#111827;">' + esc(n.content || "新通知") + '</div>' +
+              '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + esc(nm) + ' · ' + esc(t) + (n.read ? "" : ' <span style="color:#1a73e8;font-weight:700;">未读</span>') + '</div>' +
+              '</a>';
+          }).join("");
+          /* 打开面板时自动标记已读（简化：全部已读） */
+          sb.from("notifications").update({ read: true }).eq("user_id", sess.user.id).eq("read", false).then(function () { bellUnreadCount(); });
+        }).catch(function () { body.innerHTML = "加载失败"; });
+    }).catch(function () { body.innerHTML = "加载失败"; });
   }
 
   /* 登录设备面板：展示 login_sessions，可移除记录 */
@@ -1026,6 +1136,82 @@ document.body.appendChild(m);
     document.addEventListener("keydown", function escS(e) { if (e.key === "Escape" && panel.style.display !== "none") { panel.style.display = "none"; document.removeEventListener("keydown", escS); } });
     document.body.appendChild(panel);
     refreshSessions();
+  }
+
+  /* 草稿：保存 / 面板列表 / 恢复 */
+  async function saveDraft() {
+    try {
+      var me = await sb.auth.getUser();
+      if (!me || !me.data || !me.data.user) { toast("请先登录", "warn"); openAuth(); return; }
+      var data = {
+        user_id: me.data.user.id,
+        title: (qs("#postTitle") ? qs("#postTitle").value : "").trim(),
+        summary: (qs("#postSummary") ? qs("#postSummary").value : "").trim(),
+        category: (qs("#postCategory") ? qs("#postCategory").value : "").trim(),
+        cover: (qs("#postCover") ? qs("#postCover").value : "").trim(),
+        content: (function () {
+          var reBody = qs("#reBody");
+          if (reBody) return reBody.innerHTML.trim();
+          return (qs("#postContent") ? qs("#postContent").value : "").trim();
+        })()
+      };
+      var did = getParam("draft");
+      var r = did ? await sb.from("drafts").update(data).eq("id", did).eq("user_id", me.data.user.id)
+                   : await sb.from("drafts").insert(data);
+      if (r.error) { toast("存草稿失败：" + (r.error.message || ""), "warn"); return; }
+      var newId = did || (r.data && r.data[0] && r.data[0].id) || "";
+      toast("草稿已保存" + (newId ? "（" + newId.slice(0, 8) + "）" : ""));
+    } catch (e) { toast("存草稿失败", "warn"); }
+  }
+  function openDraftsPanel() {
+    var id = "draftsPanel";
+    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; loadDrafts(); return; }
+    var panel = document.createElement("div");
+    panel.id = id;
+    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px";
+    panel.innerHTML =
+      '<div style="position:relative;width:540px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
+      '<span style="font-weight:700;color:#111827;font-size:15px;">📝 我的草稿</span>' +
+      '<button type="button" id="draftsClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;">×</button></div>' +
+      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;" id="draftsBody">加载中…</div></div>';
+    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
+    panel.querySelector("#draftsClose").addEventListener("click", function () { panel.style.display = "none"; });
+    document.body.appendChild(panel);
+    loadDrafts();
+  }
+  function loadDrafts() {
+    var body = qs("#draftsBody");
+    if (!body) return;
+    sb.auth.getSession().then(function (sr) {
+      var sess = sr && sr.data && sr.data.session;
+      if (!sess) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">未登录</div>'; return; }
+      sb.from("drafts").select("*").eq("user_id", sess.user.id).order("updated_at", { ascending: false }).limit(50)
+        .then(function (r) {
+          var rows = r.data || [];
+          if (!rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">还没有草稿<br><span style="font-size:12px;">在写文章页点「💾 存草稿」即可保存</span></div>'; return; }
+          body.innerHTML = rows.map(function (d) {
+            var dt = new Date(d.updated_at);
+            var t = isNaN(dt.getTime()) ? String(d.updated_at) : dt.toLocaleString("zh-CN", { hour12: false });
+            return '<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:11px;margin-bottom:9px;">' +
+              '<div style="flex:1;min-width:0;cursor:pointer;" data-open="' + esc(d.id) + '">' +
+              '<div style="font-weight:600;font-size:14px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(d.title || "（无标题）") + '</div>' +
+              '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' + esc((d.content || "").slice(0, 40)) + ' · ' + esc(t) + '</div>' +
+              '</div>' +
+              '<button type="button" data-del="' + esc(d.id) + '" style="flex:none;border:none;background:#fef2f2;color:#dc2626;padding:6px 11px;border-radius:8px;font-size:12px;cursor:pointer;">删除</button>' +
+              '</div>';
+          }).join("");
+          qsa("[data-open]", body).forEach(function (el) {
+            el.addEventListener("click", function () { location.href = "editor.html?draft=" + encodeURIComponent(el.getAttribute("data-open")); });
+          });
+          qsa("[data-del]", body).forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              if (!confirm("删除这篇草稿？")) return;
+              sb.from("drafts").delete().eq("id", btn.getAttribute("data-del")).then(function () { loadDrafts(); toast("已删除"); });
+            });
+          });
+        }).catch(function () { body.innerHTML = "加载失败"; });
+    }).catch(function () { body.innerHTML = "加载失败"; });
   }
 
   function refreshSessions() {
@@ -1440,6 +1626,42 @@ document.body.appendChild(m);
     document.addEventListener("click", function () { menu.classList.remove("open"); });
   }
 
+  /* 作者资料卡（点击作者打开：资料 + 统计 + 发私信） */
+  function openAuthorCard(uid) {
+    if (!uid) return;
+    var id = "authorCard";
+    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; return; }
+    var card = document.createElement("div");
+    card.id = id;
+    card.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px;";
+    card.innerHTML =
+      '<div style="position:relative;width:360px;max-width:92vw;background:#fff;border-radius:18px;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;">' +
+      '<button type="button" style="position:absolute;top:12px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1;" onclick="var c=document.getElementById(\'authorCard\');if(c)c.style.display=\'none\';">×</button>' +
+      '<div style="width:72px;height:72px;border-radius:50%;margin:4px auto 12px;background:#eef1f5;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px;color:#9aa3af;" id="acAva">?</div>' +
+      '<div style="font-size:17px;font-weight:700;color:#111827;" id="acName">加载中…</div>' +
+      '<div style="font-size:12px;color:#9ca3af;margin-top:3px;" id="acMeta"></div>' +
+      '<div style="font-size:12.5px;color:#6b7280;margin-top:10px;min-height:18px;" id="acBio"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:16px;">' +
+      '<button type="button" id="acStats" style="flex:1;padding:9px;border:1px solid #e2e8f0;background:#f8fafc;color:#374151;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;">📊 统计</button>' +
+      '<button type="button" id="acMsg" style="flex:1;padding:9px;border:none;background:#1a73e8;color:#fff;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;">💬 发私信</button>' +
+      '</div></div>';
+    card.addEventListener("click", function (e) { if (e.target === card) card.style.display = "none"; });
+    document.body.appendChild(card);
+    sb.from("profiles").select("*, username, display_name, avatar_url, bio, created_at").eq("id", uid).single()
+      .then(function (r) {
+        var p = r.data;
+        if (!p) return;
+        var nm = p.display_name || p.username || "用户";
+        qs("#acName").textContent = nm;
+        qs("#acAva").innerHTML = p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" alt="">' : (nm[0] || "?");
+        qs("#acBio").textContent = p.bio || "";
+        var cd = new Date(p.created_at);
+        qs("#acMeta").textContent = "注册于 " + (isNaN(cd.getTime()) ? "" : cd.toLocaleDateString("zh-CN"));
+      }).catch(function () {});
+    qs("#acStats").addEventListener("click", function () { location.href = "stats.html?uid=" + encodeURIComponent(uid); });
+    qs("#acMsg").addEventListener("click", function () { location.href = "messages.html?to=" + encodeURIComponent(uid); });
+  }
+
   /* ===========================================================
      UI · 首页列表 + 侧栏
      =========================================================== */
@@ -1497,6 +1719,7 @@ document.body.appendChild(m);
       if (span) span.textContent = (r.liked ? "❤️ 已赞 " : "👍 点赞 ") + fmt(r.likes);
     }
     toast(r.liked ? "已点赞 👍" : "已取消点赞");
+    if (r.liked) notifyAuthor(postId, "like", "");
   }
   async function toggleFav(postId, btn) {
     var user = await Store.getSession();
@@ -1510,6 +1733,7 @@ document.body.appendChild(m);
       if (span) span.textContent = (r.favorited ? "⭐ 已收藏 " : "☆ 收藏 ") + fmt(r.favorites);
     }
     toast(r.favorited ? "已收藏 ⭐" : "已取消收藏");
+    if (r.favorited) notifyAuthor(postId, "favorite", "");
   }
 
   function renderPager(total, page, f) {
@@ -1729,6 +1953,7 @@ document.body.appendChild(m);
       if (!text) { ta.focus(); return; }
       Store.addComment(postId, text).then(function () {
         ta.value = ""; renderComments(postId, user);
+        notifyAuthor(postId, "comment", text);
       });
     });
   }
@@ -1745,13 +1970,16 @@ document.body.appendChild(m);
     document.title = a.title + " - XHC 博客";
     var au = authorOf(a);
     Store.incViews(id);
+    var auEl = qs("#articleMeta [data-au]");
+    if (auEl) auEl.addEventListener("click", function () { openAuthorCard(auEl.getAttribute("data-au")); });
     qs("#breadcrumb").innerHTML = '<a href="index.html">首页</a> &gt; <a href="index.html?category=' +
       encodeURIComponent(a.category || "") + '">' + esc(a.category || "未分类") + "</a> &gt; <span>" + esc(a.title) + "</span>";
     qs("#articleTitle").textContent = a.title;
     var cc = 0; var cr = await Store.listComments(id); cc = (cr.comments || []).length;
     qs("#articleMeta").innerHTML =
+      '<span style="cursor:pointer;" data-au="' + esc(a.user_id || "") + '" title="查看作者资料">' +
       '<img class="author-ava" src="' + esc(au.avatar) + '" alt="">' +
-      "<span>" + esc(au.name) + "</span>" +
+      "<span>" + esc(au.name) + "</span></span>" +
       '<span class="cat">' + esc(a.category || "未分类") + "</span>" +
       "<span>📅 " + dateOf(a) + "</span><span>👁 " + fmt(a.views) + "</span><span>💬 " + cc + "</span>";
     var content = qs("#articleContent");
@@ -1874,6 +2102,29 @@ document.body.appendChild(m);
         qs("#publishBtn").textContent = "保存修改";
       }
     }
+    /* 草稿模式：editor.html?draft=<id> 恢复 */
+    var draftId = getParam("draft");
+    if (draftId) {
+      qs("#editorTitle").textContent = "编辑草稿";
+      qs("#editorNote").innerHTML = '<div class="note">📝 正在编辑草稿（保存后仍为草稿，发布后自动删除）</div>';
+      try {
+        var dres = await sb.from("drafts").select("*").eq("id", draftId).single();
+        var dp = dres.data;
+        if (dp) {
+          qs("#postTitle").value = dp.title || "";
+          qs("#postSummary").value = dp.summary || "";
+          qs("#postCategory").value = dp.category || "";
+          qs("#postCover").value = dp.cover || "";
+          var reBody = qs("#reBody");
+          if (reBody) { reBody.innerHTML = dp.content || ""; }
+          else { qs("#postContent").value = dp.content || ""; }
+        }
+      } catch (e) {}
+    }
+    /* 存草稿按钮 */
+    var dbBtn = qs("#saveDraftBtn");
+    if (dbBtn) dbBtn.addEventListener("click", function () { saveDraft(); });
+
     qs("#editorForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var data = {
@@ -1902,8 +2153,10 @@ document.body.appendChild(m);
         }
         var newId = editId || (res.data && res.data.id) || "";
         if (!newId) { toast("发布成功但未获取到文章 ID，请刷新首页查看", "warn"); renderIndex(); return; }
-        /* 发布成功后清除草稿 */
+        /* 发布成功后清除草稿（本地 + 云端） */
         localStorage.removeItem("xhc_draft");
+        var did2 = getParam("draft");
+        if (did2) { try { sb.from("drafts").delete().eq("id", did2); } catch (e) {} }
         toast(editId ? "已保存" : "发布成功");
         location.href = "article.html?id=" + encodeURIComponent(newId);
       }).catch(function (err) {
