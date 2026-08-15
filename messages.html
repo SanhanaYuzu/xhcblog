@@ -113,6 +113,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/sensitive_words.js"></script>
 <script src="assets/js/dm_notify.js"></script>
 <script>
 const SB_URL = (typeof CFG !== "undefined" && CFG.SUPABASE_URL) || "https://ckitmwadwtoavnigsxag.supabase.co";
@@ -275,6 +276,11 @@ function send(){
   var input = document.getElementById("msgIn");
   var v = input.value.trim();
   if (!v || !curChat) return;
+  /* 敏感词检测 */
+  if (window.XHCSW) {
+    var swHits = window.XHCSW.check(v);
+    if (swHits.length) { toast("⛔ 消息包含敏感词：" + swHits.slice(0, 6).join("、") + "，请修改后再发送"); return; }
+  }
   sb.from("messages").insert({ sender_id: ME.id, receiver_id: curChat, content: v }).then(function(r){
     if (r.error) { toast("发送失败："+(r.error.message||"")); return; }
     input.value = "";
