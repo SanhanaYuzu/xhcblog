@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>授权确认 · XHC 博客</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px; color: #111827; }
+  .card { background: #fff; border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.12);
+    width: 420px; max-width: 94vw; padding: 28px 26px; }
+  .logo { font-size: 40px; text-align: center; margin-bottom: 6px; }
+  h1 { font-size: 19px; text-align: center; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 18px; }
+  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 14px; font-size: 13.5px; }
+  .box b { display: block; font-size: 14px; margin-bottom: 4px; }
+  .box .link { color: #2563eb; word-break: break-all; font-size: 12.5px; }
+  .scopes { list-style: none; margin: 8px 0 2px; }
+  .scopes li { padding: 5px 0; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .scopes li::before { content: "✓"; color: #16a34a; font-weight: 700; }
+  .err { color: #dc2626; font-size: 13.5px; background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px; }
+  .btns { display: flex; gap: 10px; margin-top: 8px; }
+  button { flex: 1; padding: 12px; border: none; border-radius: 11px; font-size: 14px;
+    font-weight: 600; cursor: pointer; }
+  .approve { background: #2563eb; color: #fff; }
+  .approve:hover { background: #1d4ed8; }
+  .deny { background: #e5e7eb; color: #374151; }
+  .deny:hover { background: #d1d5db; }
+  .hint { font-size: 11.5px; color: #9ca3af; text-align: center; margin-top: 14px; line-height: 1.7; }
+  .btn-link { display: block; text-align: center; padding: 12px; background: #2563eb; color: #fff;
+    border-radius: 11px; font-weight: 600; text-decoration: none; margin-bottom: 8px; }
+  a { color: #2563eb; }
+</style>
+</head>
+<body>
+<div class="card" id="app">
+  <div class="logo">⏳</div>
+  <h1>正在处理授权…</h1>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/config.js"></script>
+<script>
+/* ============================================================
+   XHC 博客 · OAuth Server 授权确认页（纯前端 SPA）
+   - 部署位置：hotpe.org/oauth/consent.html（GitHub Pages）
+   - OAuth Server 配置：Authorization Path = /oauth/consent.html
+   ============================================================ */
+(function () {
+  "use strict";
+  var CFG = window.XHC_CONFIG || {};
+  var SB_URL = CFG.SUPABASE_URL || "https://ckitmwadwtoavnigsxag.supabase.co";
+  var ANON = CFG.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraXRtd2Fkd3RvYXZuaWdzeGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzIwNjcsImV4cCI6MjEwMTA0ODA2N30.juUoJi66E7Td5Q-QPA-BUoHa7d4iywwDmaj2B7AIpqY";
+  var sb = supabase.createClient(SB_URL, ANON);
+
+  var SCOPE_LABELS = {
+    openid: "身份标识（登录凭证）",
+    email: "电子邮箱",
+    profile: "基本资料（昵称 / 头像）",
+    phone: "手机号"
+  };
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function app() { return document.getElementById("app"); }
+  function show(inner) { app().innerHTML = inner; }
+  function errHtml(msg) {
+    return '<div class="logo">❌</div><h1>出错了</h1><div class="sub">授权流程出现问题</div>' +
+      '<div class="err">' + esc(msg || "未知错误") + '</div>' +
+      '<div class="hint">请返回第三方应用重新发起登录</div>';
+  }
+
+  var params = new URLSearchParams(location.search);
+  var authId = params.get("authorization_id") || "";
+
+  async function init() {
+    if (!authId) { show(errHtml("缺少 authorization_id 参数，请从第三方应用发起的登录链接进入")); return; }
+
+    /* 检查登录状态 */
+    var sr = await sb.auth.getSession().catch(function () { return { data: { session: null } }; });
+    var sess = sr && sr.data && sr.data.session;
+    if (!sess) {
+      var ret = encodeURIComponent(location.href);
+      show('<div class="logo">🔑</div><h1>请先登录 XHC 博客</h1>' +
+        '<div class="sub">登录后才能继续授权给第三方应用</div>' +
+        '<a class="btn-link" href="/index.html?redirect=' + ret + '">前往 XHC 博客登录</a>' +
+        '<button type="button" class="approve" onclick="location.reload()">登录完成后刷新重试</button>' +
+        '<div class="hint">登录完成后回到本页会自动继续授权流程</div>');
+      return;
+    }
+
+    /* 获取授权详情 */
+    var res = await sb.auth.oauth.getAuthorizationDetails(authId).catch(function (e) {
+      return { data: null, error: e || { message: "获取授权详情失败" } };
+    });
+    if (res.error) { show(errHtml(res.error.message || "获取授权详情失败")); return; }
+    var data = res.data;
+    if (!data) { show(errHtml("无效的授权请求")); return; }
+
+    /* 已授权过 → 直接跳转 */
+    if (!("authorization_id" in data) && data.redirect_url) { location.href = data.redirect_url; return; }
+
+    var clientName = (data.client && data.client.name) || "第三方应用";
+    var redirectUri = data.redirect_uri || "";
+    var scopes = (data.scope || "").split(" ").filter(Boolean);
+    var scopeItems = scopes.length
+      ? scopes.map(function (s) { return "<li>" + esc(SCOPE_LABELS[s] || s) + "</li>"; }).join("")
+      : "<li>基础身份信息</li>";
+
+    show('<div class="logo">🔐</div>' +
+      '<h1>授权「' + esc(clientName) + '」</h1>' +
+      '<div class="sub">该应用请求使用你的 XHC 博客账号登录</div>' +
+      '<div class="box"><b>应用名称</b>' + esc(clientName) + '</div>' +
+      '<div class="box"><b>回调地址</b><span class="link">' + esc(redirectUri) + '</span></div>' +
+      '<div class="box"><b>请求的权限</b><ul class="scopes">' + scopeItems + '</ul></div>' +
+      '<div class="btns">' +
+      '<button type="button" class="deny" id="btnDeny">拒绝</button>' +
+      '<button type="button" class="approve" id="btnApprove">同意并登录</button>' +
+      '</div>' +
+      '<div class="hint">登录即表示同意 <a href="https://hotpe.org" target="_blank">XHC 博客</a> 授权该应用获取以上信息<br>你可以随时在 XHC 博客账户设置中撤销授权</div>');
+
+    document.getElementById("btnApprove").addEventListener("click", function () { decide(true); });
+    document.getElementById("btnDeny").addEventListener("click", function () { decide(false); });
+  }
+
+  async function decide(approve) {
+    show('<div class="logo">⏳</div><h1>处理中…</h1>');
+    var res = approve
+      ? await sb.auth.oauth.approveAuthorization(authId)
+      : await sb.auth.oauth.denyAuthorization(authId);
+    if (res.error) { show(errHtml(res.error.message || "处理失败")); return; }
+    if (res.data && res.data.redirect_url) location.href = res.data.redirect_url;
+    else show(errHtml("未获取到跳转地址"));
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
