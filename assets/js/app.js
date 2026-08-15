@@ -2526,6 +2526,29 @@ document.body.appendChild(m);
       });
     });
 
+    /* 换邮箱：向新邮箱发送确认链接，用户点链接后才完成切换 */
+    var ceBtn = qs("#changeEmailBtn");
+    if (ceBtn) ceBtn.addEventListener("click", function () {
+      if (!REAL) { toast("演示模式不支持换邮箱", "warn"); return; }
+      var ne = qs("#setNewEmail").value.trim();
+      if (!ne) { toast("请输入新邮箱", "warn"); return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ne)) { toast("邮箱格式不对", "warn"); return; }
+      ceBtn.disabled = true; var oldText = ceBtn.textContent; ceBtn.textContent = "发送中…";
+      sb.auth.updateUser({ email: ne }).then(function (r) {
+        ceBtn.disabled = false; ceBtn.textContent = oldText;
+        if (r.error) {
+          var msg = (r.error.message || "") + "";
+          if (msg.indexOf("redirect_to") >= 0) msg = "请在 Supabase → Authentication → URL Configuration 的 Redirect URLs 里加入当前域名";
+          toast("换邮箱失败：" + msg, "warn"); return;
+        }
+        toast("已向 " + ne + " 发送确认链接，请点链接完成更换");
+        qs("#setNewEmail").value = "";
+      }).catch(function (e) {
+        ceBtn.disabled = false; ceBtn.textContent = oldText;
+        toast("换邮箱失败：" + (e && e.message || ""), "warn");
+      });
+    });
+
     qs("#deleteAccountBtn").addEventListener("click", function () {
       if (!confirm("警告：注销将永久删除你的资料、文章与评论，且不可恢复。确认？")) return;
       Store.deleteAccount().then(function (res) {
