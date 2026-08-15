@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 XHC 博客</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#f1f5f9;
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; color:#111827; }
+  .card { background:#fff; border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.12);
+    width:380px; max-width:94vw; padding:28px 26px; }
+  .logo { width:56px; height:56px; border-radius:14px; background:#eef4ff; display:flex;
+    align-items:center; justify-content:center; font-size:26px; margin:0 auto 8px; }
+  h2 { font-size:18px; text-align:center; margin-bottom:2px; }
+  .sub { font-size:12.5px; color:#6b7280; text-align:center; margin-bottom:16px; }
+  input { width:100%; padding:11px 13px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px;
+    outline:none; margin-bottom:10px; background:#fff; }
+  input:focus { border-color:#2563eb; }
+  button { width:100%; padding:11px; border:none; border-radius:10px; font-size:13.5px; font-weight:600;
+    cursor:pointer; margin-bottom:8px; }
+  .primary { background:#2563eb; color:#fff; }
+  .primary:hover { background:#1d4ed8; }
+  .outline { background:#fff; color:#374151; border:1px solid #d1d5db; }
+  .outline:hover { background:#f8fafc; }
+  .ghost { background:#f8fafc; color:#374151; border:1px solid #e2e8f0; }
+  .ghost:hover { background:#eef2f7; }
+  .divider { display:flex; align-items:center; gap:10px; color:#9ca3af; font-size:12px; margin:12px 0; }
+  .divider::before, .divider::after { content:""; flex:1; height:1px; background:#eef2f5; }
+  .msg { font-size:12.5px; border-radius:8px; padding:9px 12px; margin-bottom:10px; display:none; }
+  .msg.err { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; display:block; }
+  .msg.ok { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; display:block; }
+  .back { display:block; text-align:center; font-size:12px; color:#9ca3af; text-decoration:none; margin-top:6px; }
+  .back:hover { color:#2563eb; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🔐</div>
+  <h2>登录 XHC 博客</h2>
+  <p class="sub">登录后继续授权第三方应用</p>
+  <div class="msg" id="msg"></div>
+  <input id="email" type="text" placeholder="邮箱" autocomplete="email">
+  <input id="pwd" type="password" placeholder="密码" autocomplete="current-password">
+  <button class="primary" id="loginBtn">邮箱密码登录</button>
+  <div class="divider">或</div>
+  <button class="outline" id="otpBtn">📧 发送邮箱验证码</button>
+  <input id="otpCode" type="text" placeholder="输入 8 位验证码" maxlength="8" style="display:none;">
+  <button class="outline" id="otpGo" style="display:none;">验证码登录</button>
+  <div class="divider">或</div>
+  <button class="ghost" id="ghBtn">GitHub 登录</button>
+  <button class="ghost" id="msBtn">微软账户登录</button>
+  <button class="ghost" id="pkBtn">通行密钥（Passkey）</button>
+  <a class="back" href="https://hotpe.org">← 返回 XHC 博客首页</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/config.js"></script>
+<script>
+/* ============================================================
+   XHC 博客 · 独立登录页（OAuth 授权流程用）
+   登录成功后跳回 ?redirect= 指定的地址（授权确认页）
+   ============================================================ */
+(function () {
+  "use strict";
+  var CFG = window.XHC_CONFIG || {};
+  var SB_URL = CFG.SUPABASE_URL || "https://ckitmwadwtoavnigsxag.supabase.co";
+  var ANON = CFG.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraXRtd2Fkd3RvYXZuaWdzeGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzIwNjcsImV4cCI6MjEwMTA0ODA2N30.juUoJi66E7Td5Q-QPA-BUoHa7d4iywwDmaj2B7AIpqY";
+  var sb = supabase.createClient(SB_URL, ANON, { auth: { experimental: { passkey: true } } });
+
+  var msg = document.getElementById("msg");
+  var emailEl = document.getElementById("email");
+  var pwdEl = document.getElementById("pwd");
+
+  /* 登录成功后跳转目标（consent 页地址，存 sessionStorage 防 OAuth 回跳丢失） */
+  function getRedirect() {
+    var r = new URLSearchParams(location.search).get("redirect") || "";
+    if (r) sessionStorage.setItem("xhc_oauth_redirect", r);
+    return sessionStorage.getItem("xhc_oauth_redirect") || "https://hotpe.org";
+  }
+  function ok() { msg.className = "msg ok"; }
+  function err(t) { msg.className = "msg err"; msg.textContent = t; }
+  function showEl(id, on) { document.getElementById(id).style.display = on ? "" : "none"; }
+  function goBack() { location.href = getRedirect(); }
+
+  /* 邮箱密码登录 */
+  document.getElementById("loginBtn").addEventListener("click", async function () {
+    var email = emailEl.value.trim(), pwd = pwdEl.value;
+    if (!email || !pwd) { err("请输入邮箱和密码"); return; }
+    var r = await sb.auth.signInWithPassword({ email: email, password: pwd });
+    if (r.error) { err("登录失败：" + (r.error.message || "邮箱或密码错误")); return; }
+    ok(); msg.textContent = "登录成功，正在跳转…";
+    setTimeout(goBack, 400);
+  });
+
+  /* 邮箱验证码 */
+  document.getElementById("otpBtn").addEventListener("click", async function () {
+    var email = emailEl.value.trim();
+    if (!email) { err("请先输入邮箱"); return; }
+    msg.className = "msg ok"; msg.textContent = "验证码已发送，请查收邮件";
+    showEl("otpCode", true); showEl("otpGo", true);
+    var r = await sb.auth.signInWithOtp({ email: email });
+    if (r.error) { err("发送失败：" + (r.error.message || "")); return; }
+  });
+  document.getElementById("otpGo").addEventListener("click", async function () {
+    var email = emailEl.value.trim(), code = document.getElementById("otpCode").value.trim();
+    if (!code) { err("请输入验证码"); return; }
+    var r = await sb.auth.verifyOtp({ email: email, token: code, type: "email" });
+    if (r.error) { err("验证失败：" + (r.error.message || "验证码错误")); return; }
+    ok(); msg.textContent = "登录成功，正在跳转…";
+    setTimeout(goBack, 400);
+  });
+
+  /* OAuth：GitHub / 微软 / Passkey（回跳地址 = 本页，登录后 SDK 自动处理并回跳） */
+  var selfUrl = location.origin + location.pathname;
+  document.getElementById("ghBtn").addEventListener("click", function () {
+    sb.auth.signInWithOAuth({ provider: "github", options: { redirectTo: selfUrl } }).catch(function (e) { err("GitHub 登录失败：" + (e.message || "")); });
+  });
+  document.getElementById("msBtn").addEventListener("click", function () {
+    sb.auth.signInWithOAuth({ provider: "azure", options: { redirectTo: selfUrl } }).catch(function (e) { err("微软登录失败：" + (e.message || "")); });
+  });
+  document.getElementById("pkBtn").addEventListener("click", async function () {
+    var r = await sb.auth.signInWithPasskey().catch(function (e) { return { error: e }; });
+    if (r && r.error) { err("Passkey 失败：" + (r.error.message || "")); return; }
+    ok(); msg.textContent = "登录成功，正在跳转…";
+    setTimeout(goBack, 400);
+  });
+
+  /* OAuth 回跳处理（URL 带 code/error 时 SDK 已建立会话） */
+  (async function () {
+    var q = new URLSearchParams(location.search);
+    if (q.get("code") || q.get("error") || location.hash.indexOf("access_token") >= 0) {
+      var s = await sb.auth.getSession();
+      if (s && s.data && s.data.session) {
+        ok(); msg.textContent = "登录成功，正在跳转…";
+        setTimeout(goBack, 400);
+        history.replaceState(null, "", location.pathname);
+      }
+    }
+    /* 已在登录态 → 直接跳回 */
+    var s2 = await sb.auth.getSession();
+    if (s2 && s2.data && s2.data.session) goBack();
+  })();
+})();
+</script>
+</body>
+</html>
