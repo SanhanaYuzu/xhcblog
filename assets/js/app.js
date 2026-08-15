@@ -1007,6 +1007,7 @@ document.body.appendChild(m);
             item("💬", "论坛", "forum.html") +
             item("🧰", "工具箱", "tools.html") +
             item("⚙️", "设置", "settings.html") +
+            item("ℹ️", "关于本站", "about.html") +
             item("🖥️", "登录设备", null, "sessions") +
             item("💬", "私信", "messages.html") +
             item("📊", "我的统计", "stats.html") +
