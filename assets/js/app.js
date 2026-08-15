@@ -1043,6 +1043,8 @@ document.body.appendChild(m);
           body.innerHTML = '<div style="text-align:center;color:#6b7280;padding:20px 0;">暂无记录，正在补记当前登录…</div>';
           var back = { user_id: sess.user.id, provider: "restored", client: (window.top !== window) ? "网页（内嵌）" : "网页" };
           back.device = (navigator.userAgent || "").slice(0, 300);
+          window.__xhcIpLookup(function (ip, region) { back.ip = ip; back.region = region; postBack(); });
+          function postBack() {
           fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token, "Prefer": "return=minimal" },
@@ -1055,6 +1057,7 @@ document.body.appendChild(m);
           }).catch(function () {
             body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px 0;">补记失败：网络错误</div>';
           });
+          }
           return;
         }
         var provNames = { password: "密码", email: "邮箱密码", phone: "手机号密码", signup: "注册", otp: "邮箱验证码", passkey: "Passkey 通行密钥", github: "GitHub", azure: "微软账户", gitlab: "GitLab", oauth: "第三方", restored: "会话恢复" };
@@ -1116,6 +1119,20 @@ document.body.appendChild(m);
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
 
+  /* IP 地区查询（ipwho.is，https+中文；失败回调空） */
+  window.__xhcIpLookup = function (cb) {
+    fetch("https://ipwho.is/?lang=zh-CN", { signal: AbortSignal.timeout(4000) })
+      .then(function (r) { return r.json(); })
+      .then(function (g) {
+        if (g && g.success) {
+          var parts = [g.country, g.region, g.city].filter(function (x) { return x; });
+          var uniq = [];
+          parts.forEach(function (x) { if (uniq.indexOf(x) < 0) uniq.push(x); });
+          cb(g.ip || "", uniq.join(" "));
+        } else cb("", "");
+      }).catch(function () { cb("", ""); });
+  };
+
   /* 登录成功 → 上报登录记录（设备/方式/地区）到 login_sessions */
   function reportLogin(provider, client) {
     provider = provider || "password"; client = client || "网页";
@@ -1137,17 +1154,8 @@ document.body.appendChild(m);
             body: JSON.stringify(payload)
           }).catch(function () {});
         }
-        try {
-          fetch("https://ip-api.com/json/?fields=query,regionName,city", { signal: AbortSignal.timeout(4000) })
-            .then(function (r) { return r.json(); })
-            .then(function (g) {
-              if (g && g.query) {
-                info.ip = g.query;
-                info.region = ((g.regionName || "") + (g.city ? " " + g.city : "")).trim();
-              }
-              doPost(info);
-            }).catch(function () { doPost(info); });
-        } catch (e) { doPost(info); }
+        try { window.__xhcIpLookup(function (ip, region) { info.ip = ip; info.region = region; doPost(info); }); }
+        catch (e) { doPost(info); }
       }).catch(function () {});
     } catch (e) {}
   }
