@@ -26,7 +26,7 @@
 
   let sb = null;
   if (CFG.enabled && window.supabase && window.supabase.createClient) {
-    try { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY); }
+    try { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { experimental: { passkey: true } } }); }
     catch (e) { console.error("Supabase 初始化失败：", e); sb = null; }
   }
   const REAL = !!sb;
