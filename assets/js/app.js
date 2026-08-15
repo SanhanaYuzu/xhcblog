@@ -618,6 +618,21 @@
       hc.insertBefore(tbtn, qs("#accountSlot"));
       tbtn.addEventListener("click", toggleTheme);
     }
+    /* 顶部全局注入「🖥️ 在本地 XHC 浏览器打开」按钮（xhc:// 协议唤起） */
+    if (hc && !qs("#openLocalBtn")) {
+      var lb = document.createElement("a");
+      lb.id = "openLocalBtn"; lb.className = "btn-home";
+      lb.href = "#"; lb.textContent = "🖥️ 本地打开";
+      lb.title = "在已安装的 XHC 浏览器中打开本页";
+      lb.addEventListener("click", function (e) {
+        e.preventDefault();
+        try { location.href = "xhc://open?url=" + encodeURIComponent(location.href); }
+        catch (err) { toast("请先安装 XHC 浏览器（xhc:// 协议）", "warn"); }
+      });
+      var slot = qs("#accountSlot", hc);
+      if (slot) hc.insertBefore(lb, slot);
+      else hc.appendChild(lb);
+    }
     /* 把「返回主站」和「💬 论坛」移到主题切换按钮的右侧（紧挨着），最终顺序：search | 🌙 | 返回主站 | 论坛 | 登录/注册 */
     var toggle = qs("#themeToggle", hc);
     var home = qs(".btn-home:not(#forumNavLink):not(#themeToggle)", hc);
