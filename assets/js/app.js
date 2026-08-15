@@ -630,8 +630,14 @@
           toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再点「本地打开」", "warn");
           return;
         }
-        try { location.href = "xhc://open?url=" + encodeURIComponent(location.href); }
-        catch (err) { toast("请先安装 XHC 浏览器（xhc:// 协议）", "warn"); }
+        // 优先用 <a> 标签模拟用户点击（Chromium 对自定义协议的可靠触发方式）
+        var a = document.createElement("a");
+        a.href = "xhc://open?url=" + encodeURIComponent(location.href);
+        a.style.display = "none";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){ try{ document.body.removeChild(a); }catch(e){} }, 200);
       });
       var slot = qs("#accountSlot", hc);
       if (slot) hc.insertBefore(lb, slot);
