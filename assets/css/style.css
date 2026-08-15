@@ -64,7 +64,7 @@ img{max-width:100%;display:block;}
 .nav a.active{color:var(--primary);}
 /* 搜索框紧跟导航，不再 margin-left:auto 推到中间 */
 .search{
-  display:flex;align-items:center;gap:6px;flex:0 1 180px;min-width:140px;
+  display:flex;align-items:center;gap:6px;flex:0 0 220px;min-width:140px;max-width:220px;
   background:var(--bg);border:1px solid var(--border);border-radius:20px;
   padding:6px 14px;
 }
@@ -80,7 +80,12 @@ img{max-width:100%;display:block;}
 .header .btn-home:focus-visible{
   outline:0;box-shadow:0 0 0 3px rgba(37,99,235,.25);
 }
+/* 顶栏链接按钮（论坛等）— 与登录按钮统一浅蓝胶囊风格 */
+.header .btn-pill{background:var(--primary-soft);color:var(--primary);border-radius:20px;}
+.header .btn-pill:hover{background:var(--primary);color:#fff;}
 .header .btn-home:hover{background:var(--primary-dark);}
+/* 顶栏第一组按钮整体右推 */
+.search ~ .btn-home:first-of-type,.search ~ .btn-pill:first-of-type{margin-left:auto;}
 /* 把右侧按钮群整体推到右边：在第一个按钮上加 margin-left:auto */
 .search ~ .btn-home:first-of-type{margin-left:auto;}
 
