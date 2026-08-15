@@ -618,7 +618,28 @@
       hc.insertBefore(tbtn, qs("#accountSlot"));
       tbtn.addEventListener("click", toggleTheme);
     }
-    /* 顶部全局注入「🖥️ 在本地 XHC 浏览器打开」按钮（xhc:// 协议唤起） */
+    /* 未检测到 XHC 浏览器 → 弹窗提示 */
+    function showXhcNoInstalled(reason) {
+      var msg = reason || "你没有安装 XHC 浏览器，请安装后打开。";
+      if (qs("#xhcNoInstMask")) return;
+      var mask = document.createElement("div");
+      mask.id = "xhcNoInstMask";
+      mask.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px";
+      mask.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px 30px;width:340px;max-width:88vw;box-shadow:0 12px 48px rgba(0,0,0,.28);text-align:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">' +
+        '<div style="font-size:44px;margin-bottom:12px">🖥️</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:10px">未检测到 XHC 浏览器</div>' +
+        '<div style="font-size:13.5px;color:#4b5563;line-height:1.7;margin-bottom:20px">' + esc(msg) + '</div>' +
+        '<button type="button" style="width:100%;padding:11px;background:#1a73e8;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer">我知道了</button>' +
+        '</div>';
+      mask.addEventListener("click", function (ev) {
+        if (ev.target === mask) document.body.removeChild(mask);
+      });
+      mask.querySelector("button").addEventListener("click", function () {
+        document.body.removeChild(mask);
+      });
+      document.body.appendChild(mask);
+    }
+    /* 顶部全局注入「🖥️ 在本地 XHC 浏览器打开」按钮（守护进程唤起） */
     if (hc && !qs("#openLocalBtn")) {
       var lb = document.createElement("a");
       lb.id = "openLocalBtn"; lb.className = "btn-home";
@@ -638,18 +659,11 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: url })
           });
-          if (r.ok) { toast("已在 XHC 浏览器中打开"); return; }
-        } catch (e) { /* 守护没跑/端口不通 → fallback 协议 */ }
-        // fallback：协议（可能仍被 Chromium 拦截）
-        try {
-          var a = document.createElement("a");
-          a.href = "xhc://open?url=" + encodeURIComponent(url);
-          a.style.display = "none"; a.rel = "noopener";
-          document.body.appendChild(a); a.click();
-          setTimeout(function(){ try{ document.body.removeChild(a); }catch(e){} }, 200);
-        } catch (err) {
-          toast("守护未运行且协议被浏览器拦截。请重跑安装程序启动守护后重试", "warn");
-        }
+          var txt = await r.text();
+          if (txt.indexOf("opened:") === 0) { toast("已在 XHC 浏览器中打开"); return; }
+          showXhcNoInstalled("XHC 浏览器已安装但启动失败，请重跑安装程序修复后再试。");
+        } catch (e) { /* 守护没跑/端口不通 → 未安装或未启动 */ }
+        showXhcNoInstalled();
       });
       var slot = qs("#accountSlot", hc);
       if (slot) hc.insertBefore(lb, slot);
