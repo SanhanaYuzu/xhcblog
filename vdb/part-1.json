@@ -1,0 +1,32 @@
+{
+  "format": "XHC-VDB part v2",
+  "part": 1,
+  "count": 5,
+  "hashes": {
+    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": {
+      "name": "EICAR 标准反病毒测试样本",
+      "type": "test",
+      "level": "high"
+    },
+    "2c4f4d1a2b7d9c5e6f8a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2": {
+      "name": "XMRig 挖矿木马（示例）",
+      "type": "miner",
+      "level": "high"
+    },
+    "3d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e": {
+      "name": "远控木马 RAT（示例）",
+      "type": "rat",
+      "level": "high"
+    },
+    "4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f": {
+      "name": "间谍软件 Spyware（示例）",
+      "type": "spyware",
+      "level": "medium"
+    },
+    "5f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a": {
+      "name": "广告木马 Adware（示例）",
+      "type": "adware",
+      "level": "medium"
+    }
+  }
+}
