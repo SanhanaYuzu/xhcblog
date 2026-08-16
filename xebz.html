@@ -120,10 +120,10 @@
   </div>
 
   <div class="meta">
-    <b>XEBZ 是什么</b>：<code>XHCBZ v2.1</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
-    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ3 算法</b>
-    （1MB 大窗口 LZ + lazy 延迟匹配 + 距离分层 + 分块自适应算术编码，RAR5 级增强、实现完全自研）。
-    文本/文档压缩率可达 <b>20% 以下</b>，混合分布大文件压缩率显著提升；兼容 1.0/2.0 旧包。
+    <b>XEBZ 是什么</b>：<code>XHCBZ v2.2</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
+    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ4 算法</b>
+    （1MB 大窗口 LZ + 自适应二进制算术编码 + 动态概率模型——7z/LZMA 级增强、实现完全自研）。
+    文本/代码/CSV 压缩率可达 <b>5% 以下</b>（实测中文文章 1.4%、CSV 1.3%）；兼容 1.0/2.0/2.1 旧包。
     可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。解压自动校验 crc32，损坏立即报错。
     全部在前端本地完成，文件不上传服务器。<br>
     <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
