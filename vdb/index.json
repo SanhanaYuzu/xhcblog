@@ -1,0 +1,18 @@
+{
+  "format": "XHC-VDB v2",
+  "schema": "index",
+  "database": "XHC 安全病毒库",
+  "host": "https://hotpe.org/vdb/",
+  "total": 5,
+  "parts": [
+    "part-1.json"
+  ],
+  "defender": {
+    "security_intelligence": "1.457.198.0",
+    "engine": "1.1.26070.7",
+    "platform": "4.18.26070.9",
+    "source": "Microsoft WDSI (defenderupdates)",
+    "synced": "2026-08-17T05:45:11+08:00"
+  },
+  "note": "XHC 安全病毒库数据库（GitHub Pages 静态托管）。Defender 元数据由 vdb_sync_defender.py 从微软 WDSI 云端爬取；哈希条目由社区维护。"
+}
