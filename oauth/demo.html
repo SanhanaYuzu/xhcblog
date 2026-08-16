@@ -72,7 +72,8 @@ async function login() {
     scope: XHC.scope,
     state: Math.random().toString(36).slice(2),
     code_challenge: challenge,
-    code_challenge_method: "S256"
+    code_challenge_method: "S256",
+    prompt: "consent"
   });
   location.href = XHC.authUrl + "?" + p.toString();
 }
