@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XHC XEBX 加密文件工具（压缩包/视频/文本）</title>
+<style>
+  :root {
+    --primary: #1a56db; --primary-dark: #1e4fd8; --primary-light: #e8eefc;
+    --bg: #f5f6fa; --card: #fff; --text: #2c3e50; --muted: #7f8c8d;
+    --border: #e6e9f0; --ok: #16a34a; --err: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px;
+  }
+  .header {
+    height: 60px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); }
+  .logo .ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), #7c3aed); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo small { font-weight: 500; font-size: 11px; color: var(--muted); }
+  .header a { margin-left: auto; text-decoration: none; color: var(--muted); font-size: 13px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .header a:hover { color: var(--primary); border-color: var(--primary); }
+  .wrap { max-width: 880px; margin: 28px auto; padding: 0 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  .card h2 { font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+  .fmt-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .fmt-tab {
+    padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+    background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: .15s; color: var(--muted);
+  }
+  .fmt-tab.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 30px 16px; text-align: center;
+    cursor: pointer; transition: .2s; background: #fafbfd;
+  }
+  .drop:hover, .drop.over { border-color: var(--primary); background: var(--primary-light); }
+  .drop .big { font-size: 38px; margin-bottom: 8px; }
+  .drop p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .drop b { color: var(--primary); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+  input[type=password] {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 9px; padding: 10px 12px;
+    font-size: 14px; outline: none; transition: .15s;
+  }
+  input[type=password]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+    padding: 11px 16px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: .15s; margin-top: 14px; color: #fff;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--primary); box-shadow: 0 2px 8px rgba(26,86,219,.25); }
+  .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
+  .btn.green { background: var(--ok); }
+  .btn.green:hover:not(:disabled) { background: #15803d; }
+  .fileinfo { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6; word-break: break-all; }
+  .fileinfo b { color: var(--text); }
+  .result { margin-top: 14px; border-radius: 10px; padding: 12px; font-size: 13px; display: none; line-height: 1.6; }
+  .result.ok { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .result.err { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .meta { margin-top: 26px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; font-size: 12.5px; color: var(--muted); line-height: 1.9; }
+  .meta b { color: var(--text); }
+  .meta code { background: var(--primary-light); color: var(--primary); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="ic">🗜</span>XHC XEBX 文件加密器<small>.xeba 压缩包 · .xebm 视频 · .xebt 文本</small></div>
+  <a href="https://hotpe.org">← 返回博客</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>📦 选择加密格式</h2>
+    <div class="sub">同一加密引擎（AES-256-GCM + PBKDF2），按文件类型选用格式；原始扩展名也加密在内，解密自动恢复。</div>
+    <div class="fmt-tabs" id="fmtTabs">
+      <button class="fmt-tab active" data-fmt="xeba" onclick="setFmt('xeba')">🗜 .xeba 压缩包</button>
+      <button class="fmt-tab" data-fmt="xebm" onclick="setFmt('xebm')">🎬 .xebm 视频</button>
+      <button class="fmt-tab" data-fmt="xebt" onclick="setFmt('xebt')">📄 .xebt 文本</button>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:20px;">
+    <!-- 加密 -->
+    <div class="card">
+      <h2>🔒 加密 → <span id="encFmtLabel">.xeba</span></h2>
+      <div class="sub">选择文件，设置密码，生成加密文件。</div>
+      <div class="drop" id="encDrop">
+        <div class="big" id="encDropIcon">🗜</div>
+        <p>点击选择文件<br><b>任意压缩包 / 视频 / 文本</b></p>
+      </div>
+      <input type="file" id="encInput" hidden>
+      <div class="fileinfo" id="encInfo"></div>
+      <label for="encPwd">加密密码（必填，请牢记）</label>
+      <input type="password" id="encPwd" placeholder="输入密码">
+      <label for="encPwd2">确认密码</label>
+      <input type="password" id="encPwd2" placeholder="再次输入">
+      <button class="btn primary" id="encBtn" disabled>🔒 加密并下载</button>
+      <div class="result" id="encRes"></div>
+    </div>
+
+    <!-- 解密 -->
+    <div class="card">
+      <h2>🔓 解码 → 原文件</h2>
+      <div class="sub">选择 .xeba / .xebm / .xebt 文件，输入密码解密（自动识别格式）。</div>
+      <div class="drop" id="decDrop">
+        <div class="big">🔐</div>
+        <p>点击选择加密文件<br><b>.xeba / .xebm / .xebt</b></p>
+      </div>
+      <input type="file" id="decInput" accept=".xeba,.xebm,.xebt" hidden>
+      <div class="fileinfo" id="decInfo"></div>
+      <label for="decPwd">解密密码</label>
+      <input type="password" id="decPwd" placeholder="输入密码">
+      <button class="btn green" id="decBtn" disabled>🔓 解密并下载</button>
+      <div class="result" id="decRes"></div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <b>格式族说明</b>：<code>XHCEBA</code>（压缩包）· <code>XHCEBM</code>（视频）· <code>XHCEBT</code>（文本）——
+    同一加密容器（<b>AES-256-GCM</b> 认证加密 + <b>PBKDF2-HMAC-SHA256 × 100000 次迭代</b>），
+    与 .xebf（文章）/ .xebp（图片）同架构。<b>无损</b>：加密解密字节完全一致，视频/压缩包无任何质量损失。
+    全部在前端本地完成，文件不上传服务器。<br>
+    <b>命令行</b>：<code>python xebx.py xeba enc backup.zip -p 密码</code> / <code>python xebx.py xebm dec video.xebm -p 密码</code>
+  </div>
+</div>
+
+<script src="assets/js/xebx.js"></script>
+<script>
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+var FMT = 'xeba';
+var FMT_META = {
+  xeba: { ext: 'xeba', icon: '🗜', name: '压缩包', accept: '任意文件' },
+  xebm: { ext: 'xebm', icon: '🎬', name: '视频', accept: '任意文件' },
+  xebt: { ext: 'xebt', icon: '📄', name: '文本', accept: '任意文件' }
+};
+
+function setFmt(f) {
+  FMT = f;
+  document.querySelectorAll('.fmt-tab').forEach(function (t) {
+    t.classList.toggle('active', t.dataset.fmt === f);
+  });
+  var m = FMT_META[f];
+  $('encFmtLabel').textContent = '.' + m.ext;
+  $('encDropIcon').textContent = m.icon;
+  $('encRes').textContent = ''; $('encRes').className = 'result';
+}
+function toast(el, msg, ok) { el.textContent = msg; el.className = 'result ' + (ok ? 'ok' : 'err'); }
+
+/* ===== 加密 ===== */
+var encFile = null;
+$('encDrop').onclick = function () { $('encInput').click(); };
+$('encDrop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+$('encDrop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+$('encDrop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('over');
+  if (e.dataTransfer.files[0]) setEncFile(e.dataTransfer.files[0]);
+});
+$('encInput').onchange = function () { if (this.files[0]) setEncFile(this.files[0]); };
+function setEncFile(f) {
+  encFile = f;
+  var ext = (f.name.split('.').pop() || 'bin').toLowerCase();
+  $('encInfo').innerHTML = '已选择: <b>' + f.name + '</b> (' + (f.size / 1024).toFixed(1) + ' KB · ' + ext + ')';
+  $('encBtn').disabled = false;
+  $('encRes').textContent = ''; $('encRes').className = 'result';
+}
+$('encBtn').onclick = async function () {
+  var p1 = $('encPwd').value, p2 = $('encPwd2').value;
+  if (!p1) { toast($('encRes'), '请输入密码', false); return; }
+  if (p1 !== p2) { toast($('encRes'), '两次输入的密码不一致', false); return; }
+  if (typeof XEBX === 'undefined') { toast($('encRes'), '加密模块加载失败（需要 HTTPS）', false); return; }
+  var btn = this; btn.disabled = true; btn.textContent = '⏳ 加密中…';
+  try {
+    var buf = await encFile.arrayBuffer();
+    var ext = (encFile.name.split('.').pop() || 'bin').toLowerCase();
+    var bin = await XEBX.encode(new Uint8Array(buf), p1, FMT, ext);
+    var blob = new Blob([bin], { type: 'application/octet-stream' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = encFile.name.replace(/\.[^.]+$/, '') + '.' + FMT_META[FMT].ext;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    toast($('encRes'), '✅ 已生成 ' + a.download + '（' + bin.length + ' 字节）', true);
+  } catch (e) {
+    toast($('encRes'), '加密失败: ' + (e.message || e), false);
+  }
+  btn.disabled = false; btn.textContent = '🔒 加密并下载';
+};
+
+/* ===== 解密 ===== */
+var decFile = null;
+$('decDrop').onclick = function () { $('decInput').click(); };
+$('decDrop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+$('decDrop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+$('decDrop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('over');
+  if (e.dataTransfer.files[0]) setDecFile(e.dataTransfer.files[0]);
+});
+$('decInput').onchange = function () { if (this.files[0]) setDecFile(this.files[0]); };
+function setDecFile(f) {
+  decFile = f;
+  $('decInfo').innerHTML = '已选择: <b>' + f.name + '</b> (' + (f.size / 1024).toFixed(1) + ' KB)';
+  $('decBtn').disabled = false;
+  $('decRes').textContent = ''; $('decRes').className = 'result';
+}
+$('decBtn').onclick = async function () {
+  var pwd = $('decPwd').value;
+  if (!pwd) { toast($('decRes'), '请输入密码', false); return; }
+  if (typeof XEBX === 'undefined') { toast($('decRes'), '解码模块加载失败（需要 HTTPS）', false); return; }
+  var btn = this; btn.disabled = true; btn.textContent = '⏳ 解密中…';
+  try {
+    var buf = await decFile.arrayBuffer();
+    var r = await XEBX.decode(buf, pwd);
+    var blob = new Blob([r.data], { type: 'application/octet-stream' });
+    var url = URL.createObjectURL(blob);
+    var name = decFile.name.replace(/\.[^.]+$/, '') + '.' + r.extension;
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    var fmtName = { xeba: '压缩包', xebm: '视频', xebt: '文本' }[r.format] || r.format;
+    toast($('decRes'), '✅ 解密成功：' + fmtName + ' · ' + r.extension.toUpperCase() + ' · ' + r.data.length + ' 字节，已开始下载', true);
+  } catch (e) {
+    toast($('decRes'), '解密失败: ' + (e.message || e), false);
+  }
+  btn.disabled = false; btn.textContent = '🔓 解密并下载';
+};
+</script>
+</body>
+</html>
