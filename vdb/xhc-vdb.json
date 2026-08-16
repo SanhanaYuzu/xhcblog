@@ -1,0 +1,35 @@
+{
+  "format": "XHC-VDB v1",
+  "version": "20260816.1",
+  "name": "XHC 安全云端威胁情报库",
+  "updated": "2026-08-16",
+  "count": 5,
+  "hashes": {
+    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": {
+      "name": "EICAR 标准反病毒测试样本",
+      "type": "test",
+      "level": "high"
+    },
+    "2c4f4d1a2b7d9c5e6f8a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2": {
+      "name": "XMRig 挖矿木马（示例）",
+      "type": "miner",
+      "level": "high"
+    },
+    "3d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e": {
+      "name": "远控木马 RAT（示例）",
+      "type": "rat",
+      "level": "high"
+    },
+    "4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f": {
+      "name": "间谍软件 Spyware（示例）",
+      "type": "spyware",
+      "level": "medium"
+    },
+    "5f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a": {
+      "name": "广告木马 Adware（示例）",
+      "type": "adware",
+      "level": "medium"
+    }
+  },
+  "note": "云端威胁情报库：由 hotpe.org 托管，XHC 安全客户端一键直连更新。EICAR 条目为官方反病毒测试样本（Defender 必报），用于验证云端库生效；其余为格式示例，正式条目将随更新持续扩充。"
+}
