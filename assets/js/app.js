@@ -1056,6 +1056,7 @@ document.body.appendChild(m);
             item("🗜️", "文件加密", "xebx.html") +
             item("📦", "XEBZ 压缩", "xebz.html") +
             item("🎬", "XEBM 播放器", "xebm-player.html") +
+            item("🌐", "XHC 生态", "xhc-ecosystem.html") +
             sep() +
             item("⚙️", "设置", "settings.html") +
             item("ℹ️", "关于本站", "about.html") +
