@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XHC XEBM 视频播放器</title>
+<style>
+  :root {
+    --primary: #1a56db; --primary-dark: #1e4fd8; --primary-light: #e8eefc;
+    --bg: #f5f6fa; --card: #fff; --text: #2c3e50; --muted: #7f8c8d;
+    --border: #e6e9f0; --ok: #16a34a; --err: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px;
+  }
+  .header {
+    height: 60px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); }
+  .logo .ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #7c3aed, var(--primary)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo small { font-weight: 500; font-size: 11px; color: var(--muted); }
+  .header a { margin-left: auto; text-decoration: none; color: var(--muted); font-size: 13px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .header a:hover { color: var(--primary); border-color: var(--primary); }
+  .wrap { max-width: 860px; margin: 26px auto; padding: 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  .card h2 { font-size: 16px; margin-bottom: 4px; }
+  .card .sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 32px 16px; text-align: center;
+    cursor: pointer; transition: .2s; background: #fafbfd;
+  }
+  .drop:hover, .drop.over { border-color: #7c3aed; background: #f5f0ff; }
+  .drop .big { font-size: 40px; margin-bottom: 8px; }
+  .drop p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .drop b { color: #7c3aed; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+  input[type=password] {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 9px; padding: 10px 12px;
+    font-size: 14px; outline: none; transition: .15s;
+  }
+  input[type=password]:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+    padding: 12px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: .15s; margin-top: 14px; color: #fff;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: linear-gradient(135deg, #7c3aed, var(--primary)); box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .fileinfo { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6; word-break: break-all; }
+  .fileinfo b { color: var(--text); }
+  .result { margin-top: 14px; border-radius: 10px; padding: 12px; font-size: 13px; display: none; line-height: 1.6; }
+  .result.ok { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .result.err { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .player { margin-top: 18px; display: none; }
+  .player.show { display: block; }
+  .player video { width: 100%; border-radius: 12px; background: #000; max-height: 62vh; }
+  .player .meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  .player .meta b { color: var(--text); }
+  .player .meta .btn { width: auto; margin: 0 0 0 auto; padding: 8px 16px; font-size: 12.5px; }
+  .meta { margin-top: 26px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 22px; font-size: 12.5px; color: var(--muted); line-height: 1.9; }
+  .meta b { color: var(--text); }
+  .meta code { background: var(--primary-light); color: #7c3aed; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="ic">🎬</span>XHC XEBM 播放器<small>.xebm · XHC 加密无损视频</small></div>
+  <a href="https://hotpe.org">← 返回博客</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>🎬 播放加密视频</h2>
+    <div class="sub">选择 <b>.xebm</b> 文件，输入密码，解密后直接在线播放（无需先保存原文件）。</div>
+    <div class="drop" id="drop">
+      <div class="big">🎬</div>
+      <p>点击选择 .xebm 文件 或拖拽到这里<br><b>XHC 加密无损视频格式</b></p>
+    </div>
+    <input type="file" id="fileInput" accept=".xebm" hidden>
+    <div class="fileinfo" id="fileInfo"></div>
+    <label for="pwd">解密密码</label>
+    <input type="password" id="pwd" placeholder="输入密码">
+    <button class="btn primary" id="playBtn" disabled>🎬 解密并播放</button>
+    <div class="result" id="res"></div>
+    <div class="player" id="player">
+      <video id="video" controls preload="metadata"></video>
+      <div class="meta">
+        <span id="playerMeta">视频已解密</span>
+        <button class="btn primary" id="dlBtn">⬇ 下载原视频</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <b>格式</b>：<code>XHCEBM v1</code> —— AES-256-GCM 认证加密 + PBKDF2-HMAC-SHA256 × 100000 迭代，
+    <b>无损</b>：解密字节与原始视频完全一致。<b>安全</b>：解密全程在浏览器本地完成，视频不上传服务器。<br>
+    <b>提示</b>：网页版在内存中解密，建议 ≤ 500MB；更大视频请用桌面版 XEBM 播放器（<code>XHC-XEBF编辑器.exe</code> → ▶ 播放器 标签）。
+  </div>
+</div>
+
+<script src="assets/js/xebx.js"></script>
+<script>
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+var file = null;
+
+function toast(el, msg, ok) { el.textContent = msg; el.className = 'result ' + (ok ? 'ok' : 'err'); }
+
+$('drop').onclick = function () { $('fileInput').click(); };
+$('drop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+$('drop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+$('drop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+$('fileInput').onchange = function () { if (this.files[0]) setFile(this.files[0]); };
+
+function setFile(f) {
+  file = f;
+  $('fileInfo').innerHTML = '已选择: <b>' + f.name + '</b> (' + (f.size / 1024 / 1024).toFixed(1) + ' MB)';
+  $('playBtn').disabled = false;
+  $('res').textContent = ''; $('res').className = 'result';
+  $('player').className = 'player';
+}
+
+$('playBtn').onclick = async function () {
+  var pwd = $('pwd').value;
+  if (!pwd) { toast($('res'), '请输入密码', false); return; }
+  if (typeof XEBX === 'undefined') { toast($('res'), '解码模块加载失败（需要 HTTPS）', false); return; }
+  var btn = this; btn.disabled = true; btn.textContent = '⏳ 解密中…';
+  try {
+    var buf = await file.arrayBuffer();
+    var r = await XEBX.decode(buf, pwd);
+    if (r.format !== 'xebm') { toast($('res'), '这不是 .xebm 视频文件（实际是 .xeb' + (r.format || '?') + '）', false); btn.disabled = false; btn.textContent = '🎬 解密并播放'; return; }
+    var mime = 'video/mp4';
+    if (r.extension === 'webm') mime = 'video/webm';
+    if (r.extension === 'mkv') mime = 'video/x-matroska';
+    if (r.extension === 'ogg') mime = 'video/ogg';
+    var blob = new Blob([r.data], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var v = $('video');
+    v.src = url;
+    v.load();
+    v.play().catch(function () {});
+    $('player').className = 'player show';
+    $('playerMeta').innerHTML = r.extension.toUpperCase() + ' · ' + (r.data.length / 1024 / 1024).toFixed(1) + ' MB · 已解密';
+    toast($('res'), '✅ 解密成功，正在播放', true);
+    $('dlBtn').onclick = function () {
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace(/\.xebm$/i, '') + '.' + r.extension;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+  } catch (e) {
+    toast($('res'), '解密失败: ' + (e.message || e), false);
+  }
+  btn.disabled = false; btn.textContent = '🎬 解密并播放';
+};
+</script>
+</body>
+</html>
