@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XHC XEBZ 独立压缩格式工具（打包/解压）</title>
+<style>
+  :root {
+    --primary: #1a56db; --primary-dark: #1e4fd8; --primary-light: #e8eefc;
+    --bg: #f5f6fa; --card: #fff; --text: #2c3e50; --muted: #7f8c8d;
+    --border: #e6e9f0; --ok: #16a34a; --err: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px;
+  }
+  .header {
+    height: 60px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); }
+  .logo .ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), #059669); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo small { font-weight: 500; font-size: 11px; color: var(--muted); }
+  .header a { margin-left: auto; text-decoration: none; color: var(--muted); font-size: 13px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .header a:hover { color: var(--primary); border-color: var(--primary); }
+  .wrap { max-width: 900px; margin: 26px auto; padding: 0 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  .card h2 { font-size: 16px; margin-bottom: 4px; }
+  .card .sub { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 30px 14px; text-align: center;
+    cursor: pointer; transition: .2s; background: #fafbfd;
+  }
+  .drop:hover, .drop.over { border-color: var(--primary); background: var(--primary-light); }
+  .drop .big { font-size: 38px; margin-bottom: 6px; }
+  .drop p { color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+  .drop b { color: var(--primary); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 13px 0 4px; font-weight: 600; }
+  input[type=password] {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 9px; padding: 10px 12px;
+    font-size: 14px; outline: none; transition: .15s;
+  }
+  input[type=password]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+    padding: 11px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: .15s; margin-top: 13px; color: #fff;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--primary); box-shadow: 0 2px 8px rgba(26,86,219,.25); }
+  .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
+  .btn.green { background: var(--ok); }
+  .btn.green:hover:not(:disabled) { background: #15803d; }
+  .btn.sm { width: auto; padding: 6px 14px; font-size: 12px; margin: 0; }
+  .fileinfo { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6; word-break: break-all; max-height: 150px; overflow-y: auto; }
+  .fileinfo b { color: var(--text); }
+  .result { margin-top: 14px; border-radius: 10px; padding: 12px; font-size: 13px; display: none; line-height: 1.6; }
+  .result.ok { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .result.err { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .filelist { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: none; }
+  .filelist.show { display: block; }
+  .filelist .row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .filelist .row:last-child { border-bottom: none; }
+  .filelist .row .name { flex: 1; word-break: break-all; }
+  .filelist .row .size { color: var(--muted); white-space: nowrap; }
+  .filelist .head { background: var(--primary-light); font-weight: 700; }
+  .meta { margin-top: 26px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 22px; font-size: 12.5px; color: var(--muted); line-height: 1.9; }
+  .meta b { color: var(--text); }
+  .meta code { background: var(--primary-light); color: var(--primary); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="ic">🗜</span>XHC XEBZ 压缩工具<small>原创独立压缩格式 · 打包 / 解压</small></div>
+  <a href="https://hotpe.org">← 返回博客</a>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- 打包 -->
+    <div class="card">
+      <h2>🗜 打包 → .xebz</h2>
+      <div class="sub">选择多个文件，生成 <b>.xebz</b> 压缩包（原创 XHC-Combo 压缩，可选加密）。</div>
+      <div class="drop" id="packDrop">
+        <div class="big">📦</div>
+        <p>点击选择多个文件 或拖拽到这里<br><b>支持任意文件（可多选）</b></p>
+      </div>
+      <input type="file" id="packInput" multiple hidden>
+      <div class="fileinfo" id="packInfo"></div>
+      <label for="packPwd">加密密码（可选，留空 = 明文压缩包）</label>
+      <input type="password" id="packPwd" placeholder="可选：设置密码">
+      <button class="btn primary" id="packBtn" disabled>🗜 打包并下载 .xebz</button>
+      <div class="result" id="packRes"></div>
+    </div>
+
+    <!-- 解压 -->
+    <div class="card">
+      <h2>📂 解压 .xebz</h2>
+      <div class="sub">选择 <b>.xebz</b> 文件，列出内容并解压下载（自动识别明文/加密）。</div>
+      <div class="drop" id="unpackDrop">
+        <div class="big">📂</div>
+        <p>点击选择 .xebz 文件 或拖拽到这里<br><b>XHC 独立压缩格式</b></p>
+      </div>
+      <input type="file" id="unpackInput" accept=".xebz" hidden>
+      <div class="fileinfo" id="unpackInfo"></div>
+      <label for="unpackPwd">密码（加密压缩包需填写）</label>
+      <input type="password" id="unpackPwd" placeholder="加密压缩包填密码">
+      <button class="btn green" id="unpackBtn" disabled>📂 解压并列出</button>
+      <div class="filelist" id="fileList">
+        <div class="row head"><span class="name">名称</span><span class="size">大小</span><span></span></div>
+      </div>
+      <button class="btn green" id="dlAllBtn" style="display:none;">⬇ 下载全部文件</button>
+      <div class="result" id="unpackRes"></div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <b>XEBZ 是什么</b>：<code>XHCBZ v1</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
+    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>原创 XHC-Combo 压缩管线</b>
+    （RLE-X 游程变换 → Huffman-256 规范哈夫曼）。可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。
+    解压自动校验 crc32，损坏立即报错。全部在前端本地完成，文件不上传服务器。<br>
+    <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
+  </div>
+</div>
+
+<script src="assets/js/xebz.js"></script>
+<script>
+'use strict';
+var $ = function (id) { return document.getElementById(id); };
+function toast(el, msg, ok) { el.textContent = msg; el.className = 'result ' + (ok ? 'ok' : 'err'); }
+function fmtSize(b) { return b >= 1048576 ? (b/1048576).toFixed(1)+' MB' : b >= 1024 ? (b/1024).toFixed(1)+' KB' : b+' B'; }
+
+/* ===== 打包 ===== */
+var packFiles = [];
+$('packDrop').onclick = function () { $('packInput').click(); };
+$('packDrop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+$('packDrop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+$('packDrop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('over');
+  if (e.dataTransfer.files.length) setPackFiles(e.dataTransfer.files);
+});
+$('packInput').onchange = function () { if (this.files.length) setPackFiles(this.files); };
+function setPackFiles(files) {
+  packFiles = Array.from(files);
+  var total = packFiles.reduce(function (s, f) { return s + f.size; }, 0);
+  $('packInfo').innerHTML = packFiles.map(function (f) { return '<b>' + f.name + '</b> (' + fmtSize(f.size) + ')'; }).join('<br>') +
+    '<br>共 <b>' + packFiles.length + '</b> 个文件 · ' + fmtSize(total);
+  $('packBtn').disabled = false;
+  $('packRes').textContent = ''; $('packRes').className = 'result';
+}
+$('packBtn').onclick = async function () {
+  if (typeof XEBZ === 'undefined') { toast($('packRes'), '模块加载失败（需要 HTTPS）', false); return; }
+  var btn = this; btn.disabled = true; btn.textContent = '⏳ 打包中…';
+  try {
+    var files = [];
+    for (var i = 0; i < packFiles.length; i++) {
+      var buf = await packFiles[i].arrayBuffer();
+      files.push({ name: packFiles[i].name, data: new Uint8Array(buf) });
+    }
+    var pwd = $('packPwd').value || null;
+    var bin = await XEBZ.pack(files, pwd);
+    var blob = new Blob([bin], { type: 'application/octet-stream' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'archive.xebz';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    var total = files.reduce(function (s, f) { return s + f.data.length; }, 0);
+    toast($('packRes'), '✅ 已生成 archive.xebz（' + fmtSize(bin.length) + '，原 ' + fmtSize(total) + (pwd ? ' · 已加密' : '') + '）', true);
+  } catch (e) { toast($('packRes'), '打包失败: ' + (e.message || e), false); }
+  btn.disabled = false; btn.textContent = '🗜 打包并下载 .xebz';
+};
+
+/* ===== 解压 ===== */
+var unpackFile = null, unpackResult = [];
+$('unpackDrop').onclick = function () { $('unpackInput').click(); };
+$('unpackDrop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('over'); });
+$('unpackDrop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+$('unpackDrop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('over');
+  if (e.dataTransfer.files[0]) setUnpackFile(e.dataTransfer.files[0]);
+});
+$('unpackInput').onchange = function () { if (this.files[0]) setUnpackFile(this.files[0]); };
+function setUnpackFile(f) {
+  unpackFile = f;
+  $('unpackInfo').innerHTML = '已选择: <b>' + f.name + '</b> (' + fmtSize(f.size) + ')';
+  $('unpackBtn').disabled = false;
+  $('unpackRes').textContent = ''; $('unpackRes').className = 'result';
+  $('fileList').className = 'filelist';
+  $('dlAllBtn').style.display = 'none';
+}
+$('unpackBtn').onclick = async function () {
+  if (typeof XEBZ === 'undefined') { toast($('unpackRes'), '模块加载失败（需要 HTTPS）', false); return; }
+  var btn = this; btn.disabled = true; btn.textContent = '⏳ 解压中…';
+  try {
+    var buf = await unpackFile.arrayBuffer();
+    var pwd = $('unpackPwd').value || null;
+    unpackResult = await XEBZ.unpack(buf, pwd);
+    var list = $('fileList');
+    list.innerHTML = '<div class="row head"><span class="name">名称</span><span class="size">大小</span><span></span></div>';
+    unpackResult.forEach(function (f, idx) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<span class="name">' + f.name.replace(/</g, '&lt;') + '</span>' +
+        '<span class="size">' + fmtSize(f.data.length) + '</span>' +
+        '<span><button class="btn green sm" data-i="' + idx + '">⬇</button></span>';
+      list.appendChild(row);
+    });
+    list.className = 'filelist show';
+    $('dlAllBtn').style.display = 'block';
+    toast($('unpackRes'), '✅ 解压成功：' + unpackResult.length + ' 个文件', true);
+    // 单个下载
+    list.querySelectorAll('[data-i]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = unpackResult[+b.dataset.i];
+        var blob = new Blob([f.data], { type: 'application/octet-stream' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = f.name.split('/').pop();
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    });
+  } catch (e) { toast($('unpackRes'), '解压失败: ' + (e.message || e), false); }
+  btn.disabled = false; btn.textContent = '📂 解压并列出';
+};
+$('dlAllBtn').onclick = function () {
+  unpackResult.forEach(function (f) {
+    var blob = new Blob([f.data], { type: 'application/octet-stream' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = f.name.split('/').pop();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+  });
+  toast($('unpackRes'), '已开始下载 ' + unpackResult.length + ' 个文件', true);
+};
+</script>
+</body>
+</html>
