@@ -13,6 +13,9 @@ window.XHC_CHANGELOG = [
       "📤 编辑器新增「📦 导出 .xebf」「📥 导入 .xebf」，配套 Python CLI（tools/xebf.py）跨平台互通",
       "🖼 新增 XEBP 图片加密格式（.xebp）：图片可加密为 .xebp 文件，网页转换器/解码器（xebp.html）+ Python CLI（tools/xebp.py），原始图片格式也加密在内，解密自动恢复扩展名",
       "🗜 新增 XEBX 加密文件格式族：.xeba（压缩包）/ .xebm（无损视频）/ .xebt（文本），网页工具（xebx.html）+ Python CLI（tools/xebx.py）三格式一键互通，原始扩展名加密在内、解密自动恢复",
+      "🎬 新增 XEBM 播放器（网页版 xebm-player.html + 桌面 exe ▶ 播放器标签）：.xebm 加密视频解密即播，本地版 Python 解密 + 本地 HTTP 服务，大文件流畅",
+      "🗜 新增 XEBZ 原创独立压缩格式：与 zip/rar/7z 结构完全不同的自研容器 + 原创压缩管线，多文件归档 + crc32 校验，网页打包/解压工具（xebz.html）+ Python CLI（tools/xebz.py）",
+      "🚀 XEBZ 升级 2.0：全自研 XHCZ2 算法（自研哈希链 LZ + 自研 32-bit 整数算术编码），类似 RAR5 思路但实现完全原创，文本/文档压缩率可达 20% 以下（实测中文文章 3.8%、日志 4.1%），自动择优兼容 1.0 旧包",
     ],
   },
   {
