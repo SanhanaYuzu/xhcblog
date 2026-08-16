@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XHC 生态 · XHCZ 压缩算法与加密格式家族</title>
+<style>
+  :root {
+    --primary: #1a56db; --primary-dark: #1e4fd8; --primary-light: #e8eefc;
+    --bg: #f5f6fa; --card: #fff; --text: #2c3e50; --muted: #7f8c8d;
+    --border: #e6e9f0; --ok: #16a34a; --gold: #d97706;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.7;
+  }
+  .header {
+    height: 60px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); }
+  .logo .ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), #059669); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo small { font-weight: 500; font-size: 11px; color: var(--muted); }
+  .header a { margin-left: auto; text-decoration: none; color: var(--muted); font-size: 13px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .header a:hover { color: var(--primary); border-color: var(--primary); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1a56db 0%, #1e4fd8 45%, #059669 100%);
+    color: #fff; padding: 64px 0 56px; text-align: center;
+  }
+  .hero h1 { font-size: 34px; font-weight: 900; letter-spacing: 1px; }
+  .hero .tag { margin-top: 12px; font-size: 15px; opacity: .92; }
+  .hero .badges { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .hero .badge { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 5px 14px; font-size: 12.5px; backdrop-filter: blur(4px); }
+  .hero .stat-row { margin-top: 30px; display: flex; gap: 34px; justify-content: center; flex-wrap: wrap; }
+  .hero .stat b { display: block; font-size: 26px; font-weight: 900; }
+  .hero .stat span { font-size: 12px; opacity: .85; }
+
+  section { padding: 46px 0 10px; }
+  section h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  section .lead { color: var(--muted); font-size: 13.5px; margin-bottom: 22px; }
+
+  /* 格式家族卡片 */
+  .fmt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 860px) { .fmt-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .fmt-grid { grid-template-columns: 1fr; } }
+  .fmt-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.05); transition: .18s; display: block; text-decoration: none; color: inherit;
+  }
+  .fmt-card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(26,86,219,.12); border-color: var(--primary); }
+  .fmt-card .emoji { font-size: 26px; }
+  .fmt-card h3 { font-size: 15px; margin: 8px 0 2px; color: var(--primary); }
+  .fmt-card .magic { font-family: Consolas, monospace; font-size: 11.5px; color: var(--ok); background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 1px 7px; display: inline-block; margin-bottom: 7px; }
+  .fmt-card p { font-size: 12.5px; color: var(--muted); }
+  .fmt-card .use { font-size: 11.5px; color: var(--gold); margin-top: 6px; font-weight: 600; }
+
+  /* 算法时间线 */
+  .timeline { position: relative; padding-left: 26px; }
+  .timeline::before { content: ""; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: linear-gradient(180deg, var(--primary), #059669, var(--gold)); }
+  .tl-item { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .tl-item::before { content: ""; position: absolute; left: -24px; top: 20px; width: 11px; height: 11px; border-radius: 50%; background: var(--primary); border: 3px solid #fff; box-shadow: 0 0 0 2px var(--primary); }
+  .tl-item.v2::before { background: #2563eb; box-shadow: 0 0 0 2px #2563eb; }
+  .tl-item.v3::before { background: #059669; box-shadow: 0 0 0 2px #059669; }
+  .tl-item.v4::before { background: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  .tl-item .ver { font-weight: 900; font-size: 15px; color: var(--primary); }
+  .tl-item.v2 .ver { color: #2563eb; }
+  .tl-item.v3 .ver { color: #059669; }
+  .tl-item.v4 .ver { color: var(--gold); }
+  .tl-item .name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .tl-item p { font-size: 13px; }
+  .tl-item .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 9px; margin-left: 8px; vertical-align: 1px; }
+  .badge-rar5 { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .badge-lzma { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .badge-best { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+  /* 压缩率表 */
+  .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+  th, td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--border); }
+  th { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
+  th:first-child, td:first-child { text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  td .best { color: #dc2626; font-weight: 800; }
+  .note { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+  /* 网站/软件卡片 */
+  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .sw-grid { grid-template-columns: 1fr; } }
+  .sw-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .sw-card h3 { font-size: 15px; color: var(--primary); margin-bottom: 6px; }
+  .sw-card p { font-size: 12.5px; color: var(--muted); }
+  .sw-card .links { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .sw-card .links a { font-size: 12px; text-decoration: none; color: var(--primary); border: 1px solid var(--primary); border-radius: 8px; padding: 3px 10px; }
+  .sw-card .links a:hover { background: var(--primary); color: #fff; }
+
+  /* 安全理念 */
+  .sec-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 700px) { .sec-list { grid-template-columns: 1fr; } }
+  .sec-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .sec-item .ic { font-size: 22px; }
+  .sec-item h4 { font-size: 14px; margin: 8px 0 4px; }
+  .sec-item p { font-size: 12px; color: var(--muted); }
+
+  .footer { margin-top: 56px; border-top: 1px solid var(--border); background: var(--card); padding: 22px 0; text-align: center; font-size: 12px; color: var(--muted); }
+  .footer b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="ic">🔐</span>XHC 生态<small>全自研加密格式 · 压缩算法 · 网站与软件</small></div>
+  <a href="https://hotpe.org/">🏠 返回主站</a>
+</div>
+
+<!-- ===== Hero ===== -->
+<div class="hero">
+  <h1>🔐 XHC 加密生态</h1>
+  <div class="tag">从零自研的加密格式家族 + 四代压缩算法演进，一个域名承载的完整生态</div>
+  <div class="badges">
+    <span class="badge">🔑 AES-256-GCM</span>
+    <span class="badge">🧂 PBKDF2 × 10万次</span>
+    <span class="badge">🧩 6 种加密格式</span>
+    <span class="badge">🚀 4 代压缩算法</span>
+    <span class="badge">💻 11 个桌面应用</span>
+    <span class="badge">🧰 97 个网页工具</span>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><b>6</b><span>加密格式</span></div>
+    <div class="stat"><b>4</b><span>算法代数</span></div>
+    <div class="stat"><b>1.4%</b><span>最优压缩率</span></div>
+    <div class="stat"><b>100%</b><span>自研实现</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 加密格式家族 ===== -->
+  <section>
+    <h2>📦 XHC 加密格式家族</h2>
+    <div class="lead">统一加密引擎（AES-256-GCM + PBKDF2-SHA256 × 10 万次迭代），不同 magic 对应不同内容类型；原始扩展名也加密在内，解密自动恢复。全部支持网页 / 桌面 / Python CLI 三端互通。</div>
+    <div class="fmt-grid">
+      <a class="fmt-card" href="https://hotpe.org/xebf.html" style="display:none;">
+        <div class="emoji">📝</div>
+        <h3>XEBF 文章</h3>
+        <span class="magic">XHCEBF</span>
+        <p>加密博客文章，离线安全备份。</p>
+        <div class="use">桌面编辑器集成 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebp.html">
+        <div class="emoji">🖼️</div>
+        <h3>XEBP 图片</h3>
+        <span class="magic">XHCEBP</span>
+        <p>图片加密（PNG/JPG/WebP…），原始格式也加密，解密自动恢复扩展名。</p>
+        <div class="use">网页转换器/解码器 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebx.html">
+        <div class="emoji">🗜️</div>
+        <h3>XEBA 压缩包</h3>
+        <span class="magic">XHCEBA</span>
+        <p>zip/rar/7z 等压缩包整体加密。</p>
+        <div class="use">网页统一工具 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebx.html">
+        <div class="emoji">🎬</div>
+        <h3>XEBM 视频</h3>
+        <span class="magic">XHCEBM</span>
+        <p>无损视频加密（mp4/mkv/webm…），解密即播。</p>
+        <div class="use">播放器 + 转换器 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebx.html">
+        <div class="emoji">📄</div>
+        <h3>XEBT 文本</h3>
+        <span class="magic">XHCEBT</span>
+        <p>文本文档加密（txt/md/log/json…）。</p>
+        <div class="use">网页统一工具 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebz.html">
+        <div class="emoji">📦</div>
+        <h3>XEBZ 压缩包</h3>
+        <span class="magic">XHCBZ</span>
+        <p>原创压缩格式：多文件归档 + 四代自研算法 + 可选加密。</p>
+        <div class="use">网页打包/解压 →</div>
+      </a>
+      <a class="fmt-card" href="https://hotpe.org/xebm-player.html">
+        <div class="emoji">▶️</div>
+        <h3>XEBM 播放器</h3>
+        <span class="magic">XHCEBM</span>
+        <p>加密视频网页播放器，解密即播、无需下载。</p>
+        <div class="use">网页播放器 →</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== XHCZ 算法演进 ===== -->
+  <section>
+    <h2>🚀 XHCZ 压缩算法演进</h2>
+    <div class="lead">XEBZ 压缩格式内部历经四代算法迭代——从自研 RLE+Huffman，到对标 RAR5、7z 的现代熵编码，全部实现完全原创。</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="ver">XEBZ 1.0 · XHC-Combo</div>
+        <div class="name">自研压缩管线：RLE-X 游程变换 → Huffman-256 规范哈夫曼</div>
+        <p>原创组合管线，每个文件自动在 combo 与 store 间择优。文本压缩率 40%~70%。</p>
+      </div>
+      <div class="tl-item v2">
+        <div class="ver">XEBZ 2.0 · XHCZ2</div>
+        <div class="name">自研哈希链 LZ 匹配 → 自研 32-bit 整数算术编码 <span class="badge badge-rar5">对标 RAR5 思路</span></div>
+        <p>匹配引用 + 熵编码双阶段（RAR5 同思路、实现全原创），中文文本压缩率降至 4% 以下。</p>
+      </div>
+      <div class="tl-item v3">
+        <div class="ver">XEBZ 2.1 · XHCZ3</div>
+        <div class="name">1MB 大窗口 LZ + lazy 延迟匹配 + 距离分层 + 分块自适应编码 <span class="badge badge-rar5">RAR5 级增强</span></div>
+        <p>窗口 32KB→1MB、智能匹配决策、长距离分层编码；混合分布大文件压缩率显著提升。</p>
+      </div>
+      <div class="tl-item v4">
+        <div class="ver">XEBZ 2.2 · XHCZ4 <span class="badge badge-lzma">7z/LZMA 级</span></div>
+        <div class="name">自适应二进制算术编码 + 动态概率模型 <span class="badge badge-best">当前最优</span></div>
+        <p>每个 bit 用 11-bit 动态概率（编码一位更新一次）+ 上下文建模，无需分块。中文文章压缩率 1.4%，全面碾压前代——这就是 LZMA 碾压静态频率的核心机制。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 压缩率对比 ===== -->
+  <section>
+    <h2>📊 压缩率实测对比（越小越好）</h2>
+    <div class="lead">同一批测试数据，四代算法自动择优（pack 时 5 算法取最小者）。</div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th></tr>
+        <tr><td>中文文章</td><td>—</td><td>4.40%</td><td>4.41%</td><td><span class="best">1.42%</span></td></tr>
+        <tr><td>日志</td><td>—</td><td>4.10%</td><td>4.11%</td><td><span class="best">1.32%</span></td></tr>
+        <tr><td>CSV 表格</td><td>—</td><td>5.09%</td><td>5.11%</td><td><span class="best">1.28%</span></td></tr>
+        <tr><td>Python 代码</td><td>—</td><td>8.38%</td><td>8.41%</td><td><span class="best">1.94%</span></td></tr>
+        <tr><td>日志+代码混合</td><td>—</td><td>16.41%</td><td>15.63%</td><td><span class="best">8.70%</span></td></tr>
+        <tr><td>随机数据</td><td>—</td><td>106%</td><td>106%</td><td>102%（正确不压缩）</td></tr>
+      </table>
+    </div>
+    <div class="note">* 实测值随数据内容浮动；XEBZ 打包时五算法自动择优，兼容 1.0/2.0/2.1 旧包。</div>
+  </section>
+
+  <!-- ===== 网站 ===== -->
+  <section>
+    <h2>🌐 XHC 网站（hotpe.org）</h2>
+    <div class="lead">一个 GitHub Pages 域名承载的完整生态：博客主站 + 社区 + 97 个网页工具 + 自研格式在线工具。</div>
+    <div class="sw-grid">
+      <div class="sw-card">
+        <h3>📝 XHC 博客主站</h3>
+        <p>文章发布、论坛、点赞收藏、置顶、每日签到、用户系统、数据统计——完整社区功能。</p>
+        <div class="links"><a href="https://hotpe.org/">首页</a><a href="https://hotpe.org/forum.html">论坛</a><a href="https://hotpe.org/tools.html">工具箱</a></div>
+      </div>
+      <div class="sw-card">
+        <h3>🧰 工具箱（97 个工具）</h3>
+        <p>计算器、2048、二维码、调色板、ASCII 艺术、日历、倒计时等 97 个小工具，全部本地运行。</p>
+        <div class="links"><a href="https://hotpe.org/tools.html">打开工具箱</a></div>
+      </div>
+      <div class="sw-card">
+        <h3>🛰️ 病毒库数据库</h3>
+        <p>XHC 安全配套的云端威胁情报库，直连 hotpe.org 更新，含 Windows Defender 云端版本情报。</p>
+        <div class="links"><a href="https://hotpe.org/vdb/xhc-vdb.json">查看病毒库</a></div>
+      </div>
+      <div class="sw-card">
+        <h3>🔐 自研格式在线工具</h3>
+        <p>XEBP 图片加密、XEBX 三格式工具、XEBZ 打包解压、XEBM 播放器——全浏览器本地处理，文件不上传。</p>
+        <div class="links"><a href="https://hotpe.org/xebp.html">图片加密</a><a href="https://hotpe.org/xebx.html">文件加密</a><a href="https://hotpe.org/xebz.html">XEBZ</a><a href="https://hotpe.org/xebm-player.html">播放器</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 桌面软件 ===== -->
+  <section>
+    <h2>💻 XHC 桌面软件</h2>
+    <div class="lead">Windows 桌面应用全家桶，全部 pywebview 自研 + PyInstaller 打包，双击即用。</div>
+    <div class="sw-grid">
+      <div class="sw-card">
+        <h3>🖥️ XHC 博客客户端</h3>
+        <p>经典版 + Metro 磁贴版 + 融合版三套皮肤，桌面端写博客、看论坛、收消息。</p>
+      </div>
+      <div class="sw-card">
+        <h3>🌍 XHC 浏览器</h3>
+        <p>WebView2 内核浏览器 + 198MB 完整内核版 + 205MB 安装版，三形态可选。</p>
+      </div>
+      <div class="sw-card">
+        <h3>🔐 XHC-XEBF 编辑器</h3>
+        <p>加密工具全家桶：文章/图片/压缩包/视频/文本加密、XEBM 播放器、XEBZ 四代算法压缩，7 个标签页。</p>
+      </div>
+      <div class="sw-card">
+        <h3>🛡️ XHC 安全</h3>
+        <p>安全中心：Windows Defender 引擎 + 云端病毒库 + 启发式规则、实时保护、垃圾清理、启动项管理、隔离区。</p>
+      </div>
+      <div class="sw-card">
+        <h3>🔎 XHC 搜索引擎</h3>
+        <p>自研搜索应用，独立桌面端。</p>
+      </div>
+      <div class="sw-card">
+        <h3>🐍 Python CLI 全家桶</h3>
+        <p>xebf / xebp / xeba / xebm / xebt / xebx / xebz / xhcz2 + 病毒库同步脚本，脚本化批量加密解密。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 安全理念 ===== -->
+  <section>
+    <h2>🛡️ 安全理念</h2>
+    <div class="lead">加密不是"糊弄"，格式设计遵循行业标准。</div>
+    <div class="sec-list">
+      <div class="sec-item">
+        <div class="ic">🔑</div>
+        <h4>AES-256-GCM</h4>
+        <p>认证加密 AEAD：密文 + 完整性校验，密码错误/文件损坏立即报错，绝不解出坏数据。</p>
+      </div>
+      <div class="sec-item">
+        <div class="ic">🧂</div>
+        <h4>PBKDF2-SHA256 × 10万次</h4>
+        <p>密钥派生加盐 + 高迭代，抵御暴力破解与彩虹表。</p>
+      </div>
+      <div class="sec-item">
+        <div class="ic">💻</div>
+        <h4>本地处理</h4>
+        <p>网页工具全程浏览器本地加解密，文件不上传任何服务器。</p>
+      </div>
+      <div class="sec-item">
+        <div class="ic">🧩</div>
+        <h4>三端互通</h4>
+        <p>同一格式规范，网页（Web Crypto）/ 桌面（Python cryptography）/ CLI 互相打开。</p>
+      </div>
+      <div class="sec-item">
+        <div class="ic">🧪</div>
+        <h4>校验保障</h4>
+        <p>crc32 完整性校验、字节级往返测试、JS↔Python 双向互通验证。</p>
+      </div>
+      <div class="sec-item">
+        <div class="ic">📚</div>
+        <h4>格式开源可查</h4>
+        <p>每个格式的 magic / 头结构 / 算法管线在文档中完整说明，可审计。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  <b>XHC 生态</b> · hotpe.org · XHCZ 压缩算法 与 加密格式家族 · 全自研 · © 2026 xihaochen<br>
+  <span style="font-size:11px;">加密格式：XEBF 文章 · XEBP 图片 · XEBA 压缩包 · XEBM 视频 · XEBT 文本 · XEBZ 原创压缩（Combo / XHCZ2 / XHCZ3 / XHCZ4）</span>
+</div>
+
+</body>
+</html>
