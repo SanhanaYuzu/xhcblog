@@ -12,6 +12,7 @@ window.XHC_CHANGELOG = [
       "🔐 新增 XEBF 加密文章格式：文章可加密导出为 .xebf 文件（AES-256-GCM + PBKDF2 10 万次迭代，行业标准），也可从 .xebf 导入恢复，离线安全备份",
       "📤 编辑器新增「📦 导出 .xebf」「📥 导入 .xebf」，配套 Python CLI（tools/xebf.py）跨平台互通",
       "🖼 新增 XEBP 图片加密格式（.xebp）：图片可加密为 .xebp 文件，网页转换器/解码器（xebp.html）+ Python CLI（tools/xebp.py），原始图片格式也加密在内，解密自动恢复扩展名",
+      "🗜 新增 XEBX 加密文件格式族：.xeba（压缩包）/ .xebm（无损视频）/ .xebt（文本），网页工具（xebx.html）+ Python CLI（tools/xebx.py）三格式一键互通，原始扩展名加密在内、解密自动恢复",
     ],
   },
   {
