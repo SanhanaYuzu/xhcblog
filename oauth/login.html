@@ -83,6 +83,15 @@
   function showEl(id, on) { document.getElementById(id).style.display = on ? "" : "none"; }
   function goBack() { location.href = getRedirect(); }
 
+  /* 登录成功后清空所有输入框（防止下次回来时残留） */
+  function clearForm() {
+    emailEl.value = ""; pwdEl.value = "";
+    var otpInput = document.getElementById("otpCode"); if (otpInput) otpInput.value = "";
+    showEl("otpCode", false); showEl("otpGo", false);
+    msg.className = "msg"; msg.textContent = "";
+    sessionStorage.removeItem("xhc_oauth_redirect");
+  }
+
   /* 邮箱密码登录 */
   document.getElementById("loginBtn").addEventListener("click", async function () {
     var email = emailEl.value.trim(), pwd = pwdEl.value;
@@ -90,6 +99,7 @@
     var r = await sb.auth.signInWithPassword({ email: email, password: pwd });
     if (r.error) { err("登录失败：" + (r.error.message || "邮箱或密码错误")); return; }
     ok(); msg.textContent = "登录成功，正在跳转…";
+    clearForm();
     setTimeout(goBack, 400);
   });
 
@@ -108,6 +118,7 @@
     var r = await sb.auth.verifyOtp({ email: email, token: code, type: "email" });
     if (r.error) { err("验证失败：" + (r.error.message || "验证码错误")); return; }
     ok(); msg.textContent = "登录成功，正在跳转…";
+    clearForm();
     setTimeout(goBack, 400);
   });
 
@@ -123,6 +134,7 @@
     var r = await sb.auth.signInWithPasskey().catch(function (e) { return { error: e }; });
     if (r && r.error) { err("Passkey 失败：" + (r.error.message || "")); return; }
     ok(); msg.textContent = "登录成功，正在跳转…";
+    clearForm();
     setTimeout(goBack, 400);
   });
 
@@ -133,13 +145,14 @@
       var s = await sb.auth.getSession();
       if (s && s.data && s.data.session) {
         ok(); msg.textContent = "登录成功，正在跳转…";
+        clearForm();
         setTimeout(goBack, 400);
         history.replaceState(null, "", location.pathname);
       }
     }
     /* 已在登录态 → 直接跳回 */
     var s2 = await sb.auth.getSession();
-    if (s2 && s2.data && s2.data.session) goBack();
+    if (s2 && s2.data && s2.data.session) { clearForm(); goBack(); }
   })();
 })();
 </script>
