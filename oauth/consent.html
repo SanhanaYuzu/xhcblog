@@ -6,49 +6,81 @@
 <title>授权确认 · XHC 博客</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    background: #f1f5f9; display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 20px; color: #111827; }
-  .card { background: #fff; border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.12);
-    width: 420px; max-width: 94vw; padding: 28px 26px; }
-  .logo { font-size: 40px; text-align: center; margin-bottom: 6px; }
-  h1 { font-size: 19px; text-align: center; margin-bottom: 4px; }
-  .sub { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 18px; }
-  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 12px 14px; margin-bottom: 14px; font-size: 13.5px; }
-  .box b { display: block; font-size: 14px; margin-bottom: 4px; }
-  .box .link { color: #2563eb; word-break: break-all; font-size: 12.5px; }
-  .scopes { list-style: none; margin: 8px 0 2px; }
-  .scopes li { padding: 5px 0; font-size: 13px; display: flex; gap: 8px; align-items: center; }
-  .scopes li::before { content: "✓"; color: #16a34a; font-weight: 700; }
-  .err { color: #dc2626; font-size: 13.5px; background: #fef2f2; border: 1px solid #fecaca;
-    border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px; }
-  .btns { display: flex; gap: 10px; margin-top: 8px; }
-  button { flex: 1; padding: 12px; border: none; border-radius: 11px; font-size: 14px;
-    font-weight: 600; cursor: pointer; }
-  .approve { background: #2563eb; color: #fff; }
-  .approve:hover { background: #1d4ed8; }
-  .deny { background: #e5e7eb; color: #374151; }
-  .deny:hover { background: #d1d5db; }
-  .hint { font-size: 11.5px; color: #9ca3af; text-align: center; margin-top: 14px; line-height: 1.7; }
-  .btn-link { display: block; text-align: center; padding: 12px; background: #2563eb; color: #fff;
-    border-radius: 11px; font-weight: 600; text-decoration: none; margin-bottom: 8px; }
-  a { color: #2563eb; }
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background: #f6f8fa; display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px; color: #1f2328; }
+  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 12px;
+    width: 440px; max-width: 94vw; overflow: hidden; }
+  /* 顶栏 */
+  .top { background: linear-gradient(135deg,#2563eb,#1d4ed8); padding: 22px 26px;
+    display: flex; align-items: center; gap: 14px; }
+  .top .xlogo { width: 46px; height: 46px; background: #fff; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #1d4ed8; }
+  .top .brand { color: #fff; }
+  .top .brand .t1 { font-size: 16px; font-weight: 600; }
+  .top .brand .t2 { font-size: 12px; opacity: .85; margin-top: 2px; }
+  /* 主体 */
+  .body { padding: 24px 26px; }
+  h1 { font-size: 19px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13.5px; color: #57606a; margin-bottom: 18px; line-height: 1.7; }
+  .app-row { display: flex; align-items: center; gap: 12px; background: #f6f8fa;
+    border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  .app-ico { width: 40px; height: 40px; border-radius: 8px; background: #fff;
+    border: 1px solid #d0d7de; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .app-name { font-weight: 600; font-size: 14.5px; }
+  .app-uri { font-size: 12px; color: #57606a; word-break: break-all; margin-top: 2px; }
+  .section { font-size: 13px; font-weight: 600; color: #1f2328; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px; }
+  .section::before { content: ""; width: 4px; height: 14px; background: #1d4ed8; border-radius: 2px; }
+  .perm { display: flex; flex-direction: column; gap: 6px; background: #fff;
+    border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; }
+  .perm .row { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: #24292f; }
+  .perm .row .ck { width: 18px; height: 18px; flex: none; margin-top: 1px; border-radius: 4px;
+    background: #1d4ed8; display: flex; align-items: center; justify-content: center; }
+  .perm .row .ck::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(0, -1px); }
+  .perm .row b { font-weight: 600; }
+  .perm .row .d { color: #57606a; margin-top: 2px; font-size: 12.5px; }
+  .btns { display: flex; gap: 10px; }
+  .btn-approve { flex: 1; padding: 12px 0; border: none; border-radius: 8px; background: #1d4ed8;
+    color: #fff; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+  .btn-approve:hover { background: #1e40af; }
+  .btn-deny { flex: 1; padding: 12px 0; border: 1px solid #d0d7de; border-radius: 8px;
+    background: #fff; color: #1f2328; font-size: 14.5px; font-weight: 500; cursor: pointer; }
+  .btn-deny:hover { background: #f6f8fa; }
+  .foot { margin-top: 16px; font-size: 12px; color: #8c959f; text-align: center; line-height: 1.7; }
+  .foot a { color: #1d4ed8; text-decoration: none; }
+  /* 状态页（加载/错误/未登录） */
+  .state { text-align: center; padding: 40px 26px; }
+  .state .big { font-size: 40px; margin-bottom: 10px; }
+  .state h2 { font-size: 17px; margin-bottom: 8px; }
+  .state p { font-size: 13.5px; color: #57606a; line-height: 1.7; }
+  .state .btn { display: inline-block; margin-top: 16px; padding: 11px 30px; border-radius: 8px;
+    background: #1d4ed8; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
+  .err { color: #cf222e; font-size: 13px; background: #fff5f5; border: 1px solid #ffd7d5;
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; text-align: left; line-height: 1.6; }
 </style>
 </head>
 <body>
 <div class="card" id="app">
-  <div class="logo">⏳</div>
-  <h1>正在处理授权…</h1>
+  <div class="top">
+    <div class="xlogo">X</div>
+    <div class="brand"><div class="t1">XHC 博客</div><div class="t2">hotpe.org · 授权中心</div></div>
+  </div>
+  <div class="state">
+    <div class="big">⏳</div>
+    <h2>正在处理授权…</h2>
+    <p>正在核实你的身份与应用信息</p>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/config.js"></script>
 <script>
 /* ============================================================
-   XHC 博客 · OAuth Server 授权确认页（纯前端 SPA）
-   - 部署位置：hotpe.org/oauth/consent.html（GitHub Pages）
-   - OAuth Server 配置：Authorization Path = /oauth/consent.html
+   XHC 博客 · OAuth 授权确认页（GitHub 风格）
+   部署位置：hotpe.org/oauth/consent.html（GitHub Pages）
+   OAuth Server：Authorization Path = /oauth/consent.html
    ============================================================ */
 (function () {
   "use strict";
@@ -58,47 +90,44 @@
   var sb = supabase.createClient(SB_URL, ANON);
 
   var SCOPE_LABELS = {
-    openid: "身份标识（登录凭证）",
-    email: "电子邮箱",
-    profile: "基本资料（昵称 / 头像）",
-    phone: "手机号"
+    openid:  { n: "身份标识", d: "确认你的 XHC 账号唯一身份" },
+    email:   { n: "电子邮箱", d: "读取你的 XHC 账号邮箱地址" },
+    profile: { n: "基本资料", d: "读取你的昵称与头像" },
+    phone:   { n: "手机号", d: "读取你的绑定手机号" }
   };
-
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function app() { return document.getElementById("app"); }
-  function show(inner) { app().innerHTML = inner; }
-  function errHtml(msg) {
-    return '<div class="logo">❌</div><h1>出错了</h1><div class="sub">授权流程出现问题</div>' +
-      '<div class="err">' + esc(msg || "未知错误") + '</div>' +
-      '<div class="hint">请返回第三方应用重新发起登录</div>';
+  function renderTop(){ return '<div class="top"><div class="xlogo">X</div><div class="brand"><div class="t1">XHC 博客</div><div class="t2">hotpe.org · 授权中心</div></div></div>'; }
+  function renderState(big, title, desc, btn) {
+    app().innerHTML = renderTop() + '<div class="state"><div class="big">' + big + '</div><h2>' + title + '</h2><p>' + desc + '</p>' + (btn || "") + '</div>';
+  }
+  function renderErr(msg) {
+    app().innerHTML = renderTop() + '<div class="state"><div class="big">❌</div><h2>授权失败</h2><div class="err">' + esc(msg || "未知错误") + '</div><p>请返回第三方应用重新发起登录</p></div>';
   }
 
   var params = new URLSearchParams(location.search);
   var authId = params.get("authorization_id") || "";
 
   async function init() {
-    if (!authId) { show(errHtml("缺少 authorization_id 参数，请从第三方应用发起的登录链接进入")); return; }
-
-    /* 检查登录状态 */
+    if (!authId) {
+      renderErr("缺少 authorization_id 参数，请从第三方应用发起的登录链接进入");
+      return;
+    }
     var sr = await sb.auth.getSession().catch(function () { return { data: { session: null } }; });
     var sess = sr && sr.data && sr.data.session;
     if (!sess) {
-      /* 未登录 → 自动跳转独立登录页，登录成功后自动回本页继续授权 */
-      location.href = "/oauth/login.html?redirect=" + encodeURIComponent(location.href);
+      var ret = encodeURIComponent(location.href);
+      renderState("🔑", "请先登录 XHC 博客", "登录后才能继续授权第三方应用访问你的账号",
+        '<a class="btn" href="/oauth/login.html?redirect=' + ret + '">前往 XHC 博客登录</a>');
       return;
     }
 
-    /* 获取授权详情 */
     var res = await sb.auth.oauth.getAuthorizationDetails(authId).catch(function (e) {
       return { data: null, error: e || { message: "获取授权详情失败" } };
     });
-    if (res.error) { show(errHtml(res.error.message || "获取授权详情失败")); return; }
+    if (res.error) { renderErr(res.error.message || "获取授权详情失败"); return; }
     var data = res.data;
-    if (!data) { show(errHtml("无效的授权请求")); return; }
+    if (!data) { renderErr("无效的授权请求"); return; }
 
     /* 已授权过 → 直接跳转 */
     if (!("authorization_id" in data) && data.redirect_url) { location.href = data.redirect_url; return; }
@@ -106,34 +135,47 @@
     var clientName = (data.client && data.client.name) || "第三方应用";
     var redirectUri = data.redirect_uri || "";
     var scopes = (data.scope || "").split(" ").filter(Boolean);
-    var scopeItems = scopes.length
-      ? scopes.map(function (s) { return "<li>" + esc(SCOPE_LABELS[s] || s) + "</li>"; }).join("")
-      : "<li>基础身份信息</li>";
+    var clientLogo = (data.client && data.client.logo_url) || "";
 
-    show('<div class="logo">🔐</div>' +
-      '<h1>授权「' + esc(clientName) + '」</h1>' +
-      '<div class="sub">该应用请求使用你的 XHC 博客账号登录</div>' +
-      '<div class="box"><b>应用名称</b>' + esc(clientName) + '</div>' +
-      '<div class="box"><b>回调地址</b><span class="link">' + esc(redirectUri) + '</span></div>' +
-      '<div class="box"><b>请求的权限</b><ul class="scopes">' + scopeItems + '</ul></div>' +
-      '<div class="btns">' +
-      '<button type="button" class="deny" id="btnDeny">拒绝</button>' +
-      '<button type="button" class="approve" id="btnApprove">同意并登录</button>' +
-      '</div>' +
-      '<div class="hint">登录即表示同意 <a href="https://hotpe.org" target="_blank">XHC 博客</a> 授权该应用获取以上信息<br>你可以随时在 XHC 博客账户设置中撤销授权</div>');
+    var permRows = scopes.length
+      ? scopes.map(function (s) {
+          var label = SCOPE_LABELS[s] || { n: s, d: "访问该数据" };
+          return '<div class="row"><span class="ck"></span><div><b>' + esc(label.n) + '</b><div class="d">' + esc(label.d) + '</div></div></div>';
+        }).join("")
+      : '<div class="row"><span class="ck"></span><div><b>基础身份信息</b><div class="d">确认你的账号身份</div></div></div>';
+
+    app().innerHTML = renderTop() +
+      '<div class="body">' +
+        '<h1>' + esc(clientName) + ' 想访问你的 XHC 账号</h1>' +
+        '<div class="sub">登录「' + esc(clientName) + '」时，XHC 博客将提供以下信息。<br>请确认后继续。</div>' +
+        '<div class="app-row">' +
+          (clientLogo ? '<img class="app-ico" src="' + esc(clientLogo) + '" alt="">' : '<div class="app-ico">🛠</div>') +
+          '<div><div class="app-name">' + esc(clientName) + '</div><div class="app-uri">' + esc(redirectUri) + '</div></div>' +
+        '</div>' +
+        '<div class="section">请求的权限</div>' +
+        '<div class="perm">' + permRows + '</div>' +
+        '<div class="btns">' +
+          '<button type="button" class="btn-deny" id="btnDeny">取消</button>' +
+          '<button type="button" class="btn-approve" id="btnApprove">授权 ' + esc(clientName) + '</button>' +
+        '</div>' +
+        '<div class="foot">' +
+          'XHC 博客仅提供你授权的信息。你可以在 XHC 博客设置中随时撤销授权。<br>' +
+          '<a href="https://hotpe.org" target="_blank">了解 XHC 博客</a>'
+        '</div>' +
+      '</div>';
 
     document.getElementById("btnApprove").addEventListener("click", function () { decide(true); });
     document.getElementById("btnDeny").addEventListener("click", function () { decide(false); });
   }
 
   async function decide(approve) {
-    show('<div class="logo">⏳</div><h1>处理中…</h1>');
+    app().innerHTML = renderTop() + '<div class="state"><div class="big">⏳</div><h2>处理中…</h2><p>' + (approve ? "正在跳转回应用…" : "已取消") + '</p></div>';
     var res = approve
       ? await sb.auth.oauth.approveAuthorization(authId)
       : await sb.auth.oauth.denyAuthorization(authId);
-    if (res.error) { show(errHtml(res.error.message || "处理失败")); return; }
+    if (res.error) { renderErr(res.error.message || "处理失败"); return; }
     if (res.data && res.data.redirect_url) location.href = res.data.redirect_url;
-    else show(errHtml("未获取到跳转地址"));
+    else renderErr("未获取到跳转地址");
   }
 
   init();
