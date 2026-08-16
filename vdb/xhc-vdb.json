@@ -1,9 +1,16 @@
 {
-  "format": "XHC-VDB v1",
-  "version": "20260816.1",
-  "name": "XHC 安全云端威胁情报库",
-  "updated": "2026-08-16",
+  "format": "XHC-VDB v2",
+  "version": "20260817.14571980",
+  "name": "XHC 安全病毒库",
+  "updated": "2026-08-17",
   "count": 5,
+  "defender": {
+    "security_intelligence": "1.457.198.0",
+    "engine": "1.1.26070.7",
+    "platform": "4.18.26070.9",
+    "source": "Microsoft WDSI (defenderupdates)",
+    "synced": "2026-08-17T05:45:11+08:00"
+  },
   "hashes": {
     "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": {
       "name": "EICAR 标准反病毒测试样本",
@@ -30,6 +37,5 @@
       "type": "adware",
       "level": "medium"
     }
-  },
-  "note": "云端威胁情报库：由 hotpe.org 托管，XHC 安全客户端一键直连更新。EICAR 条目为官方反病毒测试样本（Defender 必报），用于验证云端库生效；其余为格式示例，正式条目将随更新持续扩充。"
+  }
 }
