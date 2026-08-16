@@ -1051,6 +1051,12 @@ document.body.appendChild(m);
             item("💬", "论坛", "forum.html") +
             item("📅", "每日签到", null, "checkin") +
             item("🧰", "工具箱", "tools.html") +
+            sep() +
+            item("🖼️", "图片加密", "xebp.html") +
+            item("🗜️", "文件加密", "xebx.html") +
+            item("📦", "XEBZ 压缩", "xebz.html") +
+            item("🎬", "XEBM 播放器", "xebm-player.html") +
+            sep() +
             item("⚙️", "设置", "settings.html") +
             item("ℹ️", "关于本站", "about.html") +
             item("🖥️", "登录设备", null, "sessions") +
