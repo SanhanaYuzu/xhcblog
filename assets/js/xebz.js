@@ -23,11 +23,11 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0100;
+  var VERSION = 0x0200;  // 2.0（读取兼容 1.0）
   var KDF_NONE = 0, KDF_PBKDF2 = 1;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -67,6 +67,171 @@
     for (var k = 0; k < bytes.length; k++) crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[k]) & 0xFF];
     return (crc ^ -1) >>> 0;
   }
+
+  /* ---------- XHCZ2-LZ（自研哈希链匹配器） ---------- */
+  var TOKEN_ESC = 0x00, TOKEN_MATCH = 0x01, TOKEN_RUN = 0x02;
+  var Z2_WINDOW = 32768, Z2_MIN = 4, Z2_MAX = 258;
+
+  function z2LzCompress(data) {
+    var n = data.length, out = [], i = 0, chain = new Map();
+    while (i < n) {
+      var bestLen = 0, bestOff = 0;
+      if (i + 3 <= n) {
+        var h = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        var last = chain.has(h) ? chain.get(h) : -1;
+        if (last >= 0 && i - last <= Z2_WINDOW) {
+          var m = 0;
+          while (m < Z2_MAX && i + m < n && data[last + m] === data[i + m]) m++;
+          if (m >= Z2_MIN) { bestLen = m; bestOff = i - last; }
+        }
+      }
+      if (bestLen >= Z2_MIN) {
+        out.push(TOKEN_MATCH, (bestOff >> 8) & 255, bestOff & 255, Math.min(bestLen, Z2_MAX) - Z2_MIN);
+        for (var k = 0; k < bestLen; k++)
+          if (i + k + 3 <= n) chain.set((data[i+k]<<16)|(data[i+k+1]<<8)|data[i+k+2], i + k);
+        i += bestLen;
+      } else {
+        var j = i + 1;
+        while (j < n && data[j] === data[i] && j - i < Z2_MAX) j++;
+        if (j - i >= Z2_MIN) {
+          out.push(TOKEN_RUN, (j - i) - Z2_MIN, data[i]);
+          for (var k2 = 0; k2 < j - i; k2++)
+            if (i + k2 + 3 <= n) chain.set((data[i+k2]<<16)|(data[i+k2+1]<<8)|data[i+k2+2], i + k2);
+          i = j;
+        } else {
+          var b = data[i];
+          if (b === TOKEN_ESC || b === TOKEN_MATCH || b === TOKEN_RUN) out.push(TOKEN_ESC, b);
+          else out.push(b);
+          if (i + 3 <= n) chain.set((data[i]<<16)|(data[i+1]<<8)|data[i+2], i);
+          i++;
+        }
+      }
+    }
+    return new Uint8Array(out);
+  }
+
+  function z2LzDecompress(tokens) {
+    var out = [], i = 0, n = tokens.length;
+    while (i < n) {
+      var t = tokens[i];
+      if (t === TOKEN_ESC) { out.push(tokens[i + 1]); i += 2; }
+      else if (t === TOKEN_MATCH) {
+        var off = (tokens[i + 1] << 8) | tokens[i + 2];
+        var ln = tokens[i + 3] + Z2_MIN;
+        var src = out.length - off;
+        for (var k = 0; k < ln; k++) { out.push(out[src]); src++; }
+        i += 4;
+      } else if (t === TOKEN_RUN) {
+        var rl = tokens[i + 1] + Z2_MIN;
+        for (var m2 = 0; m2 < rl; m2++) out.push(tokens[i + 2]);
+        i += 3;
+      } else { out.push(t); i++; }
+    }
+    return new Uint8Array(out);
+  }
+
+  /* ---------- XHCZ2-ACE（自研 32-bit 整数算术编码） ---------- */
+  function z2Freq(data) {
+    var freq = new Uint32Array(256);
+    for (var i = 0; i < data.length; i++) freq[data[i]]++;
+    for (var j = 0; j < 256; j++) if (freq[j] === 0) freq[j] = 1;
+    return freq;
+  }
+  function z2Cum(freq) {
+    var cum = new Uint32Array(257), s = 0;
+    for (var i = 0; i < 256; i++) { cum[i + 1] = cum[i] + freq[i]; }
+    return { cum: cum, total: cum[256] };
+  }
+
+  function z2AceEncode(data) {
+    var freq = z2Freq(data), ct = z2Cum(freq), cum = ct.cum, total = ct.total;
+    var out = [];
+    for (var f = 0; f < 256; f++) out.push.apply(out, u32be(freq[f]));
+    out.push.apply(out, u32be(data.length));
+    var MASK = 0xFFFFFFFF, HALF = 0x80000000, QTR1 = 0x40000000, QTR3 = 0xC0000000;
+    var low = 0, high = MASK, pending = 0, bits = [];
+    function bpf(b) { // bit_plus_follow
+      bits.push(b);
+      while (pending > 0) { bits.push(b ^ 1); pending--; }
+    }
+    for (var i = 0; i < data.length; i++) {
+      var sym = data[i];
+      var rng = high - low + 1;
+      var hh = Math.floor((rng * cum[sym + 1]) / total);
+      var ll = Math.floor((rng * cum[sym]) / total);
+      high = (low + hh - 1) >>> 0;
+      low = (low + ll) >>> 0;
+      for (;;) {
+        if (high < HALF) {
+          bpf(0);
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        } else if (low >= HALF) {
+          bpf(1);
+          low = (low - HALF) >>> 0; high = (high - HALF) >>> 0;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        } else if (low >= QTR1 && high < QTR3) {
+          pending++;
+          low = (low - QTR1) >>> 0; high = (high - QTR1) >>> 0;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        } else break;
+      }
+    }
+    pending += 1;
+    if (low < QTR1) bpf(0); else bpf(1);
+    while (bits.length % 8) bits.push(0);
+    for (var k = 0; k < bits.length; k += 8) {
+      var bb = 0;
+      for (var j = 0; j < 8; j++) bb = (bb << 1) | bits[k + j];
+      out.push(bb);
+    }
+    return new Uint8Array(out);
+  }
+
+  function z2AceDecode(data, origSize) {
+    var freq = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) freq[i] = readU32(data, i * 4);
+    var ct = z2Cum(freq), cum = ct.cum, total = ct.total;
+    var cnt = readU32(data, 1024);
+    var pos = 1028, cur = 0, n = 0, limit = data.length;
+    function nbit() {
+      if (n === 0) {
+        if (pos >= limit) return 0;
+        cur = data[pos]; pos++; n = 8;
+      }
+      var b = (cur >> 7) & 1;
+      cur = (cur << 1) & 255; n--;
+      return b;
+    }
+    var MASK = 0xFFFFFFFF, HALF = 0x80000000, QTR1 = 0x40000000, QTR3 = 0xC0000000;
+    var low = 0, high = MASK, value = 0;
+    for (var k = 0; k < 32; k++) value = ((value << 1) | nbit()) >>> 0;
+    var out = [];
+    for (var s = 0; s < cnt; s++) {
+      var rng = high - low + 1;
+      var target = Math.floor(((value - low + 1) * total - 1) / rng);
+      var lo = 0, hi = 256;
+      while (lo < hi) {
+        var mid = (lo + hi) >> 1;
+        if (cum[mid + 1] <= target) lo = mid + 1; else hi = mid;
+      }
+      var sym = lo > 255 ? 255 : lo;
+      out.push(sym);
+      high = (low + Math.floor((rng * cum[sym + 1]) / total) - 1) >>> 0;
+      low = (low + Math.floor((rng * cum[sym]) / total)) >>> 0;
+      for (;;) {
+        if (high < HALF) { /* pass */ }
+        else if (low >= HALF) { value = (value - HALF) >>> 0; low = (low - HALF) >>> 0; high = (high - HALF) >>> 0; }
+        else if (low >= QTR1 && high < QTR3) { value = (value - QTR1) >>> 0; low = (low - QTR1) >>> 0; high = (high - QTR1) >>> 0; }
+        else break;
+        low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        value = ((value << 1) | nbit()) >>> 0;
+      }
+    }
+    return new Uint8Array(out);
+  }
+
+  function z2Compress(data) { return z2AceEncode(z2LzCompress(data)); }
+  function z2Decompress(data) { return z2LzDecompress(z2AceDecode(data, 0)); }
 
   /* ---------- RLE-X ---------- */
   function rleCompress(data) {
@@ -220,9 +385,11 @@
       var f = files[i];
       var nb = te.encode(f.name);
       var crc = crc32(f.data);
-      var comp = comboCompress(f.data);
+      var z2 = z2Compress(f.data);
+      var c1 = comboCompress(f.data);
       var use, block;
-      if (comp.length < f.data.length) { use = METHOD_COMBO; block = comp; }
+      if (z2.length <= c1.length && z2.length <= f.data.length) { use = METHOD_Z2; block = z2; }
+      else if (c1.length < f.data.length) { use = METHOD_COMBO; block = c1; }
       else { use = METHOD_STORE; block = f.data; }
       pl.push.apply(pl, u32be(nb.length));
       pl.push.apply(pl, nb);
@@ -267,7 +434,7 @@
     if (u8.length < HEADER_LEN) throw new Error('文件过短，不是有效的 XEBZ');
     for (var i = 0; i < 6; i++) if (u8[i] !== MAGIC[i]) throw new Error('不是有效的 XEBZ 文件（magic 不符）');
     var ver = readU16(u8, 6);
-    if ((ver >> 8) !== 1) throw new Error('不支持的版本: 0x' + ver.toString(16));
+    if ((ver >> 8) !== 1 && (ver >> 8) !== 2) throw new Error('不支持的版本: 0x' + ver.toString(16));
     var kdf = u8[8];
     var iters = readU32(u8, 9);
     var saltLen = u8[13], ivLen = u8[30];
@@ -308,6 +475,7 @@
     for (i = 0; i < entries; i++) {
       var data;
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_Z2) data = z2Decompress(blocks[i]);
       else if (headers[i].method === METHOD_STORE) data = blocks[i];
       else throw new Error('不支持的压缩方法: ' + headers[i].method);
       if (crc32(data) !== headers[i].crc32) throw new Error('校验失败（数据损坏?）: ' + headers[i].name);
@@ -322,6 +490,11 @@
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
-    comboDecompress: comboDecompress
+    comboDecompress: comboDecompress,
+    z2Compress: z2Compress,
+    z2Decompress: z2Decompress,
+    z2LzCompress: z2LzCompress,
+    z2LzDecompress: z2LzDecompress,
+    z2AceEncode: z2AceEncode
   };
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
