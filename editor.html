@@ -102,6 +102,13 @@
         <a href="myposts.html" class="btn btn-outline">我的帖子</a>
         <a href="index.html" class="btn btn-outline">取消</a>
       </div>
+      <div class="row" style="margin-top:10px;">
+        <button type="button" class="btn btn-outline" id="xebfExportBtn" style="margin-right:8px;" title="加密导出为 .xebf 文件，可离线备份">📦 导出 .xebf</button>
+        <label class="btn btn-outline" style="cursor:pointer;margin-right:8px;" title="从 .xebf 文件导入恢复文章">📥 导入 .xebf
+          <input id="xebfImportInput" type="file" accept=".xebf" hidden>
+        </label>
+        <span style="font-size:12px;color:var(--text-3,#999);align-self:center;">XEBF = XHC 加密博客文章格式（AES-256-GCM）</span>
+      </div>
     </form>
   </main>
 
@@ -116,9 +123,156 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/data.js"></script>
+  <script src="assets/js/xebf.js"></script>
   <script src="assets/js/app.js"></script>
 
   <!-- 左下角水印 -->
   <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+
+  <!-- ===== XEBF 密码弹窗 ===== -->
+  <div id="xebfPwdModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:14px;width:360px;max-width:94vw;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.3);">
+      <div style="background:linear-gradient(135deg,#1a56db,#2563eb);color:#fff;padding:14px 18px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px;">
+        <span style="width:30px;height:30px;background:rgba(255,255,255,.18);border-radius:8px;display:flex;align-items:center;justify-content:center;">🔐</span>
+        <span id="xebfPwdTitle">设置加密密码</span>
+        <span onclick="xebfClosePwd()" style="margin-left:auto;cursor:pointer;font-size:22px;opacity:.85;line-height:1;">×</span>
+      </div>
+      <div style="padding:20px 22px;">
+        <div id="xebfPwdHint" style="font-size:12.5px;color:#6b7280;line-height:1.7;background:#f0f9ff;border:1px solid #b6e0fe;border-radius:10px;padding:9px 12px;margin-bottom:12px;">输入密码用于 AES-256-GCM 加密</div>
+        <input id="xebfPwd1" type="password" placeholder="输入密码" style="width:100%;box-sizing:border-box;height:44px;border:1.5px solid #d1d5db;border-radius:10px;padding:0 14px;font-size:15px;outline:none;margin-bottom:10px;">
+        <input id="xebfPwd2" type="password" placeholder="再次输入确认" style="width:100%;box-sizing:border-box;height:44px;border:1.5px solid #d1d5db;border-radius:10px;padding:0 14px;font-size:15px;outline:none;">
+        <div id="xebfPwdErr" style="color:#dc2626;font-size:12.5px;min-height:18px;margin-top:8px;text-align:center;"></div>
+        <button id="xebfPwdOk" style="width:100%;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px;background:#1a56db;color:#fff;box-shadow:0 2px 8px rgba(26,86,219,.25);">✓ 确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== XEBF 导出 / 导入逻辑 ===== -->
+  <script>
+  (function () {
+    function $id(id) { return document.getElementById(id); }
+    function toastMsg(t, ok) {
+      var el = $id('xebfPwdErr'); if (el) { el.textContent = t; el.style.color = ok ? '#16a34a' : '#dc2626'; }
+    }
+    /* 收集当前文章表单 → 文章对象 */
+    function collectArticle() {
+      var reBody = $id('reBody'), reSrc = $id('reSrc');
+      var content = reSrc && reSrc.style.display !== 'none'
+        ? reSrc.value.trim()
+        : (reBody ? reBody.innerHTML.trim() : '');
+      if (!content) content = $id('postContent').value.trim();
+      var now = new Date().toISOString();
+      var editId = (location.search.match(/[?&]id=([^&]+)/) || [])[1] || '';
+      var q = function (k) { return (location.search.match(new RegExp('[?&]' + k + '=([^&]+)')) || [])[1] || ''; };
+      return {
+        type: 'xhc-blog-article',
+        version: 1,
+        meta: {
+          title: ($id('postTitle').value || '').trim(),
+          summary: ($id('postSummary').value || '').trim(),
+          category: ($id('postCategory').value || '').trim(),
+          tags: ($id('postTags').value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+          cover: ($id('coverImageUrl') && $id('coverImageUrl').value) || ($id('postCover').value || '').trim(),
+          series: ($id('postSeries').value || '').trim(),
+          scheduled_at: ($id('postSchedule').value || null),
+          post_id: editId || q('id') || null,
+          created_at: now,
+          updated_at: now
+        },
+        content: content,
+        content_type: 'html'
+      };
+    }
+    /* 填充表单 */
+    function fillArticle(a) {
+      var m = a.meta || {};
+      if ($id('postTitle')) $id('postTitle').value = m.title || '';
+      if ($id('postSummary')) $id('postSummary').value = m.summary || '';
+      if ($id('postCategory')) $id('postCategory').value = m.category || '';
+      if ($id('postTags')) $id('postTags').value = (m.tags || []).join(', ');
+      if ($id('postCover')) $id('postCover').value = m.cover || '';
+      if ($id('postSeries')) $id('postSeries').value = m.series || '';
+      if ($id('postSchedule')) $id('postSchedule').value = m.scheduled_at || '';
+      var reBody = $id('reBody'), reSrc = $id('reSrc');
+      var html = a.content || '';
+      if (reBody) { reBody.innerHTML = html; }
+      if (reSrc) { reSrc.value = html; }
+      if ($id('postContent')) $id('postContent').value = html;
+    }
+    /* 密码弹窗（prompt 风格，resolve 密码或 null） */
+    function pwdPrompt(title, hint, needConfirm) {
+      return new Promise(function (resolve) {
+        $id('xebfPwdTitle').textContent = title;
+        $id('xebfPwdHint').textContent = hint || '';
+        $id('xebfPwdErr').textContent = '';
+        $id('xebfPwd1').value = '';
+        $id('xebfPwd2').value = '';
+        var ok = $id('xebfPwdOk');
+        ok.disabled = false; ok.textContent = '✓ 确定';
+        var done = false;
+        function submit() {
+          if (done) return;
+          var p1 = $id('xebfPwd1').value;
+          if (!p1) { toastMsg('请输入密码'); return; }
+          if (needConfirm && p1 !== $id('xebfPwd2').value) { toastMsg('两次输入的密码不一致'); return; }
+          done = true; ok.disabled = true; ok.textContent = '处理中…';
+          resolve(p1);
+        }
+        ok.onclick = submit;
+        $id('xebfPwd1').onkeydown = function (e) { if (e.key === 'Enter') submit(); };
+        $id('xebfPwd2').onkeydown = function (e) { if (e.key === 'Enter') submit(); };
+        $id('xebfPwdModal').style.display = 'flex';
+        setTimeout(function () { $id('xebfPwd1').focus(); }, 60);
+      });
+    }
+    window.xebfClosePwd = function () { $id('xebfPwdModal').style.display = 'none'; };
+
+    /* 导出 .xebf */
+    $id('xebfExportBtn').addEventListener('click', async function () {
+      if (typeof XEBF === 'undefined') { alert('加密模块未加载（需要 HTTPS）'); return; }
+      var article = collectArticle();
+      if (!article.meta.title && !article.content) {
+        alert('请先填写文章内容再导出'); return;
+      }
+      var pwd = await pwdPrompt('导出加密文章', '为这篇 .xebf 文件设置密码（AES-256-GCM 加密，请务必牢记）', true);
+      if (!pwd) return;
+      try {
+        var bin = await XEBF.encode(article, pwd);
+        var blob = new Blob([bin], { type: 'application/octet-stream' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (article.meta.title || 'untitled').replace(/[\\/:*?"<>|]/g, '_') + '.xebf';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+        window.xebfClosePwd();
+        toastMsg('✅ 已导出 .xebf（' + bin.length + ' 字节）');
+        setTimeout(function () { $id('xebfPwdErr').textContent = ''; }, 2500);
+      } catch (e) {
+        toastMsg('导出失败：' + (e.message || e));
+        $id('xebfPwdOk').disabled = false; $id('xebfPwdOk').textContent = '✓ 确定';
+      }
+    });
+
+    /* 导入 .xebf */
+    $id('xebfImportInput').addEventListener('change', async function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (typeof XEBF === 'undefined') { alert('加密模块未加载（需要 HTTPS）'); return; }
+      var pwd = await pwdPrompt('导入加密文章', '输入该 .xebf 文件的密码以解密', false);
+      if (!pwd) return;
+      try {
+        var buf = await file.arrayBuffer();
+        var article = await XEBF.decode(buf, pwd);
+        fillArticle(article);
+        window.xebfClosePwd();
+        alert('✅ 导入成功：「' + (article.meta && article.meta.title || '未命名') + '」已填入编辑器');
+      } catch (err) {
+        toastMsg('导入失败：' + (err.message || err));
+        $id('xebfPwdOk').disabled = false; $id('xebfPwdOk').textContent = '✓ 确定';
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
