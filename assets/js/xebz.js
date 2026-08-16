@@ -23,11 +23,11 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0200;  // 2.0（读取兼容 1.0）
+  var VERSION = 0x0201;  // 2.1（读取兼容 1.x / 2.0）
   var KDF_NONE = 0, KDF_PBKDF2 = 1;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -233,6 +233,127 @@
   function z2Compress(data) { return z2AceEncode(z2LzCompress(data)); }
   function z2Decompress(data) { return z2LzDecompress(z2AceDecode(data, 0)); }
 
+  /* ---------- XHCZ3（2.1 RAR5 级增强：1MB 窗口 + lazy + 距离分层 + 分块自适应） ---------- */
+  var Z3_WINDOW = 1 << 20, Z3_BLOCK = 65536;
+  var TOKEN_MATCH_EXT = 0x03;
+
+  function z3LzCompress(data) {
+    var n = data.length, out = [], i = 0, chain = new Map();
+    function h3(p) { return (data[p] << 16) | (data[p + 1] << 8) | data[p + 2]; }
+    function findMatch(pos) {
+      if (pos + 3 > n) return [0, 0];
+      var last = chain.has(h3(pos)) ? chain.get(h3(pos)) : -1;
+      if (last < 0 || pos - last > Z3_WINDOW) return [0, 0];
+      var m = 0;
+      while (m < 258 && pos + m < n && data[last + m] === data[pos + m]) m++;
+      if (m < 4) return [0, 0];
+      return [m, pos - last];
+    }
+    while (i < n) {
+      var r = findMatch(i), bl = r[0], bo = r[1];
+      if (bl >= 4) {
+        if (i + 4 <= n) {
+          var r2 = findMatch(i + 1);
+          if (r2[0] > bl + 1) {
+            var b = data[i];
+            if (b === 0x00 || b === 0x01 || b === 0x02 || b === TOKEN_MATCH_EXT) out.push(0x00, b);
+            else out.push(b);
+            if (i + 3 <= n) chain.set(h3(i), i);
+            i++;
+            continue;
+          }
+        }
+        if (bo <= 0xFFFF) {
+          out.push(0x01, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 4);
+        } else {
+          out.push(TOKEN_MATCH_EXT, (bo >> 16) & 255, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 4);
+        }
+        for (var k = 0; k < bl; k++)
+          if (i + k + 3 <= n) chain.set(h3(i + k), i + k);
+        i += bl;
+      } else {
+        var j = i + 1;
+        while (j < n && data[j] === data[i] && j - i < 258) j++;
+        if (j - i >= 4) {
+          out.push(0x02, (j - i) - 4, data[i]);
+          for (var k2 = 0; k2 < j - i; k2++)
+            if (i + k2 + 3 <= n) chain.set(h3(i + k2), i + k2);
+          i = j;
+        } else {
+          var b2 = data[i];
+          if (b2 === 0x00 || b2 === 0x01 || b2 === 0x02 || b2 === TOKEN_MATCH_EXT) out.push(0x00, b2);
+          else out.push(b2);
+          if (i + 3 <= n) chain.set(h3(i), i);
+          i++;
+        }
+      }
+    }
+    return new Uint8Array(out);
+  }
+
+  function z3LzDecompress(tokens) {
+    var out = [], i = 0, n = tokens.length;
+    while (i < n) {
+      var t = tokens[i];
+      if (t === 0x00) { out.push(tokens[i + 1]); i += 2; }
+      else if (t === 0x01) {
+        var off = (tokens[i + 1] << 8) | tokens[i + 2];
+        var ln = tokens[i + 3] + 4;
+        var src = out.length - off;
+        for (var k = 0; k < ln; k++) { out.push(out[src]); src++; }
+        i += 4;
+      } else if (t === TOKEN_MATCH_EXT) {
+        var off2 = (tokens[i + 1] << 16) | (tokens[i + 2] << 8) | tokens[i + 3];
+        var ln2 = tokens[i + 4] + 4;
+        var src2 = out.length - off2;
+        for (var m2 = 0; m2 < ln2; m2++) { out.push(out[src2]); src2++; }
+        i += 5;
+      } else if (t === 0x02) {
+        var rl = tokens[i + 1] + 4;
+        for (var m3 = 0; m3 < rl; m3++) out.push(tokens[i + 2]);
+        i += 3;
+      } else { out.push(t); i++; }
+    }
+    return new Uint8Array(out);
+  }
+
+  function z3BlocksEncode(tokens) {
+    var out = [];
+    for (var s = 0; s < tokens.length; s += Z3_BLOCK) {
+      var block = tokens.subarray(s, Math.min(s + Z3_BLOCK, tokens.length));
+      var enc = z2AceEncode(block);   // [freq 1024][u32 符号数][位流]
+      var symCount = readU32(enc, 1024);
+      var bits = enc.subarray(1028);
+      out.push.apply(out, u32be(symCount));
+      out.push.apply(out, u32be(bits.length));
+      out.push.apply(out, Array.from(enc.subarray(0, 1024)));
+      out.push.apply(out, Array.from(bits));
+    }
+    return new Uint8Array(out);
+  }
+
+  function z3BlocksDecode(data) {
+    var out = [], pos = 0;
+    while (pos < data.length) {
+      var symCount = readU32(data, pos);
+      var bitsLen = readU32(data, pos + 4);
+      pos += 8;
+      var freq = data.subarray(pos, pos + 1024);
+      pos += 1024;
+      var bits = data.subarray(pos, pos + bitsLen);
+      pos += bitsLen;
+      var enc = new Uint8Array(1024 + 4 + bitsLen);
+      enc.set(freq, 0);
+      enc.set(u32be(symCount), 1024);
+      enc.set(bits, 1028);
+      out.push.apply(out, Array.from(z2AceDecode(enc, 0)));
+    }
+    return new Uint8Array(out);
+  }
+
+  function z3Compress(data) { return z3BlocksEncode(z3LzCompress(data)); }
+  function z3Decompress(data) { return z3LzDecompress(z3BlocksDecode(data)); }
+
   /* ---------- RLE-X ---------- */
   function rleCompress(data) {
     var out = [], i = 0, n = data.length;
@@ -385,10 +506,12 @@
       var f = files[i];
       var nb = te.encode(f.name);
       var crc = crc32(f.data);
+      var z3 = z3Compress(f.data);
       var z2 = z2Compress(f.data);
       var c1 = comboCompress(f.data);
       var use, block;
-      if (z2.length <= c1.length && z2.length <= f.data.length) { use = METHOD_Z2; block = z2; }
+      if (z3.length <= z2.length && z3.length <= c1.length && z3.length <= f.data.length) { use = METHOD_Z3; block = z3; }
+      else if (z2.length <= c1.length && z2.length <= f.data.length) { use = METHOD_Z2; block = z2; }
       else if (c1.length < f.data.length) { use = METHOD_COMBO; block = c1; }
       else { use = METHOD_STORE; block = f.data; }
       pl.push.apply(pl, u32be(nb.length));
@@ -475,6 +598,7 @@
     for (i = 0; i < entries; i++) {
       var data;
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z2) data = z2Decompress(blocks[i]);
       else if (headers[i].method === METHOD_STORE) data = blocks[i];
       else throw new Error('不支持的压缩方法: ' + headers[i].method);
@@ -495,6 +619,8 @@
     z2Decompress: z2Decompress,
     z2LzCompress: z2LzCompress,
     z2LzDecompress: z2LzDecompress,
-    z2AceEncode: z2AceEncode
+    z2AceEncode: z2AceEncode,
+    z3Compress: z3Compress,
+    z3Decompress: z3Decompress
   };
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
