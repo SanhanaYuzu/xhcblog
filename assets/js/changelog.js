@@ -6,6 +6,14 @@
    ============================================ */
 window.XHC_CHANGELOG = [
   {
+    date: "2026-08-16",
+    version: "v1.05",
+    items: [
+      "🔐 新增 XEBF 加密文章格式：文章可加密导出为 .xebf 文件（AES-256-GCM + PBKDF2 10 万次迭代，行业标准），也可从 .xebf 导入恢复，离线安全备份",
+      "📤 编辑器新增「📦 导出 .xebf」「📥 导入 .xebf」，配套 Python CLI（tools/xebf.py）跨平台互通",
+    ],
+  },
+  {
     date: "2026-08-15",
     version: "v1.04+",
     items: [
