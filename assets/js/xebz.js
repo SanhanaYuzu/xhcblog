@@ -768,8 +768,31 @@
   }
 
   /* ---------- pack / unpack ---------- */
-  async function pack(files, password) {
-    /* files: [{name, data: Uint8Array}] → Uint8Array(.xebz) */
+  function pickBlock(data, method) {
+    /* 返回 [use, block]。method='auto' 六者择优；否则强制指定算法（更大则 store 兜底） */
+    var z5, z4, z3, z2, c1;
+    if (!method || method === 'auto') {
+      z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
+      z2 = z2Compress(data); c1 = comboCompress(data);
+      if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= data.length) return [METHOD_Z5, z5];
+      if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= data.length) return [METHOD_Z4, z4];
+      if (z3.length <= z2.length && z3.length <= c1.length && z3.length <= data.length) return [METHOD_Z3, z3];
+      if (z2.length <= c1.length && z2.length <= data.length) return [METHOD_Z2, z2];
+      if (c1.length < data.length) return [METHOD_COMBO, c1];
+      return [METHOD_STORE, data];
+    }
+    if (method === 'store') return [METHOD_STORE, data];
+    if (method === 'combo') { c1 = comboCompress(data); return c1.length < data.length ? [METHOD_COMBO, c1] : [METHOD_STORE, data]; }
+    if (method === 'z2') { z2 = z2Compress(data); return z2.length < data.length ? [METHOD_Z2, z2] : [METHOD_STORE, data]; }
+    if (method === 'z3') { z3 = z3Compress(data); return z3.length < data.length ? [METHOD_Z3, z3] : [METHOD_STORE, data]; }
+    if (method === 'z4') { z4 = z4Compress(data); return z4.length < data.length ? [METHOD_Z4, z4] : [METHOD_STORE, data]; }
+    z5 = z5Compress(data);
+    return z5.length < data.length ? [METHOD_Z5, z5] : [METHOD_STORE, data];
+  }
+
+  async function pack(files, password, method) {
+    /* files: [{name, data: Uint8Array}] → Uint8Array(.xebz)
+       method: 'auto'(默认)/'store'/'combo'/'z2'/'z3'/'z4'/'z5' */
     assertCrypto();
     var pl = [], i;
     pl.push.apply(pl, u32be(files.length));
@@ -778,18 +801,8 @@
       var f = files[i];
       var nb = te.encode(f.name);
       var crc = crc32(f.data);
-      var z5 = z5Compress(f.data);
-      var z4 = z4Compress(f.data);
-      var z3 = z3Compress(f.data);
-      var z2 = z2Compress(f.data);
-      var c1 = comboCompress(f.data);
-      var use, block;
-      if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= f.data.length) { use = METHOD_Z5; block = z5; }
-      else if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= f.data.length) { use = METHOD_Z4; block = z4; }
-      else if (z3.length <= z2.length && z3.length <= c1.length && z3.length <= f.data.length) { use = METHOD_Z3; block = z3; }
-      else if (z2.length <= c1.length && z2.length <= f.data.length) { use = METHOD_Z2; block = z2; }
-      else if (c1.length < f.data.length) { use = METHOD_COMBO; block = c1; }
-      else { use = METHOD_STORE; block = f.data; }
+      var picked = pickBlock(f.data, method);
+      var use = picked[0], block = picked[1];
       pl.push.apply(pl, u32be(nb.length));
       pl.push.apply(pl, nb);
       pl.push.apply(pl, u64be(f.data.length));
@@ -883,7 +896,8 @@
       } catch (e) { throw new Error('解密失败：密码错误或文件已损坏'); }
     } else if (kdf === KDF_NONE) {
       if (password) throw new Error('该文件未加密，无需密码');
-      plain = payload;
+      var plen0 = readU64(u8, 43);
+      plain = u8.subarray(51, 51 + plen0);
     } else throw new Error('不支持的 KDF: ' + kdf);
 
     var off = 0;
@@ -922,6 +936,9 @@
   global.XEBZ = {
     VERSION: '1.0.0',
     FORMAT: 'XHCBZ-v1',
+    METHODS: { auto: '自动（六算法择优）', store: '仅存储', combo: 'XHC-Combo',
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5' },
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
