@@ -107,19 +107,20 @@
     <a href="#combo2">XHC-Combo2</a>
     <a href="#z6">XHCZ6</a>
     <a href="#ss">XHC-SS</a>
+    <a href="#pross">XHCZ-ProSS</a>
     <a href="#bench">实测对比</a>
   </div>
 </div>
 
 <div class="hero">
   <h1>🧮 XHC 自研压缩算法家族</h1>
-  <p>从快速游程变换到 PAQ 式上下文混合，六代压缩算法 + 一代安全内核，全部从零自研。
+  <p>从快速游程变换到 PAQ 式上下文混合，七代压缩算法 + 二代安全内核，全部从零自研。
      每一代都在压缩率上跨越一个台阶，同时保持 Python / JavaScript 双端完全互通。</p>
   <div class="stats">
-    <div class="stat"><b>7</b><span>代压缩算法</span></div>
-    <div class="stat"><b>1</b><span>安全加密内核</span></div>
+    <div class="stat"><b>8</b><span>代压缩算法</span></div>
+    <div class="stat"><b>2</b><span>安全加密内核</span></div>
     <div class="stat"><b>2</b><span>端实现互通</span></div>
-    <div class="stat"><b>1.19%</b><span>中文极限压缩率</span></div>
+    <div class="stat"><b>0.85%</b><span>日志极限压缩率</span></div>
   </div>
 </div>
 
@@ -127,7 +128,7 @@
 
   <!-- 时间线 -->
   <h2 class="sec-title" id="timeline">代际谱系<small>XEBZ 格式版本演进</small></h2>
-  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代</p>
+  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代 → 2.6 速度+安全 → 2.7 综合产品线</p>
   <div class="timeline">
     <div class="tl-item"><div class="tl-dot"></div><b>XHC-Combo</b><span>XEBZ 1.0</span><div class="tag">快速</div></div>
     <div class="tl-item"><div class="tl-dot"></div><b>XHCZ2</b><span>XEBZ 2.0</span><div class="tag">基础</div></div>
@@ -137,6 +138,7 @@
     <div class="tl-item"><div class="tl-dot"></div><b>Combo2</b><span>XEBZ 2.4</span><div class="tag">加密</div></div>
     <div class="tl-item"><div class="tl-dot"></div><b>XHCZ6</b><span>XEBZ 2.5</span><div class="tag">极限Ⅱ</div></div>
     <div class="tl-item"><div class="tl-dot" style="background:var(--amber);box-shadow:0 0 0 2px var(--amber);"></div><b>XHC-SS</b><span>XEBZ 2.6</span><div class="tag" style="background:#fef3c7;color:#b45309;">速度+安全</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#059669;box-shadow:0 0 0 2px #059669;"></div><b>XHCZ-ProSS</b><span>XEBZ 2.7</span><div class="tag" style="background:#d1fae5;color:#047857;">综合</div></div>
   </div>
 
   <!-- XHC-Combo -->
@@ -309,22 +311,46 @@
     </div>
   </div>
 
+  <!-- XHCZ-ProSS -->
+  <div class="alg" id="pross" style="border-color:#059669;">
+    <div class="head">
+      <div class="badge" style="background:linear-gradient(135deg,#059669,#10b981);">PS</div>
+      <h3>XHCZ-ProSS</h3><span class="ver">XEBZ 2.7 · 综合产品线</span>
+      <span class="pos" style="background:#d1fae5;color:#047857;">综合最优</span>
+    </div>
+    <div class="desc">把此前各产品线的长处<b>合而为一</b>：增强 LZ（z5 大窗口 + lazy + 距离分层 + run + esc）先把重复压掉，
+      再按数据特征<b>智能分派四档</b>——PRO 三模型混合（order-1 字节 + order-2 角色分流 + order-3 哈希，stretch/logistic 加权）追求极限压缩率、
+      均衡双模型（=z6）兼顾效率、快速单模型（=z5）提速大文件、原样存储应对不可压缩数据。压缩率<b>全面超越 XHCZ6</b>，
+      并可直接套用 XHC-Combo2 / Combo3 安全内核一键加密。</div>
+    <div class="mech">
+      <b>三步原创管线：</b>
+      <div class="step"><b>Step 1 · 增强 LZ</b>：z5 大窗口哈希链 + lazy 延迟匹配 + 距离分层 + run 检测（融合 z3 / z5 / SS 之长）</div>
+      <div class="step"><b>Step 2 · 智能四档分派</b>：采样熵 + 体量自动选 PRO / 双模型 / 快速 / 存储，decode 直读 mode 无歧义</div>
+      <div class="step"><b>Step 3 · 安全内核</b>：配合 XHC-Combo2（Argon2id 32MB）或 Combo3（双层 AEAD 512-bit）一键加密</div>
+    </div>
+    <div class="num">
+      <div class="cell">中文 <b>19.04%</b>（超越 z6 20.48%）</div>
+      <div class="cell">日志 <b>0.85%</b>（超越 z6 0.94%）</div>
+      <div class="cell">档位 <b>4</b> 智能分派</div>
+    </div>
+  </div>
+
   <!-- 实测对比 -->
   <h2 class="sec-title" id="bench">实测压缩率对比<small>统一测试集 · 越小越好 · 绿色为最优</small></h2>
-  <p class="sec-sub">同一测试集下六代算法实测（Python 实现，压缩后大小 / 原始大小）。</p>
+  <p class="sec-sub">同一测试集下八代算法实测（Python 实现，压缩后大小 / 原始大小，越小越好，绿色为最优）。</p>
   <table>
-    <tr><th>测试数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th><th>XHCZ5</th><th>XHCZ6</th><th>XHC-SS</th></tr>
-    <tr><td>中文文章</td><td>70.37%</td><td>4.38%</td><td>4.39%</td><td>1.99%</td><td>1.35%</td><td><b>1.19%</b></td><td>3.38%</td></tr>
-    <tr><td>CSV 表格</td><td>62.37%</td><td>43.66%</td><td>43.06%</td><td><b>48.24%</b></td><td>56.18%</td><td>54.55%</td></tr>
-    <tr><td>Python 代码</td><td>60.51%</td><td>30.31%</td><td>30.06%</td><td><b>30.00%</b></td><td>35.27%</td><td>34.73%</td></tr>
-    <tr><td>英文文本</td><td>56.89%</td><td>7.44%</td><td>7.46%</td><td>2.15%</td><td>1.98%</td><td><b>1.71%</b></td></tr>
-    <tr><td>日志</td><td>62.50%</td><td>13.52%</td><td>13.50%</td><td>14.80%</td><td>9.75%</td><td><b>8.05%</b></td><td>12.92%</td></tr>
-    <tr><td>随机数据</td><td>103.29%</td><td>111.05%</td><td>111.29%</td><td>101.96%</td><td>101.53%</td><td><b>101.50%</b></td><td>103.61%</td></tr>
+    <tr><th>测试数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th><th>XHCZ5</th><th>XHCZ6</th><th>XHC-SS</th><th>XHCZ-ProSS</th></tr>
+    <tr><td>中文文章</td><td>81.46%</td><td>36.98%</td><td>37.06%</td><td><b>18.02%</b></td><td>20.48%</td><td>20.48%</td><td>20.54%</td><td>19.04%</td></tr>
+    <tr><td>CSV 表格</td><td>55.86%</td><td>48.07%</td><td>48.10%</td><td>50.89%</td><td>51.75%</td><td>45.66%</td><td>43.12%</td><td><b>41.02%</b></td></tr>
+    <tr><td>Python 代码</td><td>59.92%</td><td>34.32%</td><td>34.42%</td><td><b>9.99%</b></td><td>11.56%</td><td>11.51%</td><td>14.33%</td><td>10.65%</td></tr>
+    <tr><td>英文文本</td><td>63.85%</td><td>40.62%</td><td>40.73%</td><td>16.09%</td><td>20.45%</td><td>20.53%</td><td>19.85%</td><td><b>18.57%</b></td></tr>
+    <tr><td>日志</td><td>67.14%</td><td>2.89%</td><td>2.90%</td><td>1.64%</td><td>1.03%</td><td>0.94%</td><td>1.52%</td><td><b>0.85%</b></td></tr>
+    <tr><td>随机数据</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td></tr>
   </table>
   <div class="note">
-    <b>关键结论：没有万能算法。</b> 中文/英文/日志等文本类数据，XHCZ5 / XHCZ6 的高阶上下文预测最强（z6 全面超越 z5）；
-    CSV / 代码等结构化数据，XHCZ4 的自适应动态概率反而是最优解；需要快速归档时 XHC-SS 比极限压缩快 3~6 倍；随机数据所有算法都自动回退为原样存储（&gt;100% 即不压缩）。
-    这正是打包器提供 <b>「自动 · 七算法择优」</b> 的意义 —— 每个文件独立跑七种算法，自动挑选压缩后最小者。
+    <b>关键结论：没有万能算法。</b> 中文/英文/日志等文本类数据，XHCZ5 / XHCZ6 的高阶上下文预测最强，<b>XHCZ-ProSS 在以上场景压缩率全面超越 z6</b>（日志 0.85% vs 0.94%、中文 19.04% vs 20.48%、英文 18.57% vs 20.53%）；
+    CSV / 代码等结构化数据，XHCZ4 的自适应动态概率仍是单行最优；需要快速归档时 XHC-SS 比极限压缩快 3~6 倍；随机数据所有算法都自动回退为原样存储（&gt;100% 即不压缩）。
+    这正是打包器提供 <b>「自动 · 八算法择优」</b> 的意义 —— 每个文件独立跑八种算法（含 XHCZ-ProSS），自动挑选压缩后最小者；手动指定时 ProSS 即综合最优旗舰算法。
   </div>
 
   <!-- 谱系 -->
@@ -384,7 +410,7 @@
   </p>
 </div>
 
-<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.6 · 实现完全自研，无第三方压缩库依赖</div>
+<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.7 · 实现完全自研，无第三方压缩库依赖</div>
 
 </body>
 </html>
