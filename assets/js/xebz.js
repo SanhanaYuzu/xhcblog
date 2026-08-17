@@ -23,12 +23,12 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0206;  // 2.6 XHC-SS SpeedSafe I（读取兼容 1.x~2.5）
+  var VERSION = 0x0207;  // 2.7 XHCZ-ProSS（读取兼容 1.x~2.6）
   var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2, KDF_COMBO3 = 3;
   var CIPHER_CHACHA20 = 1, CIPHER_DUAL = 2;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7, METHOD_PRO = 8;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -810,6 +810,271 @@
   function z6Decompress(data) { return z5LzDecompress(z6Decode(data)); }
 
 
+  /* ---------- XHCZ-ProSS（2.7 综合产品线：增强 LZ + 智能四档分派） ---------- */
+  var PROSS_MODE_PRO = 0, PROSS_MODE_DUAL = 1, PROSS_MODE_FAST = 2, PROSS_MODE_STORE = 3;
+  var _PRO_CTX1 = 256 * 8;  // order-1 表：256 上下文 × 8 位平面（与 Z6_CTX2/Z6_CTX3/Z6_MUL 复用）
+
+  function prossEntropySample(data, limit) {
+    limit = limit || 8192;
+    var seg = data.subarray(0, Math.min(limit, data.length));
+    var n = seg.length;
+    if (n < 16) return 0.0;
+    var freq = new Float64Array(256);
+    for (var i = 0; i < n; i++) freq[seg[i]]++;
+    var h = 0.0;
+    for (var c = 0; c < 256; c++) {
+      if (freq[c] > 0) { var p = freq[c] / n; h -= p * Math.log(p) / Math.LN2; }
+    }
+    return h;
+  }
+  function prossPickMode(tokens) {
+    var n = tokens.length;
+    if (n < 64) return PROSS_MODE_DUAL;
+    var h = prossEntropySample(tokens);
+    if (h > 7.6) return PROSS_MODE_STORE;
+    if (n > 256 * 1024) return PROSS_MODE_FAST;
+    if (h < 6.8) return PROSS_MODE_PRO;
+    return PROSS_MODE_DUAL;
+  }
+
+  /* mode 0：三模型混合（order-1 字节 + order-2 角色分流 + order-3 哈希） */
+  function prossEncodePro(data) {
+    var m1 = new Uint16Array(_PRO_CTX1).fill(1024);
+    var m2 = new Uint16Array(Z6_CTX2).fill(1024);
+    var m3 = new Uint16Array(Z6_CTX3).fill(1024);
+    var w1 = 2048, w2 = 2048, w3 = 2048;
+    var low = 0, high = Z4_MASK, pending = 0, bits = [];
+    var p3 = 0, p2 = 0, p1 = 0;
+    var cats = z6Cats(data);
+    for (var i = 0; i < data.length; i++) {
+      var cat = cats[i];
+      var base1 = (p1 << 3);
+      var base2 = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var base3 = z6Ctx3(cat, p1, p2, p3);
+      for (var bp = 0; bp < 8; bp++) {
+        var bit = (data[i] >> (7 - bp)) & 1;
+        var i1 = base1 + bp, i2 = base2 + bp, i3 = base3 + bp;
+        var pr1 = m1[i1], pr2 = m2[i2], pr3 = m3[i3];
+        var s1 = STRETCH_TAB[2048 - pr1], s2 = STRETCH_TAB[2048 - pr2], s3 = STRETCH_TAB[2048 - pr3];
+        var smix = Math.floor((w1 * s1 + w2 * s2 + w3 * s3) / 4096);
+        smix = Math.max(-1024, Math.min(1024, smix));
+        var p = Math.max(1, Math.min(2047, SQUASH_TAB[smix + 1024]));
+        var rng = high - low + 1;
+        var mid = (low + Math.floor((rng * p) / 2048)) >>> 0;
+        if (bit === 1) {
+          high = (mid - 1) >>> 0;
+          m1[i1] = pr1 - (pr1 >> 5);
+          m2[i2] = pr2 - (pr2 >> 5);
+          m3[i3] = pr3 - (pr3 >> 5);
+        } else {
+          low = mid;
+          m1[i1] = pr1 + ((2048 - pr1) >> 5);
+          m2[i2] = pr2 + ((2048 - pr2) >> 5);
+          m3[i3] = pr3 + ((2048 - pr3) >> 5);
+        }
+        var err = (bit << 11) - p;
+        w1 += z6Wupd(err, s1, 12);
+        w2 += z6Wupd(err, s2, 12);
+        w3 += z6Wupd(err, s3, 12);
+        w1 = Math.max(256, Math.min(32768, w1));
+        w2 = Math.max(256, Math.min(32768, w2));
+        w3 = Math.max(256, Math.min(32768, w3));
+        for (;;) {
+          if (high < Z4_HALF) {
+            bits.push(0);
+            while (pending > 0) { bits.push(1); pending--; }
+          } else if (low >= Z4_HALF) {
+            bits.push(1);
+            while (pending > 0) { bits.push(0); pending--; }
+            low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0;
+          } else if (low >= Z4_QTR1 && high < Z4_QTR3) {
+            pending++;
+            low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0;
+          } else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        }
+      }
+      p3 = p2; p2 = p1; p1 = data[i];
+    }
+    pending += 1;
+    if (low < Z4_QTR1) { bits.push(0); while (pending > 0) { bits.push(1); pending--; } }
+    else { bits.push(1); while (pending > 0) { bits.push(0); pending--; } }
+    while (bits.length % 8) bits.push(0);
+    var out = [];
+    for (var k = 0; k < bits.length; k += 8) {
+      var bb = 0;
+      for (var j = 0; j < 8; j++) bb = (bb << 1) | bits[k + j];
+      out.push(bb);
+    }
+    return new Uint8Array(out);
+  }
+
+  function prossDecodePro(data, symCount) {
+    var m1 = new Uint16Array(_PRO_CTX1).fill(1024);
+    var m2 = new Uint16Array(Z6_CTX2).fill(1024);
+    var m3 = new Uint16Array(Z6_CTX3).fill(1024);
+    var w1 = 2048, w2 = 2048, w3 = 2048;
+    var pos = 0, cur = 0, n = 0, limit = data.length;
+    function nbit() {
+      if (n === 0) { if (pos >= limit) return 0; cur = data[pos]; pos++; n = 8; }
+      var b = (cur >> 7) & 1; cur = (cur << 1) & 255; n--; return b;
+    }
+    var low = 0, high = Z4_MASK, value = 0;
+    for (var k = 0; k < 32; k++) value = ((value << 1) | nbit()) >>> 0;
+    var out = [];
+    var params = [];
+    var p3 = 0, p2 = 0, p1 = 0;
+    for (var s = 0; s < symCount; s++) {
+      var cat = params.length > 0 ? params[0] : 4;
+      var base1 = (p1 << 3);
+      var base2 = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var base3 = z6Ctx3(cat, p1, p2, p3);
+      var byte = 0;
+      for (var bp = 0; bp < 8; bp++) {
+        var i1 = base1 + bp, i2 = base2 + bp, i3 = base3 + bp;
+        var pr1 = m1[i1], pr2 = m2[i2], pr3 = m3[i3];
+        var s1 = STRETCH_TAB[2048 - pr1], s2 = STRETCH_TAB[2048 - pr2], s3 = STRETCH_TAB[2048 - pr3];
+        var smix = Math.floor((w1 * s1 + w2 * s2 + w3 * s3) / 4096);
+        smix = Math.max(-1024, Math.min(1024, smix));
+        var p = Math.max(1, Math.min(2047, SQUASH_TAB[smix + 1024]));
+        var rng = high - low + 1;
+        var mid = (low + Math.floor((rng * p) / 2048)) >>> 0;
+        var bit;
+        if (value < mid) {
+          bit = 1; high = (mid - 1) >>> 0;
+          m1[i1] = pr1 - (pr1 >> 5);
+          m2[i2] = pr2 - (pr2 >> 5);
+          m3[i3] = pr3 - (pr3 >> 5);
+        } else {
+          bit = 0; low = mid;
+          m1[i1] = pr1 + ((2048 - pr1) >> 5);
+          m2[i2] = pr2 + ((2048 - pr2) >> 5);
+          m3[i3] = pr3 + ((2048 - pr3) >> 5);
+        }
+        byte = (byte << 1) | bit;
+        var err = (bit << 11) - p;
+        w1 += z6Wupd(err, s1, 12);
+        w2 += z6Wupd(err, s2, 12);
+        w3 += z6Wupd(err, s3, 12);
+        w1 = Math.max(256, Math.min(32768, w1));
+        w2 = Math.max(256, Math.min(32768, w2));
+        w3 = Math.max(256, Math.min(32768, w3));
+        for (;;) {
+          if (high < Z4_HALF) { /* pass */ }
+          else if (low >= Z4_HALF) {
+            value = (value - Z4_HALF) >>> 0; low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0;
+          } else if (low >= Z4_QTR1 && high < Z4_QTR3) {
+            value = (value - Z4_QTR1) >>> 0; low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0;
+          } else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+          value = ((value << 1) | nbit()) >>> 0;
+        }
+      }
+      out.push(byte);
+      if (params.length > 0) params.shift();
+      else {
+        if (byte === 0x00) params = [4];
+        else if (byte === 0x01) params = [1, 1, 2];
+        else if (byte === 0x02) params = [3, 4];
+        else if (byte === 0x03) params = [1, 1, 1, 2];
+      }
+      p3 = p2; p2 = p1; p1 = byte;
+    }
+    return new Uint8Array(out);
+  }
+
+  // mode 1 均衡双模型 = z6 双模型（order-2 角色分流 + order-3 哈希）
+  var prossEncodeDual = z6Encode;
+  function prossDecodeDual(data, symCount) {
+    var m2 = new Uint16Array(Z6_CTX2).fill(1024);
+    var m3 = new Uint16Array(Z6_CTX3).fill(1024);
+    var w2 = 2048, w3 = 2048;
+    var pos = 0, cur = 0, n = 0, limit = data.length;
+    function nbit() {
+      if (n === 0) { if (pos >= limit) return 0; cur = data[pos]; pos++; n = 8; }
+      var b = (cur >> 7) & 1; cur = (cur << 1) & 255; n--; return b;
+    }
+    var low = 0, high = Z4_MASK, value = 0;
+    for (var k = 0; k < 32; k++) value = ((value << 1) | nbit()) >>> 0;
+    var out = [];
+    var params = [];
+    var p3 = 0, p2 = 0, p1 = 0;
+    for (var s = 0; s < symCount; s++) {
+      var cat = params.length > 0 ? params[0] : 4;
+      var base2 = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var base3 = z6Ctx3(cat, p1, p2, p3);
+      var byte = 0;
+      for (var bp = 0; bp < 8; bp++) {
+        var i2 = base2 + bp, i3 = base3 + bp;
+        var pr2 = m2[i2], pr3 = m3[i3];
+        var s2 = STRETCH_TAB[2048 - pr2], s3 = STRETCH_TAB[2048 - pr3];
+        var smix = Math.floor((w2 * s2 + w3 * s3) / 4096);
+        smix = Math.max(-1024, Math.min(1024, smix));
+        var p = Math.max(1, Math.min(2047, SQUASH_TAB[smix + 1024]));
+        var rng = high - low + 1;
+        var mid = (low + Math.floor((rng * p) / 2048)) >>> 0;
+        var bit;
+        if (value < mid) {
+          bit = 1; high = (mid - 1) >>> 0;
+          m2[i2] = pr2 - (pr2 >> 5);
+          m3[i3] = pr3 - (pr3 >> 5);
+        } else {
+          bit = 0; low = mid;
+          m2[i2] = pr2 + ((2048 - pr2) >> 5);
+          m3[i3] = pr3 + ((2048 - pr3) >> 5);
+        }
+        byte = (byte << 1) | bit;
+        var err = (bit << 11) - p;
+        w2 += z6Wupd(err, s2, 12);
+        w3 += z6Wupd(err, s3, 12);
+        w2 = Math.max(256, Math.min(32768, w2));
+        w3 = Math.max(256, Math.min(32768, w3));
+        for (;;) {
+          if (high < Z4_HALF) { /* pass */ }
+          else if (low >= Z4_HALF) {
+            value = (value - Z4_HALF) >>> 0; low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0;
+          } else if (low >= Z4_QTR1 && high < Z4_QTR3) {
+            value = (value - Z4_QTR1) >>> 0; low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0;
+          } else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+          value = ((value << 1) | nbit()) >>> 0;
+        }
+      }
+      out.push(byte);
+      if (params.length > 0) params.shift();
+      else {
+        if (byte === 0x00) params = [4];
+        else if (byte === 0x01) params = [1, 1, 2];
+        else if (byte === 0x02) params = [3, 4];
+        else if (byte === 0x03) params = [1, 1, 1, 2];
+      }
+      p3 = p2; p2 = p1; p1 = byte;
+    }
+    return new Uint8Array(out);
+  }
+
+  function prossCompress(data) {
+    var tokens = z5LzCompress(data);
+    var mode = prossPickMode(tokens);
+    var head = concatBytes(u32be(tokens.length), new Uint8Array([mode]));
+    if (mode === PROSS_MODE_PRO) return concatBytes(head, prossEncodePro(tokens));
+    if (mode === PROSS_MODE_DUAL) return concatBytes(head, prossEncodeDual(tokens));
+    if (mode === PROSS_MODE_FAST) return concatBytes(head, u32be(tokens.length), z5Encode(tokens));
+    return concatBytes(head, tokens);  // STORE（原样 token 流）
+  }
+  function prossDecompress(data) {
+    var symCount = readU32(data, 0);
+    var mode = data[4];
+    var body = data.subarray(5);
+    var tokens;
+    if (mode === PROSS_MODE_PRO) tokens = prossDecodePro(body, symCount);
+    else if (mode === PROSS_MODE_DUAL) tokens = prossDecodeDual(body, symCount);
+    else if (mode === PROSS_MODE_FAST) tokens = z5Decode(body);
+    else tokens = body;
+    return z5LzDecompress(tokens);
+  }
+
+
   /* ---------- XHC-SS SpeedSafe I（2.6 速度+安全：64KB 快速 LZ + 哈夫曼） ---------- */
   var SS_WINDOW = 65536;
   function ssLzCompress(data) {
@@ -1006,11 +1271,13 @@
   }
   /* ---------- pack / unpack ---------- */
   function pickBlock(data, method) {
-    /* 返回 [use, block]。method='auto' 七者择优；否则强制指定算法（更大则 store 兜底） */
-    var z6, z5, z4, z3, z2, c1;
+    /* 返回 [use, block]。method='auto' 八者择优；否则强制指定算法（更大则 store 兜底） */
+    var z6, z5, z4, z3, z2, c1, pro;
     if (!method || method === 'auto') {
+      pro = prossCompress(data);
       z6 = z6Compress(data); z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
       z2 = z2Compress(data); c1 = comboCompress(data);
+      if (pro.length <= z6.length && pro.length <= z5.length && pro.length <= z4.length && pro.length <= z3.length && pro.length <= z2.length && pro.length <= c1.length && pro.length <= data.length) return [METHOD_PRO, pro];
       if (z6.length <= z5.length && z6.length <= z4.length && z6.length <= z3.length && z6.length <= z2.length && z6.length <= c1.length && z6.length <= data.length) return [METHOD_Z6, z6];
       if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= data.length) return [METHOD_Z5, z5];
       if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= data.length) return [METHOD_Z4, z4];
@@ -1026,8 +1293,9 @@
     if (method === 'z4') { z4 = z4Compress(data); return z4.length < data.length ? [METHOD_Z4, z4] : [METHOD_STORE, data]; }
     if (method === 'z5') { z5 = z5Compress(data); return z5.length < data.length ? [METHOD_Z5, z5] : [METHOD_STORE, data]; }
     if (method === 'z6') { z6 = z6Compress(data); return z6.length < data.length ? [METHOD_Z6, z6] : [METHOD_STORE, data]; }
-    var ss = ssCompress(data);
-    return ss.length < data.length ? [METHOD_SS, ss] : [METHOD_STORE, data];
+    if (method === 'ss') { var ss = ssCompress(data); return ss.length < data.length ? [METHOD_SS, ss] : [METHOD_STORE, data]; }
+    if (method === 'pro') { var prob = prossCompress(data); return prob.length < data.length ? [METHOD_PRO, prob] : [METHOD_STORE, data]; }
+    return [METHOD_STORE, data];
   }
 
   async function pack(files, password, method, packKdf) {
@@ -1213,6 +1481,7 @@
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z6) data = z6Decompress(blocks[i]);
       else if (headers[i].method === METHOD_SS) data = ssDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_PRO) data = prossDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
@@ -1228,9 +1497,9 @@
   global.XEBZ = {
     VERSION: '1.0.0',
     FORMAT: 'XHCBZ-v1',
-    METHODS: { auto: '自动（七算法择优）', store: '仅存储', combo: 'XHC-Combo',
-               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe' },
-    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss'],
+    METHODS: { auto: '自动（八算法择优）', store: '仅存储', combo: 'XHC-Combo',
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe', pro: 'XHCZ-ProSS' },
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss', 'pro'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
@@ -1250,6 +1519,9 @@
     z6Decompress: z6Decompress,
     ssCompress: ssCompress,
     ssDecompress: ssDecompress,
+    prossCompress: prossCompress,
+    prossDecompress: prossDecompress,
+    prossPickMode: prossPickMode,
     z5LzCompress: z5LzCompress,
     z5LzDecompress: z5LzDecompress,
     z5LzCompress: z5LzCompress,
