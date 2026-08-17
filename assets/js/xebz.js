@@ -1123,7 +1123,7 @@
     VERSION: '1.0.0',
     FORMAT: 'XHCBZ-v1',
     METHODS: { auto: '自动（七算法择优）', store: '仅存储', combo: 'XHC-Combo',
-               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5' },
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6' },
     METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6'],
     pack: pack,
     unpack: unpack,
