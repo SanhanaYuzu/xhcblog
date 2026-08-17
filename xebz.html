@@ -105,7 +105,8 @@
         </a>
       </label>
       <select id="packMethod">
-        <option value="auto">自动（八算法择优，压缩率最高）</option>
+        <option value="auto">自动（Optima 六边形战士择优，压缩率全局最高）</option>
+        <option value="optima">XHCZ-Optima · 六边形战士（2.8：逐块择优 ss/z3/z4/z6/pross/store，每类数据压缩率均≥历史最优）</option>
         <option value="pro">XHCZ-ProSS · 综合产品线（增强 LZ + 智能四档分派，压缩率全面超越 z6）</option>
         <option value="z6">XHCZ6 · 极限压缩第二代（PAQ 式双模型混合，全面超越 z5）</option>
         <option value="ss">XHC-SS SpeedSafe I · 速度+安全（快速 LZ+哈夫曼，比 z6 快 3~6 倍）</option>
@@ -150,13 +151,13 @@
   </div>
 
   <div class="meta">
-    <b>XEBZ 是什么</b>：<code>XHCBZ v2.7</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
-    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ-ProSS 算法</b>（综合产品线：增强 LZ 融合 z3/z5/SS 之长 + 智能四档分派：PRO 三模型混合 / 均衡双模型 / 快速单模型 / 原样存储，压缩率全面超越 z6）+ <b>XHCZ6 算法</b>（PAQ 式双模型混合）+ <b>XHC-SS SpeedSafe I</b>（速度+安全：快速 LZ+哈夫曼，配 Combo2 加密 = 一键 SpeedSafe）
+    <b>XEBZ 是什么</b>：<code>XHCBZ v2.8</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
+    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ-Optima 算法（六边形战士）</b>（块级在 ss / z3 / z4 / z6 / ProSS / 原样存储 六策略间逐块取最小，构造上保证每类数据压缩率均≥历史最优：中文/代码/英文取 z4、高阶中文取 z6、日志取 z3、CSV/日志取 ProSS、高重复流取 SS）+ <b>XHCZ-ProSS 算法</b>（综合产品线：增强 LZ 融合 z3/z5/SS 之长 + 智能四档分派：PRO 三模型混合 / 均衡双模型 / 快速单模型 / 原样存储，压缩率全面超越 z6）+ <b>XHCZ6 算法</b>（PAQ 式双模型混合）+ <b>XHC-SS SpeedSafe I</b>（速度+安全：快速 LZ+哈夫曼，配 Combo2 加密 = 一键 SpeedSafe）
     + <b>XHC-Combo2 安全内核</b>：
     <b>Argon2id</b>（抗 GPU 暴力破解的现代 KDF，默认 32MB/3 次）+ <b>ChaCha20-Poly1305</b>（RFC 8439 认证加密），
     安全强度全面超越 PBKDF2+AES-GCM 旧方案；可选 <b>XHC-Combo3 强化内核</b>（Argon2id 64MB + 双层加密，512-bit 极难破解）；兼容 1.0~2.6 全部旧包。
     可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。解压自动校验 crc32，损坏立即报错。
-    打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ-ProSS·XHCZ6·XHCZ5·XHCZ4·XHCZ3·XHCZ2·XHC-SS·Combo / 仅存储），
+    打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ-Optima·XHCZ-ProSS·XHCZ6·XHCZ5·XHCZ4·XHCZ3·XHCZ2·XHC-SS·Combo / 仅存储），
     压缩后比原文件大时自动回退为原样存储，绝无膨胀。
     全部在前端本地完成，文件不上传服务器。<br>
     <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码 -m pro</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
