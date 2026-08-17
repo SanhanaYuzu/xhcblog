@@ -98,7 +98,12 @@
       </div>
       <input type="file" id="packInput" multiple hidden>
       <div class="fileinfo" id="packInfo"></div>
-      <label for="packMethod">压缩算法</label>
+      <label for="packMethod" style="display:flex;align-items:center;gap:6px;">压缩算法
+        <a href="xhc-algorithms.html#ss" target="_blank" style="display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:2px 8px 2px 4px;background:#f5f6fa;border:1px solid var(--border);border-radius:14px;text-decoration:none;color:var(--text);font-size:11.5px;font-weight:600;line-height:1;">
+          <img src="assets/xhc-speedsafe-logo-black.png" width="20" height="20" alt="XHC-SS" style="display:block;">
+          <span>XHC-SS · SpeedSafe</span>
+        </a>
+      </label>
       <select id="packMethod">
         <option value="auto">自动（七算法择优，压缩率最高）</option>
         <option value="z6">XHCZ6 · 极限压缩第二代（PAQ 式双模型混合，全面超越 z5）</option>
