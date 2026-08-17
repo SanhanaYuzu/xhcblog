@@ -23,12 +23,12 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0205;  // 2.5 XHCZ6（读取兼容 1.x~2.4）
+  var VERSION = 0x0206;  // 2.6 XHC-SS SpeedSafe I（读取兼容 1.x~2.5）
   var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2;
   var CIPHER_CHACHA20 = 1;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -809,6 +809,50 @@
   }
   function z6Decompress(data) { return z5LzDecompress(z6Decode(data)); }
 
+
+  /* ---------- XHC-SS SpeedSafe I（2.6 速度+安全：64KB 快速 LZ + 哈夫曼） ---------- */
+  var SS_WINDOW = 65536;
+  function ssLzCompress(data) {
+    /* 单遍快速 LZ：64KB 窗口哈希链 + 贪心最长匹配 + run（与 Python ss_lz_compress 一致） */
+    var n = data.length, out = [], i = 0, chain = new Map();
+    while (i < n) {
+      var bestLen = 0, bestOff = 0;
+      if (i + 3 <= n) {
+        var h = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        var last = chain.has(h) ? chain.get(h) : -1;
+        if (last >= 0 && i - last <= SS_WINDOW) {
+          var m = 0;
+          while (m < 258 && i + m < n && data[last + m] === data[i + m]) m++;
+          if (m >= 4) { bestLen = m; bestOff = i - last; }
+        }
+      }
+      if (bestLen >= 4) {
+        out.push(TOKEN_MATCH, (bestOff >> 8) & 255, bestOff & 255, Math.min(bestLen, 258) - 4);
+        for (var k = 0; k < bestLen; k++)
+          if (i + k + 3 <= n) chain.set((data[i+k]<<16)|(data[i+k+1]<<8)|data[i+k+2], i + k);
+        i += bestLen;
+      } else {
+        var j = i + 1;
+        while (j < n && data[j] === data[i] && j - i < 258) j++;
+        if (j - i >= 4) {
+          out.push(TOKEN_RUN, (j - i) - 4, data[i]);
+          for (var k2 = 0; k2 < j - i; k2++)
+            if (i + k2 + 3 <= n) chain.set((data[i+k2]<<16)|(data[i+k2+1]<<8)|data[i+k2+2], i + k2);
+          i = j;
+        } else {
+          var b = data[i];
+          if (b === TOKEN_ESC || b === TOKEN_MATCH || b === TOKEN_RUN) out.push(TOKEN_ESC, b);
+          else out.push(b);
+          if (i + 3 <= n) chain.set((data[i]<<16)|(data[i+1]<<8)|data[i+2], i);
+          i++;
+        }
+      }
+    }
+    return new Uint8Array(out);
+  }
+  function ssCompress(data) { return huffmanEncode(ssLzCompress(data)); }
+  function ssDecompress(data) { return z2LzDecompress(huffmanDecode(data)); }
+
   /* ---------- RLE-X ---------- */
   function rleCompress(data) {
     var out = [], i = 0, n = data.length;
@@ -971,8 +1015,9 @@
     if (method === 'z3') { z3 = z3Compress(data); return z3.length < data.length ? [METHOD_Z3, z3] : [METHOD_STORE, data]; }
     if (method === 'z4') { z4 = z4Compress(data); return z4.length < data.length ? [METHOD_Z4, z4] : [METHOD_STORE, data]; }
     if (method === 'z5') { z5 = z5Compress(data); return z5.length < data.length ? [METHOD_Z5, z5] : [METHOD_STORE, data]; }
-    z6 = z6Compress(data);
-    return z6.length < data.length ? [METHOD_Z6, z6] : [METHOD_STORE, data];
+    if (method === 'z6') { z6 = z6Compress(data); return z6.length < data.length ? [METHOD_Z6, z6] : [METHOD_STORE, data]; }
+    var ss = ssCompress(data);
+    return ss.length < data.length ? [METHOD_SS, ss] : [METHOD_STORE, data];
   }
 
   async function pack(files, password, method) {
@@ -1107,6 +1152,7 @@
       var data;
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z6) data = z6Decompress(blocks[i]);
+      else if (headers[i].method === METHOD_SS) data = ssDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
@@ -1123,8 +1169,8 @@
     VERSION: '1.0.0',
     FORMAT: 'XHCBZ-v1',
     METHODS: { auto: '自动（七算法择优）', store: '仅存储', combo: 'XHC-Combo',
-               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6' },
-    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6'],
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe' },
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
@@ -1142,6 +1188,8 @@
     z5Decompress: z5Decompress,
     z6Compress: z6Compress,
     z6Decompress: z6Decompress,
+    ssCompress: ssCompress,
+    ssDecompress: ssDecompress,
     z5LzCompress: z5LzCompress,
     z5LzDecompress: z5LzDecompress,
     z5LzCompress: z5LzCompress,
