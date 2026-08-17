@@ -117,7 +117,12 @@
       </select>
       <label for="packPwd">加密密码（可选，留空 = 明文压缩包）</label>
       <input type="password" id="packPwd" placeholder="可选：设置密码">
-      <div class="kdf-hint">🔒 加密内核 = <b>XHC-Combo2</b> · Argon2id + ChaCha20-Poly1305（填密码自动启用）</div>
+      <label for="packKdf" style="margin-top:10px;">加密内核</label>
+      <select id="packKdf">
+        <option value="combo2">XHC-Combo2 · 标准（Argon2id 32MB + ChaCha20-Poly1305）</option>
+        <option value="combo3">XHC-Combo3 · 强化（Argon2id 64MB + 双层加密 ChaCha20 + AES-256，512-bit）</option>
+      </select>
+      <div class="kdf-hint">🔒 加密内核 = <b id="kdfName">XHC-Combo2</b> · <span id="kdfDesc">Argon2id + ChaCha20-Poly1305</span>（填密码自动启用）</div>
       <button class="btn primary" id="packBtn" disabled>🗜 打包并下载 .xebz</button>
       <div class="result" id="packRes"></div>
     </div>
@@ -148,7 +153,7 @@
     自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ6 算法</b>（PAQ 式双模型混合）+ <b>XHC-SS SpeedSafe I</b>（速度+安全：快速 LZ+哈夫曼，配 Combo2 加密 = 一键 SpeedSafe）：
     order-2 角色分流 + order-3 哈希上下文，stretch/logistic 加权自适应学习，文本/CSV/日志压缩率<b>全面超越 XHCZ5</b>）+ <b>XHC-Combo2 安全内核</b>：
     <b>Argon2id</b>（抗 GPU 暴力破解的现代 KDF，默认 32MB/3 次）+ <b>ChaCha20-Poly1305</b>（RFC 8439 认证加密），
-    安全强度全面超越 PBKDF2+AES-GCM 旧方案；兼容 1.0~2.5 全部旧包。
+    安全强度全面超越 PBKDF2+AES-GCM 旧方案；可选 <b>XHC-Combo3 强化内核</b>（Argon2id 64MB + 双层加密，512-bit 极难破解）；兼容 1.0~2.5 全部旧包。
     可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。解压自动校验 crc32，损坏立即报错。
     打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ6·XHCZ5·XHCZ4·XHCZ3·XHCZ2·XHC-SS·Combo / 仅存储），
     压缩后比原文件大时自动回退为原样存储，绝无膨胀。
@@ -165,6 +170,13 @@
 var $ = function (id) { return document.getElementById(id); };
 function toast(el, msg, ok) { el.textContent = msg; el.className = 'result ' + (ok ? 'ok' : 'err'); }
 function fmtSize(b) { return b >= 1048576 ? (b/1048576).toFixed(1)+' MB' : b >= 1024 ? (b/1024).toFixed(1)+' KB' : b+' B'; }
+
+/* ===== 加密内核切换 ===== */
+$('packKdf').addEventListener('change', function () {
+  var c3 = this.value === 'combo3';
+  $('kdfName').textContent = c3 ? 'XHC-Combo3' : 'XHC-Combo2';
+  $('kdfDesc').textContent = c3 ? 'Argon2id 64MB + 双层加密（ChaCha20 + AES-256）' : 'Argon2id + ChaCha20-Poly1305';
+});
 
 /* ===== 打包 ===== */
 var packFiles = [];
@@ -195,7 +207,9 @@ $('packBtn').onclick = async function () {
     }
     var pwd = $('packPwd').value || null;
     var meth = $('packMethod').value;
-    var bin = await XEBZ.pack(files, pwd, meth);
+    var kdfSel = $('packKdf').value;
+    var kdfNum = kdfSel === 'combo3' ? 3 : 2;
+    var bin = await XEBZ.pack(files, pwd, meth, kdfNum);
     var blob = new Blob([bin], { type: 'application/octet-stream' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
