@@ -23,12 +23,12 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0204;  // 2.4 XHC-Combo2 安全内核（读取兼容 1.x~2.3）
+  var VERSION = 0x0205;  // 2.5 XHCZ6（读取兼容 1.x~2.4）
   var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2;
   var CIPHER_CHACHA20 = 1;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -626,6 +626,189 @@
   function z5Decompress(data) { return z5LzDecompress(z5Decode(data)); }
 
 
+
+  /* ---------- XHCZ6（2.5 极限压缩第二代：PAQ 式双模型混合） ---------- */
+  var Z6_CTX2 = 65536 * 8, Z6_CTX3 = (1 << 20) * 8, Z6_MUL = 2654435761;
+  var STRETCH_TAB = (function () {
+    var t = new Int32Array(2049);
+    t[0] = -1024; t[2048] = 1024;
+    for (var i = 1; i < 2048; i++) {
+      var v = 64 * Math.log(i / (2048 - i));
+      var s = v >= 0 ? Math.floor(v + 0.5) : -Math.floor(-v + 0.5);
+      t[i] = Math.max(-1024, Math.min(1024, s));
+    }
+    return t;
+  })();
+  var SQUASH_TAB = (function () {
+    var t = new Int32Array(2049);
+    for (var s = -1024; s <= 1024; s++) {
+      var p = 2048 / (1 + Math.exp(-s / 64));
+      t[s + 1024] = Math.max(0, Math.min(2048, Math.floor(p + 0.5)));
+    }
+    return t;
+  })();
+  function z6Wupd(err, s, shift) {
+    var prod = err * s;
+    var d = Math.abs(prod) >> shift;
+    return prod >= 0 ? d : -d;
+  }
+  function z6Ctx3(cat, p1, p2, p3) {
+    var h = ((p1 << 16) ^ (p2 << 8) ^ p3) * Z6_MUL;
+    return ((cat << 17) | ((h >> 15) & 0x1FFFF)) * 8;
+  }
+  function z6Cats(data) {
+    var n = data.length, cats = new Uint8Array(n), i = 0;
+    while (i < n) {
+      var b = data[i];
+      cats[i] = 4;
+      if (b === 0x00) { if (i + 1 < n) cats[i + 1] = 4; i += 2; }
+      else if (b === 0x01) { if (i + 3 < n) { cats[i+1]=1; cats[i+2]=1; cats[i+3]=2; } i += 4; }
+      else if (b === 0x02) { if (i + 2 < n) { cats[i+1]=3; cats[i+2]=4; } i += 3; }
+      else if (b === 0x03) { if (i + 4 < n) { cats[i+1]=1; cats[i+2]=1; cats[i+3]=1; cats[i+4]=2; } i += 5; }
+      else i++;
+    }
+    return cats;
+  }
+  function z6Encode(data) {
+    var m2 = new Uint16Array(Z6_CTX2).fill(1024);
+    var m3 = new Uint16Array(Z6_CTX3).fill(1024);
+    var w2 = 2048, w3 = 2048;
+    var low = 0, high = Z4_MASK, pending = 0, bits = [];
+    var p3 = 0, p2 = 0, p1 = 0;
+    var cats = z6Cats(data);
+    for (var i = 0; i < data.length; i++) {
+      var cat = cats[i];
+      var base2 = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var base3 = z6Ctx3(cat, p1, p2, p3);
+      for (var bp = 0; bp < 8; bp++) {
+        var bit = (data[i] >> (7 - bp)) & 1;
+        var idx2 = base2 + bp, idx3 = base3 + bp;
+        var pr2 = m2[idx2], pr3 = m3[idx3];
+        var s2 = STRETCH_TAB[2048 - pr2], s3 = STRETCH_TAB[2048 - pr3];
+        var smix = Math.floor((w2 * s2 + w3 * s3) / 4096);
+        smix = Math.max(-1024, Math.min(1024, smix));
+        var p = Math.max(1, Math.min(2047, SQUASH_TAB[smix + 1024]));
+        var rng = high - low + 1;
+        var mid = (low + Math.floor((rng * p) / 2048)) >>> 0;
+        if (bit === 1) {
+          high = (mid - 1) >>> 0;
+          m2[idx2] = pr2 - (pr2 >> 5);
+          m3[idx3] = pr3 - (pr3 >> 5);
+        } else {
+          low = mid;
+          m2[idx2] = pr2 + ((2048 - pr2) >> 5);
+          m3[idx3] = pr3 + ((2048 - pr3) >> 5);
+        }
+        var err = (bit << 11) - p;
+        w2 += z6Wupd(err, s2, 12);
+        w3 += z6Wupd(err, s3, 12);
+        w2 = Math.max(256, Math.min(32768, w2));
+        w3 = Math.max(256, Math.min(32768, w3));
+        for (;;) {
+          if (high < Z4_HALF) {
+            bits.push(0);
+            while (pending > 0) { bits.push(1); pending--; }
+          } else if (low >= Z4_HALF) {
+            bits.push(1);
+            while (pending > 0) { bits.push(0); pending--; }
+            low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0;
+          } else if (low >= Z4_QTR1 && high < Z4_QTR3) {
+            pending++;
+            low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0;
+          } else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+        }
+      }
+      p3 = p2; p2 = p1; p1 = data[i];
+    }
+    pending += 1;
+    if (low < Z4_QTR1) { bits.push(0); while (pending > 0) { bits.push(1); pending--; } }
+    else { bits.push(1); while (pending > 0) { bits.push(0); pending--; } }
+    while (bits.length % 8) bits.push(0);
+    var out = [];
+    for (var k = 0; k < bits.length; k += 8) {
+      var bb = 0;
+      for (var j = 0; j < 8; j++) bb = (bb << 1) | bits[k + j];
+      out.push(bb);
+    }
+    return new Uint8Array(out);
+  }
+  function z6Decode(data) {
+    var m2 = new Uint16Array(Z6_CTX2).fill(1024);
+    var m3 = new Uint16Array(Z6_CTX3).fill(1024);
+    var w2 = 2048, w3 = 2048;
+    var cnt = readU32(data, 0);
+    var pos = 4, cur = 0, n = 0, limit = data.length, p3 = 0, p2 = 0, p1 = 0;
+    function nbit() {
+      if (n === 0) { if (pos >= limit) return 0; cur = data[pos]; pos++; n = 8; }
+      var b = (cur >> 7) & 1; cur = (cur << 1) & 255; n--;
+      return b;
+    }
+    var low = 0, high = Z4_MASK, value = 0;
+    for (var k = 0; k < 32; k++) value = ((value << 1) | nbit()) >>> 0;
+    var out = [];
+    var params = [];
+    for (var s = 0; s < cnt; s++) {
+      var cat = params.length > 0 ? params[0] : 4;
+      var base2 = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var base3 = z6Ctx3(cat, p1, p2, p3);
+      var byte = 0;
+      for (var bp = 0; bp < 8; bp++) {
+        var idx2 = base2 + bp, idx3 = base3 + bp;
+        var pr2 = m2[idx2], pr3 = m3[idx3];
+        var s2 = STRETCH_TAB[2048 - pr2], s3 = STRETCH_TAB[2048 - pr3];
+        var smix = Math.floor((w2 * s2 + w3 * s3) / 4096);
+        smix = Math.max(-1024, Math.min(1024, smix));
+        var p = Math.max(1, Math.min(2047, SQUASH_TAB[smix + 1024]));
+        var rng = high - low + 1;
+        var mid = (low + Math.floor((rng * p) / 2048)) >>> 0;
+        var bit;
+        if (value < mid) {
+          bit = 1; high = (mid - 1) >>> 0;
+          m2[idx2] = pr2 - (pr2 >> 5);
+          m3[idx3] = pr3 - (pr3 >> 5);
+        } else {
+          bit = 0; low = mid;
+          m2[idx2] = pr2 + ((2048 - pr2) >> 5);
+          m3[idx3] = pr3 + ((2048 - pr3) >> 5);
+        }
+        byte = (byte << 1) | bit;
+        var err = (bit << 11) - p;
+        w2 += z6Wupd(err, s2, 12);
+        w3 += z6Wupd(err, s3, 12);
+        w2 = Math.max(256, Math.min(32768, w2));
+        w3 = Math.max(256, Math.min(32768, w3));
+        for (;;) {
+          if (high < Z4_HALF) { /* pass */ }
+          else if (low >= Z4_HALF) { value = (value - Z4_HALF) >>> 0; low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0; }
+          else if (low >= Z4_QTR1 && high < Z4_QTR3) { value = (value - Z4_QTR1) >>> 0; low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0; }
+          else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+          value = ((value << 1) | nbit()) >>> 0;
+        }
+      }
+      out.push(byte);
+      if (params.length > 0) params.shift();
+      else {
+        if (byte === 0x00) params = [4];
+        else if (byte === 0x01) params = [1, 1, 2];
+        else if (byte === 0x02) params = [3, 4];
+        else if (byte === 0x03) params = [1, 1, 1, 2];
+      }
+      p3 = p2; p2 = p1; p1 = byte;
+    }
+    return new Uint8Array(out);
+  }
+  function z6Compress(data) {
+    var tokens = z5LzCompress(data);
+    var enc = z6Encode(tokens);
+    var out = new Uint8Array(4 + enc.length);
+    out.set(u32be(tokens.length), 0);
+    out.set(enc, 4);
+    return out;
+  }
+  function z6Decompress(data) { return z5LzDecompress(z6Decode(data)); }
+
   /* ---------- RLE-X ---------- */
   function rleCompress(data) {
     var out = [], i = 0, n = data.length;
@@ -769,11 +952,12 @@
 
   /* ---------- pack / unpack ---------- */
   function pickBlock(data, method) {
-    /* 返回 [use, block]。method='auto' 六者择优；否则强制指定算法（更大则 store 兜底） */
-    var z5, z4, z3, z2, c1;
+    /* 返回 [use, block]。method='auto' 七者择优；否则强制指定算法（更大则 store 兜底） */
+    var z6, z5, z4, z3, z2, c1;
     if (!method || method === 'auto') {
-      z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
+      z6 = z6Compress(data); z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
       z2 = z2Compress(data); c1 = comboCompress(data);
+      if (z6.length <= z5.length && z6.length <= z4.length && z6.length <= z3.length && z6.length <= z2.length && z6.length <= c1.length && z6.length <= data.length) return [METHOD_Z6, z6];
       if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= data.length) return [METHOD_Z5, z5];
       if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= data.length) return [METHOD_Z4, z4];
       if (z3.length <= z2.length && z3.length <= c1.length && z3.length <= data.length) return [METHOD_Z3, z3];
@@ -786,8 +970,9 @@
     if (method === 'z2') { z2 = z2Compress(data); return z2.length < data.length ? [METHOD_Z2, z2] : [METHOD_STORE, data]; }
     if (method === 'z3') { z3 = z3Compress(data); return z3.length < data.length ? [METHOD_Z3, z3] : [METHOD_STORE, data]; }
     if (method === 'z4') { z4 = z4Compress(data); return z4.length < data.length ? [METHOD_Z4, z4] : [METHOD_STORE, data]; }
-    z5 = z5Compress(data);
-    return z5.length < data.length ? [METHOD_Z5, z5] : [METHOD_STORE, data];
+    if (method === 'z5') { z5 = z5Compress(data); return z5.length < data.length ? [METHOD_Z5, z5] : [METHOD_STORE, data]; }
+    z6 = z6Compress(data);
+    return z6.length < data.length ? [METHOD_Z6, z6] : [METHOD_STORE, data];
   }
 
   async function pack(files, password, method) {
@@ -921,6 +1106,7 @@
     for (i = 0; i < entries; i++) {
       var data;
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_Z6) data = z6Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
@@ -936,9 +1122,9 @@
   global.XEBZ = {
     VERSION: '1.0.0',
     FORMAT: 'XHCBZ-v1',
-    METHODS: { auto: '自动（六算法择优）', store: '仅存储', combo: 'XHC-Combo',
+    METHODS: { auto: '自动（七算法择优）', store: '仅存储', combo: 'XHC-Combo',
                z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5' },
-    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5'],
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
@@ -954,6 +1140,8 @@
     z4Decompress: z4Decompress,
     z5Compress: z5Compress,
     z5Decompress: z5Decompress,
+    z6Compress: z6Compress,
+    z6Decompress: z6Decompress,
     z5LzCompress: z5LzCompress,
     z5LzDecompress: z5LzDecompress,
     z5LzCompress: z5LzCompress,
