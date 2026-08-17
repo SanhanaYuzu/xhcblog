@@ -40,11 +40,11 @@
   .drop p { color: var(--muted); font-size: 12.5px; line-height: 1.7; }
   .drop b { color: var(--primary); }
   label { display: block; font-size: 12px; color: var(--muted); margin: 13px 0 4px; font-weight: 600; }
-  input[type=password] {
+  input[type=password], select {
     width: 100%; border: 1.5px solid var(--border); border-radius: 9px; padding: 10px 12px;
-    font-size: 14px; outline: none; transition: .15s;
+    font-size: 14px; outline: none; transition: .15s; background: #fff; color: var(--text);
   }
-  input[type=password]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+  input[type=password]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
     padding: 11px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700;
@@ -92,6 +92,16 @@
       </div>
       <input type="file" id="packInput" multiple hidden>
       <div class="fileinfo" id="packInfo"></div>
+      <label for="packMethod">压缩算法</label>
+      <select id="packMethod">
+        <option value="auto">自动（六算法择优，压缩率最高）</option>
+        <option value="z5">XHCZ5 · 极限压缩（order-2 上下文，CSV 类超 LZMA）</option>
+        <option value="z4">XHCZ4 · 7z 级（动态概率算术编码）</option>
+        <option value="z3">XHCZ3 · RAR5 级（1MB 窗口 + lazy 匹配）</option>
+        <option value="z2">XHCZ2 · 基础（哈希链 LZ + ACE）</option>
+        <option value="combo">XHC-Combo · 快速（RLE-X + Huffman）</option>
+        <option value="store">仅存储（不压缩）</option>
+      </select>
       <label for="packPwd">加密密码（可选，留空 = 明文压缩包）</label>
       <input type="password" id="packPwd" placeholder="可选：设置密码">
       <button class="btn primary" id="packBtn" disabled>🗜 打包并下载 .xebz</button>
@@ -125,6 +135,8 @@
     <b>Argon2id</b>（抗 GPU 暴力破解的现代 KDF，默认 32MB/3 次）+ <b>ChaCha20-Poly1305</b>（RFC 8439 认证加密），
     安全强度全面超越 PBKDF2+AES-GCM 旧方案；兼容 1.0~2.3 全部旧包。
     可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。解压自动校验 crc32，损坏立即报错。
+    打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ5·XHCZ4·XHCZ3·XHCZ2·Combo / 仅存储），
+    压缩后比原文件大时自动回退为原样存储，绝无膨胀。
     全部在前端本地完成，文件不上传服务器。<br>
     <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
   </div>
@@ -167,7 +179,8 @@ $('packBtn').onclick = async function () {
       files.push({ name: packFiles[i].name, data: new Uint8Array(buf) });
     }
     var pwd = $('packPwd').value || null;
-    var bin = await XEBZ.pack(files, pwd);
+    var meth = $('packMethod').value;
+    var bin = await XEBZ.pack(files, pwd, meth);
     var blob = new Blob([bin], { type: 'application/octet-stream' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -175,7 +188,8 @@ $('packBtn').onclick = async function () {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
     var total = files.reduce(function (s, f) { return s + f.data.length; }, 0);
-    toast($('packRes'), '✅ 已生成 archive.xebz（' + fmtSize(bin.length) + '，原 ' + fmtSize(total) + (pwd ? ' · 已加密' : '') + '）', true);
+    var mname = (XEBZ.METHODS && XEBZ.METHODS[meth]) ? XEBZ.METHODS[meth] : meth;
+    toast($('packRes'), '✅ 已生成 archive.xebz（' + fmtSize(bin.length) + '，原 ' + fmtSize(total) + ' · 算法 ' + mname + (pwd ? ' · 已加密' : '') + '）', true);
   } catch (e) { toast($('packRes'), '打包失败: ' + (e.message || e), false); }
   btn.disabled = false; btn.textContent = '🗜 打包并下载 .xebz';
 };
