@@ -99,7 +99,8 @@
       <div class="fileinfo" id="packInfo"></div>
       <label for="packMethod">压缩算法</label>
       <select id="packMethod">
-        <option value="auto">自动（六算法择优，压缩率最高）</option>
+        <option value="auto">自动（七算法择优，压缩率最高）</option>
+        <option value="z6">XHCZ6 · 极限压缩第二代（PAQ 式双模型混合，全面超越 z5）</option>
         <option value="z5">XHCZ5 · 极限压缩（order-2 上下文，CSV 类超 LZMA）</option>
         <option value="z4">XHCZ4 · 7z 级（动态概率算术编码）</option>
         <option value="z3">XHCZ3 · RAR5 级（1MB 窗口 + lazy 匹配）</option>
@@ -136,15 +137,16 @@
   </div>
 
   <div class="meta">
-    <b>XEBZ 是什么</b>：<code>XHCBZ v2.4</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
-    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ5 算法</b>（结构感知 order-2 高阶上下文预测，CSV 类文本<b>超 LZMA</b>）+ <b>XHC-Combo2 安全内核</b>：
+    <b>XEBZ 是什么</b>：<code>XHCBZ v2.5</code> —— XHC 生态<b>原创独立压缩格式</b>，与 zip/rar/7z 结构完全不同：
+    自研容器（magic + 可选加密头）+ 多文件归档清单（含 crc32 校验）+ <b>全自研 XHCZ6 算法</b>（PAQ 式双模型混合：
+    order-2 角色分流 + order-3 哈希上下文，stretch/logistic 加权自适应学习，文本/CSV/日志压缩率<b>全面超越 XHCZ5</b>）+ <b>XHC-Combo2 安全内核</b>：
     <b>Argon2id</b>（抗 GPU 暴力破解的现代 KDF，默认 32MB/3 次）+ <b>ChaCha20-Poly1305</b>（RFC 8439 认证加密），
-    安全强度全面超越 PBKDF2+AES-GCM 旧方案；兼容 1.0~2.3 全部旧包。
+    安全强度全面超越 PBKDF2+AES-GCM 旧方案；兼容 1.0~2.4 全部旧包。
     可选 <b>AES-256-GCM</b> 加密（PBKDF2 10 万次迭代）。解压自动校验 crc32，损坏立即报错。
-    打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ5·XHCZ4·XHCZ3·XHCZ2·Combo / 仅存储），
+    打包时可<b>手动选择压缩算法</b>（自动择优 / XHCZ6·XHCZ5·XHCZ4·XHCZ3·XHCZ2·Combo / 仅存储），
     压缩后比原文件大时自动回退为原样存储，绝无膨胀。
     全部在前端本地完成，文件不上传服务器。<br>
-    <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
+    <b>命令行</b>：<code>python xebz.py pack-dir ./docs -o docs.xebz -p 密码 -m z6</code> / <code>python xebz.py unpack docs.xebz -d ./out</code>
   </div>
 </div>
 
