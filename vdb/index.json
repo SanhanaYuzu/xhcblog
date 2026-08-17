@@ -3,16 +3,357 @@
   "schema": "index",
   "database": "XHC 安全病毒库",
   "host": "https://hotpe.org/vdb/",
-  "total": 5,
+  "total": 6,
   "parts": [
     "part-1.json"
   ],
   "defender": {
-    "security_intelligence": "1.457.198.0",
+    "security_intelligence": "1.457.201.0",
     "engine": "1.1.26070.7",
     "platform": "4.18.26070.9",
     "source": "Microsoft WDSI (defenderupdates)",
-    "synced": "2026-08-17T05:45:11+08:00"
+    "synced": "2026-08-17T10:46:12+08:00",
+    "_threats_count": 46
   },
-  "note": "XHC 安全病毒库数据库（GitHub Pages 静态托管）。Defender 元数据由 vdb_sync_defender.py 从微软 WDSI 云端爬取；哈希条目由社区维护。"
+  "threats": [
+    {
+      "name": "Trojan:Win32/Emotet",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [
+        "W32/Trojan"
+      ],
+      "summary": "Emotet is an advanced malware family that typically spreads through phishing emails with malicious attachments. Emotet was initially designed as a banking trojan to steal user's banking credentials, e"
+    },
+    {
+      "name": "Trojan:Win32/Qakbot",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Qakbot, also known as Quakbot, Qbot, and similar names, has been active since 2007. Qakbot started life as a credential stealer optimized to obtain credentials from banking and other financial service"
+    },
+    {
+      "name": "Trojan:Win32/Zbot",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Sality",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Ramnit",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can steal your sensitive information, such as your saved FTP credentials and web browser cookies. It spreads via infected removable drives, such as USB flash drives. See the Win32/Ramnit f"
+    },
+    {
+      "name": "Trojan:Win32/Virut",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Wacatac.B!ml",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Trojan:Win32/Wacatac.B!ml represents an ongoing and adaptable threat to Windows. It functions primarily as a trojan, acting as a versatile tool for threat actors to steal information, download additio"
+    },
+    {
+      "name": "Trojan:Win32/Dridex",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Azorult",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Phorpiex",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Nitol",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Fuery",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Sabsik",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Remcos",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Remcos is used to take control of an infected system and collect system information like keystrokes, webcam images, screen captures, and passwords. Remcos supports many control commands to perform var"
+    },
+    {
+      "name": "Trojan:Win32/AgentTesla",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Trojan:Win32/AgentTesla is a trojan designed to steal sensitive information. It possesses numerous features allowing it to collect data through various methods. Specifically, it targets Windows creden"
+    },
+    {
+      "name": "Trojan:Win32/Nanocore",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Banload",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Trojan:Win32/Occamy",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Trojan:Win32/Occamy.C is malware that can drop malicious files onto a device to conduct a ransomware attack. What to do now Microsoft Defender Antivirus automatically removes threats as they are detec"
+    },
+    {
+      "name": "Trojan:Win32/Malgent",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Trojan:Win32/Malgent is an adaptable malware threat with primary infection vectors involving social engineering strategies or software that has been tampered with to carry malicious code. Its objectiv"
+    },
+    {
+      "name": "Trojan:Win32/CoinMiner",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat uses your PC to generate Bitcoins . It installs software that can make your PC run slower than usual. This threat might have been bundled with other software you installed. Learn more abou"
+    },
+    {
+      "name": "Trojan:Win64/CoinMiner",
+      "category": "trojan",
+      "risk": "high",
+      "aliases": [],
+      "summary": "While the specifics of this threat can change, it's designed to mine cryptocurrency and can impact system performance. What to do now Scanning with Microsoft Defender Antivirus or other Microsoft anti"
+    },
+    {
+      "name": "Worm:Win32/Conficker",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Worm:Win32/Mydoom",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Worm:Win32/Gamarue",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Microsoft security software detects and removes this threat. Worm:Win32/Gamarue is a family of worms that belong to the Win32/Gamarue family. The Gamarue family may be distributed by exploit kits, spa"
+    },
+    {
+      "name": "Worm:Win32/Dorkbot",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [
+        "Win-Trojan/Injector"
+      ],
+      "summary": "This family of worms can steal your user names and passwords by spying on what you do online. They can block websites that are related to security updates and launch a limited denial of service ( DoS "
+    },
+    {
+      "name": "Worm:Win32/Vobfus",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Microsoft security software detects and removes this family of threats. This family of worms can download other malware onto your PC, including: Win32/Beebone Win32/Fareit Win32/Zbot Vobfus worms can "
+    },
+    {
+      "name": "Worm:Win32/Autorun",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "Windows Defender Antivirus detects and removes this threat. This family of worms spreads by copying itself to the mapped drives of an infected PC, including network or removable drives. What to do now"
+    },
+    {
+      "name": "Worm:Win32/Bagle",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Worm:Win32/Allaple",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Worm:Win32/Brontok",
+      "category": "worm",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Ransom:Win32/WannaCrypt",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [
+        "WORM_WCRY"
+      ],
+      "summary": "Windows Defender AV detects and removes this threat. This ransomware can stop you from using your PC or accessing your data. Unlike other ransomware, however, this threat has worm capabilities. It use"
+    },
+    {
+      "name": "Ransom:Win32/Locky",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [
+        "Trojan"
+      ],
+      "summary": "This ransomware can stop you from using your PC or accessing your data. It might ask you to pay money to a malicious hacker. This threat uses an infected Microsoft Office file to download the ransomwa"
+    },
+    {
+      "name": "Ransom:Win32/Petya",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This ransomware can stop you from using your PC or accessing your data. It might ask you to pay money to a malicious hacker. This ransomware has worm-like capabilities that allows it spread across inf"
+    },
+    {
+      "name": "Ransom:Win32/Cerber",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [
+        "Troj/Ransom-CJM (Sophos) Trojan"
+      ],
+      "summary": "This ransomware can stop you from using your PC or accessing your data. It is a member of the ransomware-as-a-service category of ransomware, and spreads through email, exploit-kits, and other drive-b"
+    },
+    {
+      "name": "Ransom:Win32/Crypren",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Ransom:Win32/Reveton",
+      "category": "ransom",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Backdoor:Win32/Androm",
+      "category": "backdoor",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Backdoor:Win32/Zegost",
+      "category": "backdoor",
+      "risk": "high",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "Adware:Win32/OpenCandy",
+      "category": "adware",
+      "risk": "low",
+      "aliases": [],
+      "summary": "This program was detected by definitions prior to 1.169.1369.0 as it violated the guidelines by which Microsoft identified unwanted software. Based on analysis using current guidelines , the program d"
+    },
+    {
+      "name": "Adware:Win32/BrowseFox",
+      "category": "adware",
+      "risk": "low",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Microsoft Defender Antivirus automatically "
+    },
+    {
+      "name": "PUA:Win32/Presenoker",
+      "category": "pua",
+      "risk": "low",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Devices affected by this threat might exhib"
+    },
+    {
+      "name": "PUA:Win32/InstallCore",
+      "category": "pua",
+      "risk": "low",
+      "aliases": [
+        "not-a-virus:Downloader"
+      ],
+      "summary": "This application was stopped from running on your network because it has a poor reputation. This application can also affect the quality of your computing experience. We have seen this leading to the "
+    },
+    {
+      "name": "PUA:Win32/SoftPulse",
+      "category": "pua",
+      "risk": "low",
+      "aliases": [],
+      "summary": "This threat can perform a number of actions of a malicious actor's choice on your device. Find out ways that malware can get on your device . What to do now Devices affected by this threat might exhib"
+    },
+    {
+      "name": "HackTool:Win32/Keygen",
+      "category": "hacktool",
+      "risk": "medium",
+      "aliases": [],
+      "summary": "This tool generates software keys. Malware is often installed along with this tool. Microsoft security software finds malware on more than half of the PCs where we detect this tool. You can read more "
+    },
+    {
+      "name": "HackTool:Win32/Patcher",
+      "category": "hacktool",
+      "risk": "medium",
+      "aliases": [
+        "TR/Spy"
+      ],
+      "summary": "This family of hacktools are used to patch or \"crack\" some software so it will run without a valid license or genuine product key. We recommend you don't run this hacktool as it can be associated with"
+    },
+    {
+      "name": "Virus:Win32/Parite",
+      "category": "virus",
+      "risk": "high",
+      "aliases": [
+        "W32/Pinfi (Symantec) W32/Pate (McAfee) PE_PARITE (Trend Micro) Win32"
+      ],
+      "summary": "Win32/Parite is a family of polymorphic file infectors that targets computers running Microsoft Windows. The virus infects .exe and .scr executable files on the local file system and on writeable netw"
+    }
+  ],
+  "note": "XHC 安全病毒库数据库（GitHub Pages 静态托管）。Defender 版本元数据 + 威胁名录（恶意软件百科）由 vdb_sync_defender.py 从微软 WDSI 官方页面搬运；哈希条目含微软推荐测试样本与社区维护条目。"
 }
