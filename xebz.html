@@ -45,6 +45,11 @@
     font-size: 14px; outline: none; transition: .15s; background: #fff; color: var(--text);
   }
   input[type=password]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+  .kdf-hint {
+    margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5;
+    background: linear-gradient(135deg, #eef2ff, #ecfdf5); border: 1px solid #dbeafe; color: #4b5563;
+  }
+  .kdf-hint b { color: var(--primary); }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
     padding: 11px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700;
@@ -104,6 +109,7 @@
       </select>
       <label for="packPwd">加密密码（可选，留空 = 明文压缩包）</label>
       <input type="password" id="packPwd" placeholder="可选：设置密码">
+      <div class="kdf-hint">🔒 加密内核 = <b>XHC-Combo2</b> · Argon2id + ChaCha20-Poly1305（填密码自动启用）</div>
       <button class="btn primary" id="packBtn" disabled>🗜 打包并下载 .xebz</button>
       <div class="result" id="packRes"></div>
     </div>
