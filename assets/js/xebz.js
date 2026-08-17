@@ -23,11 +23,11 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0202;  // 2.2（读取兼容 1.x / 2.0 / 2.1）
+  var VERSION = 0x0203;  // 2.3（读取兼容 1.x / 2.0 / 2.1 / 2.2）
   var KDF_NONE = 0, KDF_PBKDF2 = 1;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -443,6 +443,187 @@
   }
   function z4Decompress(data) { return z3LzDecompress(z4Decode(data)); }
 
+  /* ---------- z5 专用 LZ（最小匹配 3，LZMA 级短匹配） ---------- */
+  function z5LzCompress(data) {
+    var n = data.length, out = [], i = 0, chain = new Map();
+    function h3(p) { return (data[p] << 16) | (data[p + 1] << 8) | data[p + 2]; }
+    function findMatch(pos) {
+      if (pos + 3 > n) return [0, 0];
+      var last = chain.has(h3(pos)) ? chain.get(h3(pos)) : -1;
+      if (last < 0 || pos - last > Z3_WINDOW) return [0, 0];
+      var m = 0;
+      while (m < 258 && pos + m < n && data[last + m] === data[pos + m]) m++;
+      if (m < 3) return [0, 0];
+      return [m, pos - last];
+    }
+    while (i < n) {
+      var r = findMatch(i), bl = r[0], bo = r[1];
+      if (bl >= 3) {
+        if (i + 4 <= n) {
+          var r2 = findMatch(i + 1);
+          if (r2[0] > bl + 1) {
+            var b = data[i];
+            if (b === 0x00 || b === 0x01 || b === 0x02 || b === 0x03) out.push(0x00, b);
+            else out.push(b);
+            if (i + 3 <= n) chain.set(h3(i), i);
+            i++; continue;
+          }
+        }
+        if (bo <= 0xFFFF) {
+          out.push(0x01, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 3);
+        } else {
+          out.push(0x03, (bo >> 16) & 255, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 3);
+        }
+        for (var k = 0; k < bl; k++) if (i + k + 3 <= n) chain.set(h3(i + k), i + k);
+        i += bl;
+      } else {
+        var j = i + 1;
+        while (j < n && data[j] === data[i] && j - i < 258) j++;
+        if (j - i >= 3) {
+          out.push(0x02, (j - i) - 3, data[i]);
+          for (var k2 = 0; k2 < j - i; k2++) if (i + k2 + 3 <= n) chain.set(h3(i + k2), i + k2);
+          i = j;
+        } else {
+          var b2 = data[i];
+          if (b2 === 0x00 || b2 === 0x01 || b2 === 0x02 || b2 === 0x03) out.push(0x00, b2);
+          else out.push(b2);
+          if (i + 3 <= n) chain.set(h3(i), i);
+          i++;
+        }
+      }
+    }
+    return new Uint8Array(out);
+  }
+  function z5LzDecompress(tokens) {
+    var out = [], i = 0, n = tokens.length;
+    while (i < n) {
+      var t = tokens[i];
+      if (t === 0x00) { out.push(tokens[i + 1]); i += 2; }
+      else if (t === 0x01) {
+        var off = (tokens[i + 1] << 8) | tokens[i + 2];
+        var ln = tokens[i + 3] + 3;
+        var src = out.length - off;
+        for (var k = 0; k < ln; k++) { out.push(out[src]); src++; }
+        i += 4;
+      } else if (t === 0x03) {
+        var off2 = (tokens[i + 1] << 16) | (tokens[i + 2] << 8) | tokens[i + 3];
+        var ln2 = tokens[i + 4] + 3;
+        var src2 = out.length - off2;
+        for (var m2 = 0; m2 < ln2; m2++) { out.push(out[src2]); src2++; }
+        i += 5;
+      } else if (t === 0x02) {
+        var rl = tokens[i + 1] + 3;
+        for (var m3 = 0; m3 < rl; m3++) out.push(tokens[i + 2]);
+        i += 3;
+      } else { out.push(t); i++; }
+    }
+    return new Uint8Array(out);
+  }
+
+  /* ---------- XHCZ5（2.3 极限压缩：结构感知 order-2 高阶上下文预测） ---------- */
+  function z5Encode(data) {
+    var probs = new Uint16Array(65536 * 8).fill(1024);
+    var low = 0, high = Z4_MASK, pending = 0, bits = [], p2 = 0, p1 = 0;
+    var cats = new Uint8Array(data.length);
+    // 类别：自由位 4（含控制符），参数区 off=1 len=2 runlen=3
+    (function buildCats() {
+      var i = 0, n = data.length;
+      while (i < n) {
+        var b = data[i];
+        cats[i] = 4;
+        if (b === 0x00) { if (i + 1 < n) cats[i + 1] = 4; i += 2; }
+        else if (b === 0x01) { if (i + 3 < n) { cats[i+1]=1; cats[i+2]=1; cats[i+3]=2; } i += 4; }
+        else if (b === 0x02) { if (i + 2 < n) { cats[i+1]=3; cats[i+2]=4; } i += 3; }
+        else if (b === 0x03) { if (i + 4 < n) { cats[i+1]=1; cats[i+2]=1; cats[i+3]=1; cats[i+4]=2; } i += 5; }
+        else i++;
+      }
+    })();
+    function bpf(b) { bits.push(b); while (pending > 0) { bits.push(b ^ 1); pending--; } }
+    for (var i = 0; i < data.length; i++) {
+      var byte = data[i], cat = cats[i];
+      var base = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      for (var bp = 0; bp < 8; bp++) {
+        var bit = (byte >> (7 - bp)) & 1, idx = base + bp, pr = probs[idx];
+        var rng = high - low + 1;
+        var mid = (low + Math.floor(rng * pr / 2048)) >>> 0;
+        if (bit === 0) { high = (mid - 1) >>> 0; probs[idx] = (pr + ((2048 - pr) >> 5)) >>> 0; }
+        else { low = mid; probs[idx] = (pr - (pr >> 5)) >>> 0; }
+        for (;;) {
+          if (high < Z4_HALF) { bpf(0); low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0; }
+          else if (low >= Z4_HALF) { bpf(1); low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0; low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0; }
+          else if (low >= Z4_QTR1 && high < Z4_QTR3) { pending++; low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0; low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0; }
+          else break;
+        }
+      }
+      p2 = p1; p1 = byte;
+    }
+    pending += 1;
+    if (low < Z4_QTR1) bpf(0); else bpf(1);
+    while (bits.length % 8) bits.push(0);
+    var out = [];
+    for (var k = 0; k < bits.length; k += 8) {
+      var bb = 0;
+      for (var j = 0; j < 8; j++) bb = (bb << 1) | bits[k + j];
+      out.push(bb);
+    }
+    return new Uint8Array(out);
+  }
+  function z5Decode(data) {
+    var probs = new Uint16Array(65536 * 8).fill(1024);
+    var cnt = readU32(data, 0);
+    var pos = 4, cur = 0, n = 0, limit = data.length, p2 = 0, p1 = 0;
+    function nbit() {
+      if (n === 0) { if (pos >= limit) return 0; cur = data[pos]; pos++; n = 8; }
+      var b = (cur >> 7) & 1; cur = (cur << 1) & 255; n--; return b;
+    }
+    var low = 0, high = Z4_MASK, value = 0;
+    for (var k = 0; k < 32; k++) value = ((value << 1) | nbit()) >>> 0;
+    var out = [];
+    var params = [];
+    for (var s = 0; s < cnt; s++) {
+      var cat = params.length > 0 ? params[0] : 4;
+      var base = (((cat << 13) | ((p1 << 8) | p2) & 0x1FFF)) * 8;
+      var val = 0;
+      for (var bp = 0; bp < 8; bp++) {
+        var idx = base + bp, pr = probs[idx];
+        var rng = high - low + 1;
+        var mid = (low + Math.floor(rng * pr / 2048)) >>> 0;
+        var bit;
+        if (value < mid) { high = (mid - 1) >>> 0; probs[idx] = (pr + ((2048 - pr) >> 5)) >>> 0; bit = 0; }
+        else { low = mid; probs[idx] = (pr - (pr >> 5)) >>> 0; bit = 1; }
+        val = (val << 1) | bit;
+        for (;;) {
+          if (high < Z4_HALF) { /* pass */ }
+          else if (low >= Z4_HALF) { value = (value - Z4_HALF) >>> 0; low = (low - Z4_HALF) >>> 0; high = (high - Z4_HALF) >>> 0; }
+          else if (low >= Z4_QTR1 && high < Z4_QTR3) { value = (value - Z4_QTR1) >>> 0; low = (low - Z4_QTR1) >>> 0; high = (high - Z4_QTR1) >>> 0; }
+          else break;
+          low = (low << 1) >>> 0; high = ((high << 1) | 1) >>> 0;
+          value = ((value << 1) | nbit()) >>> 0;
+        }
+      }
+      var byte = val & 255;
+      out.push(byte);
+      if (params.length > 0) params.shift();
+      else {
+        if (byte === 0x00) params = [4];
+        else if (byte === 0x01) params = [1, 1, 2];
+        else if (byte === 0x02) params = [3, 4];
+        else if (byte === 0x03) params = [1, 1, 1, 2];
+      }
+      p2 = p1; p1 = byte;
+    }
+    return new Uint8Array(out);
+  }
+  function z5Compress(data) {
+    var tokens = z5LzCompress(data);
+    var enc = z5Encode(tokens);
+    var out = new Uint8Array(4 + enc.length);
+    out.set(u32be(tokens.length), 0);
+    out.set(enc, 4);
+    return out;
+  }
+  function z5Decompress(data) { return z5LzDecompress(z5Decode(data)); }
+
 
   /* ---------- RLE-X ---------- */
   function rleCompress(data) {
@@ -596,12 +777,14 @@
       var f = files[i];
       var nb = te.encode(f.name);
       var crc = crc32(f.data);
+      var z5 = z5Compress(f.data);
       var z4 = z4Compress(f.data);
       var z3 = z3Compress(f.data);
       var z2 = z2Compress(f.data);
       var c1 = comboCompress(f.data);
       var use, block;
-      if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= f.data.length) { use = METHOD_Z4; block = z4; }
+      if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= f.data.length) { use = METHOD_Z5; block = z5; }
+      else if (z4.length <= z3.length && z4.length <= z2.length && z4.length <= c1.length && z4.length <= f.data.length) { use = METHOD_Z4; block = z4; }
       else if (z3.length <= z2.length && z3.length <= c1.length && z3.length <= f.data.length) { use = METHOD_Z3; block = z3; }
       else if (z2.length <= c1.length && z2.length <= f.data.length) { use = METHOD_Z2; block = z2; }
       else if (c1.length < f.data.length) { use = METHOD_COMBO; block = c1; }
@@ -690,6 +873,7 @@
     for (i = 0; i < entries; i++) {
       var data;
       if (headers[i].method === METHOD_COMBO) data = comboDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z2) data = z2Decompress(blocks[i]);
@@ -716,6 +900,12 @@
     z3Compress: z3Compress,
     z3Decompress: z3Decompress,
     z4Compress: z4Compress,
-    z4Decompress: z4Decompress
+    z4Decompress: z4Decompress,
+    z5Compress: z5Compress,
+    z5Decompress: z5Decompress,
+    z5LzCompress: z5LzCompress,
+    z5LzDecompress: z5LzDecompress,
+    z5LzCompress: z5LzCompress,
+    z5LzDecompress: z5LzDecompress
   };
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
