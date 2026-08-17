@@ -242,24 +242,26 @@
     </div>
   </div>
 
-  <!-- XHC-Combo2 -->
+  <!-- XHC-Combo2 / Combo3 -->
   <div class="alg sec" id="combo2">
     <div class="head">
       <div class="badge" style="background:linear-gradient(135deg,#1f2937,#374151);">C2</div>
-      <h3>XHC-Combo2 安全内核</h3><span class="ver">XEBZ 2.4</span>
+      <h3>XHC-Combo2 / Combo3 安全内核</h3><span class="ver">XEBZ 2.4 / 2.6</span>
       <span class="pos" style="background:#e0e7ff;color:#4338ca;">加密安全（非压缩）</span>
     </div>
-    <div class="desc">注意：XHC-Combo2 是<b>加密安全内核</b>，不属于压缩算法。打包时填了密码，无论选哪种压缩算法，加密环节都走 Combo2 —— 安全强度全面超越 PBKDF2+AES-GCM 旧方案。</div>
+    <div class="desc">注意：安全内核<b>不属于压缩算法</b>。打包时填了密码，无论选哪种压缩算法，加密环节都走安全内核——Combo2 为标准档，<b>Combo3 为强化档</b>（512-bit 双层加密，极难破解）。</div>
     <div class="mech">
-      <b>主攻加密安全：</b>
-      <div class="step"><b>Argon2id</b>：抗 GPU 暴力破解的现代 KDF（默认 32MB / 3 次迭代 / 1 并行）</div>
-      <div class="step"><b>ChaCha20-Poly1305</b>：RFC 8439 认证加密（AEAD，密文 + 16 字节认证标签，防篡改）</div>
-      <div class="step"><b>57 字节新头</b>：记录 KDF 参数（time/mem/par/cipher），兼容读取 1.0~2.3 全部旧包</div>
+      <b>Combo2 · 标准（默认）：</b>
+      <div class="step"><b>Argon2id</b>：抗 GPU 暴力破解的现代 KDF（32MB / t=3 / p=1）</div>
+      <div class="step"><b>ChaCha20-Poly1305</b>：RFC 8439 认证加密（AEAD，密文 + 16 字节认证标签）</div>
+      <b>Combo3 · 强化（可选）：</b>
+      <div class="step"><b>Argon2id 64MB / t=4 / p=2</b> 派生 <b>512-bit 密钥</b>（暴力破解成本翻倍）</div>
+      <div class="step"><b>双层 AEAD 加密</b>：内层 ChaCha20-Poly1305 + 外层 AES-256-GCM，两个 16 字节认证标签 —— 攻破需同时击穿两个算法族</div>
     </div>
     <div class="num">
-      <div class="cell">KDF <b>Argon2id</b></div>
-      <div class="cell">加密 <b>ChaCha20-Poly1305</b></div>
-      <div class="cell">向后兼容 <b>1.0~2.3</b></div>
+      <div class="cell">Combo2 密钥 <b>256-bit</b></div>
+      <div class="cell">Combo3 密钥 <b>512-bit</b></div>
+      <div class="cell">向后兼容 <b>1.0~2.5</b></div>
     </div>
   </div>
 
