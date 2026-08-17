@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XHCZ · 自研压缩算法博客</title>
+<meta name="description" content="XHCZ 自研压缩算法家族官方博客：从 XHC-Combo 到 XHCZ-Optima 六边形战士，九代算法 + 二代安全内核，Python / JavaScript 双端完全互通。">
+<style>
+  :root {
+    --primary: #1a56db; --primary-dark: #1e4fd8; --primary-light: #e8eefc;
+    --green: #059669; --green-light: #ecfdf5;
+    --purple: #7c3aed; --purple-light: #ede9fe;
+    --bg: #f5f6fa; --card: #fff; --text: #2c3e50; --muted: #7f8c8d;
+    --border: #e6e9f0; --amber: #d97706; --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.75;
+  }
+  a { color: var(--primary); }
+
+  /* 顶栏 */
+  .header {
+    height: 60px; background: var(--card); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--primary); }
+  .logo .ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--green)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; }
+  .logo small { font-weight: 500; font-size: 11px; color: var(--muted); }
+  .nav { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .nav a { text-decoration: none; color: var(--muted); font-size: 12.5px; padding: 6px 11px; border: 1px solid var(--border); border-radius: 8px; white-space: nowrap; }
+  .nav a:hover { color: var(--primary); border-color: var(--primary); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #0f2a6b 0%, #1a56db 45%, #059669 100%);
+    color: #fff; padding: 60px 24px 52px; text-align: center;
+  }
+  .hero .kicker { display: inline-block; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; opacity: .85; border: 1px solid rgba(255,255,255,.4); padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }
+  .hero h1 { font-size: 38px; font-weight: 900; letter-spacing: .5px; }
+  .hero p { margin-top: 14px; font-size: 15.5px; opacity: .92; max-width: 760px; margin-left: auto; margin-right: auto; }
+  .hero .stats { display: flex; justify-content: center; gap: 38px; margin-top: 30px; flex-wrap: wrap; }
+  .hero .stat b { display: block; font-size: 27px; font-weight: 900; }
+  .hero .stat span { font-size: 12px; opacity: .85; }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 20px 70px; }
+  .sec-title { font-size: 23px; font-weight: 900; margin: 48px 0 6px; }
+  .sec-title small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 8px; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 24px; }
+
+  /* 博客文章卡片 */
+  .posts { display: grid; gap: 18px; }
+  .post {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px 26px; box-shadow: 0 2px 12px rgba(0,0,0,.05);
+    display: flex; gap: 20px; align-items: flex-start; transition: transform .15s, box-shadow .15s;
+  }
+  .post:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(26,86,219,.12); }
+  .post .date {
+    flex-shrink: 0; width: 64px; text-align: center; border-right: 1px solid var(--border); padding-right: 16px;
+  }
+  .post .date b { display: block; font-size: 24px; font-weight: 900; color: var(--primary); line-height: 1.1; }
+  .post .date span { font-size: 11px; color: var(--muted); }
+  .post .body { flex: 1; }
+  .post .tagline { margin-bottom: 6px; }
+  .post .tagline .t { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; margin-right: 8px; }
+  .t-new { background: var(--green-light); color: var(--green); }
+  .t-pro { background: var(--purple-light); color: var(--purple); }
+  .t-sec { background: var(--primary-light); color: var(--primary); }
+  .post h3 { font-size: 18px; font-weight: 900; margin-bottom: 6px; }
+  .post p { color: var(--muted); font-size: 13.5px; }
+  .post .more { display: inline-block; margin-top: 10px; font-weight: 700; font-size: 13px; text-decoration: none; }
+  .post .more:hover { text-decoration: underline; }
+
+  /* 算法速览卡片 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .acard {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.04); text-decoration: none; color: inherit; display: block;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .acard:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26,86,219,.12); }
+  .acard .badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; color: #fff; margin-bottom: 10px; }
+  .acard h4 { font-size: 15px; font-weight: 900; }
+  .acard .ver { font-size: 11px; color: var(--muted); }
+  .acard p { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+  /* 工具 CTA */
+  .tool {
+    background: linear-gradient(135deg, #0f2a6b, #1a56db 60%, #059669);
+    border-radius: 18px; padding: 34px 30px; color: #fff; text-align: center; margin-top: 20px;
+  }
+  .tool h3 { font-size: 21px; font-weight: 900; }
+  .tool p { opacity: .9; margin-top: 8px; font-size: 14px; }
+  .tool a {
+    display: inline-block; margin-top: 18px; background: #fff; color: var(--primary);
+    text-decoration: none; padding: 12px 32px; border-radius: 12px; font-weight: 800; font-size: 15px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  }
+  .tool a:hover { opacity: .92; }
+
+  .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 26px 0 40px; line-height: 1.9; }
+  .footer a { color: var(--muted); text-decoration: underline; }
+
+  @media (max-width: 700px) { .nav { display: none; } .hero h1 { font-size: 27px; } .post { flex-direction: column; gap: 10px; } .post .date { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 8px; width: 100%; text-align: left; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="ic">Z</span>XHCZ<small>自研压缩算法 · 官方博客</small></div>
+  <div class="nav">
+    <a href="#news">最新动态</a>
+    <a href="#family">算法家族</a>
+    <a href="#tool">在线工具</a>
+    <a href="https://hotpe.org/xhc-algorithms.html">全代详解</a>
+    <a href="https://hotpe.org/">XHC 主站</a>
+  </div>
+</div>
+
+<div class="hero">
+  <span class="kicker">XHC Compression Blog</span>
+  <h1>🗜 XHCZ 自研压缩算法</h1>
+  <p>从快速游程变换到 PAQ 式上下文混合，九代压缩算法 + 二代安全内核，全部从零自研。
+     每一代都在压缩率上跨越一个台阶，同时保持 Python / JavaScript 双端完全互通。</p>
+  <div class="stats">
+    <div class="stat"><b>9 代</b><span>压缩算法</span></div>
+    <div class="stat"><b>2 套</b><span>安全加密内核</span></div>
+    <div class="stat"><b>双端</b><span>Python / JS 互通</span></div>
+    <div class="stat"><b>0.85%</b><span>日志极限压缩率</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 最新动态 -->
+  <h2 class="sec-title" id="news">最新动态 <small>发布日志 / Release Notes</small></h2>
+  <p class="sec-sub">XHCZ 每一次迭代的来龙去脉，像读博客一样看算法进化。</p>
+  <div class="posts">
+
+    <div class="post">
+      <div class="date"><b>08</b><span>2026-08</span></div>
+      <div class="body">
+        <div class="tagline"><span class="t t-new">最新</span><span class="t t-pro">六边形战士</span></div>
+        <h3>XHCZ-Optima 2.8 · 六边形战士登场</h3>
+        <p>单一算法在中文 / 英文 / 代码 / CSV / 日志 / 随机全部数据类型上压缩率 ≥ 历史最优，且速度超过 Combo v1。
+           做法很「暴力」也很可靠：逐 1MB 块在 SS / z3 / z4 / z6 / ProSS / 原样存储 六种策略间取最小——
+           因为候选集里本就装着每一类数据的历史冠军，所以构造上就不可能输。实测与历史最优差异 &lt; 0.05pt。</p>
+        <a class="more" href="https://hotpe.org/xhc-algorithms.html#optima">阅读全文 →</a>
+      </div>
+    </div>
+
+    <div class="post">
+      <div class="date"><b>07</b><span>2026-08</span></div>
+      <div class="body">
+        <div class="tagline"><span class="t t-pro">综合产品线</span></div>
+        <h3>XHCZ-ProSS 2.7 · 把各家长处合而为一</h3>
+        <p>增强 LZ 先把重复压掉，再按数据特征智能分派四档：PRO 三模型混合追求极限、均衡双模型兼顾效率、
+           快速单模型提速大文件、原样存储应对不可压缩。压缩率文本类全面超越 XHCZ6，并可直接套 Combo2 / Combo3 安全内核一键加密。</p>
+        <a class="more" href="https://hotpe.org/xhc-algorithms.html#pross">阅读全文 →</a>
+      </div>
+    </div>
+
+    <div class="post">
+      <div class="date"><b>06</b><span>2026-08</span></div>
+      <div class="body">
+        <div class="tagline"><span class="t t-sec">速度 + 安全</span></div>
+        <h3>XHC-SS SpeedSafe · 速度与安全兼得</h3>
+        <p>与极限压缩路线相反：主打速度。单遍快速 LZ + 256 符号规范哈夫曼，比 z6 快 3~6 倍、压缩率接近中端水平，
+           还能配合 XHC-Combo2 安全内核一键加密（SpeedSafe = 速度 + 安全）。大文件快速归档首选。</p>
+        <a class="more" href="https://hotpe.org/xhc-algorithms.html#ss">阅读全文 →</a>
+      </div>
+    </div>
+
+    <div class="post">
+      <div class="date"><b>04</b><span>2026-08</span></div>
+      <div class="body">
+        <div class="tagline"><span class="t t-sec">安全内核</span></div>
+        <h3>XHC-Combo2 / Combo3 · 加密安全内核</h3>
+        <p>安全内核不属于压缩算法。打包时填了密码，无论选哪种压缩，加密环节都走安全内核：
+           Combo2 为 Argon2id + ChaCha20-Poly1305 标准档；Combo3 为 512-bit 双层 AEAD 强化档，极难破解。</p>
+        <a class="more" href="https://hotpe.org/xhc-algorithms.html#combo2">阅读全文 →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 算法家族 -->
+  <h2 class="sec-title" id="family">算法家族速览 <small>九代同堂</small></h2>
+  <p class="sec-sub">点开任意一代，跳转全代详解页看原理、机制与实测压缩率。</p>
+  <div class="grid">
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#combo">
+      <div class="badge" style="background:linear-gradient(135deg,#64748b,#94a3b8);">C1</div>
+      <h4>XHC-Combo</h4><div class="ver">XEBZ 1.0 · 快速</div>
+      <p>RLE-X 游程变换 + Huffman-256，主打速度与低熵重复数据。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#z2">
+      <div class="badge" style="background:linear-gradient(135deg,#0ea5e9,#22d3ee);">Z2</div>
+      <h4>XHCZ2</h4><div class="ver">XEBZ 2.0 · 基础 LZ</div>
+      <p>第一代真 LZ（哈希链匹配 + 算术编码），压缩率比 Combo 提升一个量级。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#z3">
+      <div class="badge" style="background:linear-gradient(135deg,#14b8a6,#34d399);">Z3</div>
+      <h4>XHCZ3</h4><div class="ver">XEBZ 2.1 · RAR5 级</div>
+      <p>1MB 大窗口 + lazy 延迟匹配 + 距离分层，针对混合分布大文件。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#z4">
+      <div class="badge" style="background:linear-gradient(135deg,#10b981,#059669);">Z4</div>
+      <h4>XHCZ4</h4><div class="ver">XEBZ 2.2 · 7z/LZMA 级</div>
+      <p>自适应二进制算术编码 + 4 类上下文建模，CSV / 代码类单行最优。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#z5">
+      <div class="badge" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">Z5</div>
+      <h4>XHCZ5</h4><div class="ver">XEBZ 2.3 · 极限压缩</div>
+      <p>order-2 结构感知上下文预测，CSV 类文本压缩率超过 LZMA。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#z6">
+      <div class="badge" style="background:linear-gradient(135deg,#ef4444,#f87171);">Z6</div>
+      <h4>XHCZ6</h4><div class="ver">XEBZ 2.5 · 极限Ⅱ</div>
+      <p>迷你 PAQ：order-2 + order-3 双模型 Logistic 混合，文本 / 日志天花板。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#ss">
+      <div class="badge" style="background:linear-gradient(135deg,#3b82f6,#60a5fa);">SS</div>
+      <h4>XHC-SS SpeedSafe</h4><div class="ver">XEBZ 2.6 · 速度+安全</div>
+      <p>单遍快速 LZ + 哈夫曼，比 z6 快 3~6 倍，可一键加密。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#pross">
+      <div class="badge" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);">PS</div>
+      <h4>XHCZ-ProSS</h4><div class="ver">XEBZ 2.7 · 综合</div>
+      <p>增强 LZ + 智能四档分派，压缩率文本类全面超越 z6。</p>
+    </a>
+
+    <a class="acard" href="https://hotpe.org/xhc-algorithms.html#optima">
+      <div class="badge" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">OM</div>
+      <h4>XHCZ-Optima</h4><div class="ver">XEBZ 2.8 · 六边形战士</div>
+      <p>六策略逐块择优，每一类数据都等于该类型历史冠军。</p>
+    </a>
+
+  </div>
+
+  <!-- 在线工具 -->
+  <h2 class="sec-title" id="tool">在线工具 <small>浏览器里直接压缩 / 解压</small></h2>
+  <p class="sec-sub">纯前端实现，文件不出本地浏览器。支持手动选择算法或一键「自动·九算法择优」。</p>
+  <div class="tool">
+    <h3>🛠 XEBZ 压缩 / 解压工具</h3>
+    <p>选算法、拖文件、看压缩率——XHC-Combo / XHCZ2~6 / XHC-SS / ProSS / Optima 全在线可用。</p>
+    <a href="https://hotpe.org/xebz.html">打开压缩工具 →</a>
+  </div>
+
+</div>
+
+<div class="footer">
+  XHCZ 自研压缩算法家族 · 全部算法从零实现，无第三方压缩库依赖<br>
+  本站为博客风格导航页，详细原理与实测见 <a href="https://hotpe.org/xhc-algorithms.html">全代详解</a> ·
+  工具见 <a href="https://hotpe.org/xebz.html">XEBZ 在线工具</a><br>
+  XEBZ 2.8 · XHCZ-Optima 六边形战士
+</div>
+
+</body>
+</html>
