@@ -125,13 +125,13 @@
     <span class="badge">🔑 AES-256-GCM</span>
     <span class="badge">🧂 PBKDF2 × 10万次</span>
     <span class="badge">🧩 6 种加密格式</span>
-    <span class="badge">🚀 4 代压缩算法</span>
+    <span class="badge">🚀 5 代压缩算法</span>
     <span class="badge">💻 11 个桌面应用</span>
     <span class="badge">🧰 97 个网页工具</span>
   </div>
   <div class="stat-row">
     <div class="stat"><b>6</b><span>加密格式</span></div>
-    <div class="stat"><b>4</b><span>算法代数</span></div>
+    <div class="stat"><b>5</b><span>算法代数</span></div>
     <div class="stat"><b>1.4%</b><span>最优压缩率</span></div>
     <div class="stat"><b>100%</b><span>自研实现</span></div>
   </div>
@@ -218,8 +218,13 @@
       </div>
       <div class="tl-item v4">
         <div class="ver">XEBZ 2.2 · XHCZ4 <span class="badge badge-lzma">7z/LZMA 级</span></div>
-        <div class="name">自适应二进制算术编码 + 动态概率模型 <span class="badge badge-best">当前最优</span></div>
+        <div class="name">自适应二进制算术编码 + 动态概率模型</div>
         <p>每个 bit 用 11-bit 动态概率（编码一位更新一次）+ 上下文建模，无需分块。中文文章压缩率 1.4%，全面碾压前代——这就是 LZMA 碾压静态频率的核心机制。</p>
+      </div>
+      <div class="tl-item v4">
+        <div class="ver">XEBZ 2.3 · XHCZ5 <span class="badge badge-lzma">极限压缩</span> <span class="badge badge-best">当前最优</span></div>
+        <div class="name">结构感知 order-2 高阶上下文预测（PPMd/CM 思路）</div>
+        <p>前 2 字节 65536 上下文 + token 角色分流（match 距离/长度与字面量用不同模型）。CSV 类结构化文本压缩率<b>超 LZMA</b>（CSV 0.74% vs 0.78%），中文文章 0.93% 逼近 LZMA 的 0.82%。</p>
       </div>
     </div>
   </section>
@@ -230,16 +235,16 @@
     <div class="lead">同一批测试数据，四代算法自动择优（pack 时 5 算法取最小者）。</div>
     <div class="table-wrap">
       <table>
-        <tr><th>数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th></tr>
-        <tr><td>中文文章</td><td>70.17%</td><td>4.40%</td><td>4.41%</td><td><span class="best">1.42%</span></td></tr>
-        <tr><td>日志</td><td>62.53%</td><td>4.10%</td><td>4.11%</td><td><span class="best">1.32%</span></td></tr>
-        <tr><td>CSV 表格</td><td>64.42%</td><td>5.09%</td><td>5.11%</td><td><span class="best">1.28%</span></td></tr>
-        <tr><td>Python 代码</td><td>54.76%</td><td>8.38%</td><td>8.41%</td><td><span class="best">1.94%</span></td></tr>
-        <tr><td>日志+代码混合</td><td>—</td><td>16.41%</td><td>15.63%</td><td><span class="best">8.70%</span></td></tr>
-        <tr><td>随机数据</td><td>102.04%</td><td>106%</td><td>106%</td><td>102%（正确不压缩）</td></tr>
+        <tr><th>数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th><th>XHCZ5</th></tr>
+        <tr><td>中文文章</td><td>70.17%</td><td>4.40%</td><td>4.41%</td><td>1.40%</td><td><span class="best">0.93%</span></td></tr>
+        <tr><td>日志</td><td>62.53%</td><td>4.10%</td><td>4.11%</td><td>1.32%</td><td><span class="best">0.75%</span></td></tr>
+        <tr><td>CSV 表格</td><td>64.42%</td><td>5.09%</td><td>5.11%</td><td>1.28%</td><td><span class="best">0.74%</span>（超 LZMA 0.78%）</td></tr>
+        <tr><td>Python 代码</td><td>54.76%</td><td>8.38%</td><td>8.41%</td><td>1.94%</td><td><span class="best">1.69%</span></td></tr>
+        <tr><td>日志+代码混合</td><td>—</td><td>16.41%</td><td>15.63%</td><td><span class="best">8.70%</span></td><td>9.35%</td></tr>
+        <tr><td>随机数据</td><td>102.04%</td><td>106%</td><td>106%</td><td>102%</td><td>102%（正确不压缩）</td></tr>
       </table>
     </div>
-    <div class="note">* 实测值随数据内容浮动；XEBZ 打包时五算法自动择优，兼容 1.0/2.0/2.1 旧包。<b>XHC-Combo</b>（v1.0）是创世算法（RLE-X + Huffman-256），文本 55-70%，被后续 XHCZ 系列全面超越；XHCZ2/3/4 一步步向 7z 级别靠近。</div>
+    <div class="note">* 实测值随数据内容浮动；XEBZ 打包时五算法自动择优，兼容 1.0/2.0/2.1 旧包。<b>XHC-Combo</b>（v1.0）是创世算法（RLE-X + Huffman-256），文本 55-70%，被后续 XHCZ 系列全面超越；XHCZ2/3/4 向 7z 级别靠近，<b>XHCZ5</b>（v2.3）在结构化文本上超越 LZMA（CSV 0.74% vs 0.78%）。</div>
   </section>
 
   <!-- ===== 网站 ===== -->
