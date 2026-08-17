@@ -24,8 +24,8 @@
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
   var VERSION = 0x0206;  // 2.6 XHC-SS SpeedSafe I（读取兼容 1.x~2.5）
-  var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2;
-  var CIPHER_CHACHA20 = 1;
+  var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2, KDF_COMBO3 = 3;
+  var CIPHER_CHACHA20 = 1, CIPHER_DUAL = 2;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
   var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7;
@@ -994,6 +994,16 @@
     return crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['encrypt', 'decrypt']);
   }
 
+
+  /* ---------- Combo3 双层加密：AES-256-GCM（WebCrypto） ---------- */
+  async function aesGcmEncrypt(keyBytes, iv, data) {
+    var key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+    return new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data));
+  }
+  async function aesGcmDecrypt(keyBytes, iv, data) {
+    var key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+    return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data));
+  }
   /* ---------- pack / unpack ---------- */
   function pickBlock(data, method) {
     /* 返回 [use, block]。method='auto' 七者择优；否则强制指定算法（更大则 store 兜底） */
@@ -1020,7 +1030,7 @@
     return ss.length < data.length ? [METHOD_SS, ss] : [METHOD_STORE, data];
   }
 
-  async function pack(files, password, method) {
+  async function pack(files, password, method, packKdf) {
     /* files: [{name, data: Uint8Array}] → Uint8Array(.xebz)
        method: 'auto'(默认)/'store'/'combo'/'z2'/'z3'/'z4'/'z5' */
     assertCrypto();
@@ -1048,6 +1058,36 @@
 
     var kdf = KDF_NONE, salt = new Uint8Array(16), iv = new Uint8Array(12), iters = 0, payload = payloadPlain;
     if (password) {
+      if (packKdf === KDF_COMBO3) {
+        // XHC-Combo3 强化安全内核：Argon2id 64MB/t4/p2 派生 512-bit → 双层 AEAD
+        var ac3 = global.XHCCRYPTO;
+        if (!ac3) throw new Error('安全内核未加载（缺少 xhc_crypto.js）');
+        kdf = KDF_COMBO3;
+        var salt3 = crypto.getRandomValues(new Uint8Array(16));
+        var iv1 = crypto.getRandomValues(new Uint8Array(12));
+        var iv2 = crypto.getRandomValues(new Uint8Array(12));
+        var key64 = await ac3.argon2id(String(password), salt3, 64 * 1024, 4, 2, 64);
+        var k1 = key64.slice(0, 32), k2 = key64.slice(32, 64);
+        var r1 = ac3.chacha20Poly1305Encrypt(k1, iv1, payloadPlain, null);
+        var inner = concatBytes(r1.ct, r1.tag);
+        var outer = await aesGcmEncrypt(k2, iv2, inner);
+        var head = [];
+        head.push.apply(head, MAGIC);
+        head.push.apply(head, u16be(VERSION));
+        head.push(KDF_COMBO3);
+        head.push.apply(head, u32be(4));
+        head.push.apply(head, u32be(64 * 1024));
+        head.push(2);
+        head.push(CIPHER_DUAL);
+        head.push(salt3.length);
+        head.push.apply(head, salt3);
+        head.push(iv1.length);
+        head.push.apply(head, iv1);
+        head.push.apply(head, iv2);
+        head.push.apply(head, u64be(outer.length));
+        return concatBytes(new Uint8Array(head), outer);
+      }
+      // XHC-Combo2 安全内核：Argon2id + ChaCha20-Poly1305（默认）
       // XHC-Combo2 安全内核：Argon2id + ChaCha20-Poly1305（默认）
       var ac2 = global.XHCCRYPTO;
       if (!ac2) throw new Error('安全内核未加载（缺少 xhc_crypto.js）');
@@ -1095,7 +1135,27 @@
     if ((ver >> 8) !== 1 && (ver >> 8) !== 2) throw new Error('不支持的版本: 0x' + ver.toString(16));
     var kdf = u8[8];
     var plain;
-    if (kdf === KDF_ARGON2) {
+    if (kdf === KDF_COMBO3) {
+      // Combo3：Argon2id 64MB 派生 512-bit → AES 外层解 → ChaCha 内层解
+      var ac3 = global.XHCCRYPTO;
+      if (!ac3) throw new Error('安全内核未加载（缺少 xhc_crypto.js）');
+      if (!password) throw new Error('该文件已加密，需要密码');
+      var t3 = readU32(u8, 9), mem3 = readU32(u8, 13), par3 = u8[17], ciph3 = u8[18];
+      var saltLen3 = u8[19];
+      var salt3 = u8.subarray(20, 20 + saltLen3);
+      var iv1 = u8.subarray(37, 49);
+      var iv2 = u8.subarray(49, 61);
+      var plen3 = readU64(u8, 61);
+      var payload3 = u8.subarray(69, 69 + plen3);
+      var key643 = await ac3.argon2id(String(password), salt3, mem3, t3, par3, 64);
+      var k1 = key643.slice(0, 32), k2 = key643.slice(32, 64);
+      try {
+        var inner3 = await aesGcmDecrypt(k2, iv2, payload3);
+        var ct1 = inner3.subarray(0, inner3.length - 16);
+        var tag1 = inner3.subarray(inner3.length - 16);
+        plain = ac3.chacha20Poly1305Decrypt(k1, iv1, ct1, tag1, null);
+      } catch (e) { throw new Error('解密失败：密码错误或文件已损坏（Combo3 双重认证）'); }
+    } else if (kdf === KDF_ARGON2) {
       // XHC-Combo2：Argon2id + ChaCha20-Poly1305
       var ac2 = global.XHCCRYPTO;
       if (!ac2) throw new Error('安全内核未加载（缺少 xhc_crypto.js）');
