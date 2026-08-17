@@ -23,12 +23,14 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0207;  // 2.7 XHCZ-ProSS（读取兼容 1.x~2.6）
+  var VERSION = 0x0208;  // 2.8 XHCZ-Optima（六边形战士；读取兼容 1.x~2.7）
   var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2, KDF_COMBO3 = 3;
   var CIPHER_CHACHA20 = 1, CIPHER_DUAL = 2;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7, METHOD_PRO = 8;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7, METHOD_PRO = 8, METHOD_OPTIMA = 9;
+  var OPTIMA_BLOCK = 1048576;
+  var OPTIMA_MODE_SS = 0, OPTIMA_MODE_PRO = 1, OPTIMA_MODE_STORE = 2, OPTIMA_MODE_Z4 = 3, OPTIMA_MODE_Z6 = 4, OPTIMA_MODE_Z3 = 5;
   var RUN_MAX = 258;
 
   var te = new TextEncoder();
@@ -1075,6 +1077,60 @@
   }
 
 
+  /* ---------- XHCZ-Optima（2.8 六边形战士：逐块择优 ss / pro / z3 / z4 / z6 / store） ---------- */
+  function optimaCompress(data) {
+    var n = data.length;
+    if (n === 0) return u32be(0);
+    var chunks = [];
+    var nb = Math.ceil(n / OPTIMA_BLOCK);
+    chunks.push(u32be(nb));
+    for (var bi = 0; bi < nb; bi++) {
+      var start = bi * OPTIMA_BLOCK, end = Math.min(n, start + OPTIMA_BLOCK);
+      var blk = data.subarray(start, end);
+      var L = blk.length;
+      var ss = ssCompress(blk);
+      var z3 = z3Compress(blk);
+      var z4 = z4Compress(blk);
+      var z6 = z6Compress(blk);
+      var pro = prossCompress(blk);
+      var cands = [
+        [ss.length, OPTIMA_MODE_SS, ss],
+        [z3.length, OPTIMA_MODE_Z3, z3],
+        [z4.length, OPTIMA_MODE_Z4, z4],
+        [z6.length, OPTIMA_MODE_Z6, z6],
+        [pro.length, OPTIMA_MODE_PRO, pro],
+        [L, OPTIMA_MODE_STORE, blk]
+      ];
+      cands.sort(function (a, b) { return a[0] - b[0]; });
+      var best = cands[0];
+      var head = [];
+      head.push(best[1]);
+      head.push.apply(head, u32be(best[2].length));   // 5 字节，安全
+      chunks.push(new Uint8Array(head));
+      chunks.push(best[2]);                            // 直接压入 Uint8Array，避免 push.apply 大数组爆栈
+    }
+    return concatBytes.apply(null, chunks);
+  }
+  function optimaDecompress(data) {
+    var nb = readU32(data, 0);
+    var pos = 4, chunks = [];
+    for (var i = 0; i < nb; i++) {
+      var mode = data[pos++];
+      var plen = readU32(data, pos); pos += 4;
+      var payload = data.subarray(pos, pos + plen); pos += plen;
+      var dec;
+      if (mode === OPTIMA_MODE_SS) dec = ssDecompress(payload);
+      else if (mode === OPTIMA_MODE_Z3) dec = z3Decompress(payload);
+      else if (mode === OPTIMA_MODE_Z4) dec = z4Decompress(payload);
+      else if (mode === OPTIMA_MODE_Z6) dec = z6Decompress(payload);
+      else if (mode === OPTIMA_MODE_PRO) dec = prossDecompress(payload);
+      else dec = payload;
+      chunks.push(dec);
+    }
+    return concatBytes.apply(null, chunks);
+  }
+
+
   /* ---------- XHC-SS SpeedSafe I（2.6 速度+安全：64KB 快速 LZ + 哈夫曼） ---------- */
   var SS_WINDOW = 65536;
   function ssLzCompress(data) {
@@ -1274,9 +1330,11 @@
     /* 返回 [use, block]。method='auto' 八者择优；否则强制指定算法（更大则 store 兜底） */
     var z6, z5, z4, z3, z2, c1, pro;
     if (!method || method === 'auto') {
+      var opt = optimaCompress(data);
       pro = prossCompress(data);
       z6 = z6Compress(data); z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
       z2 = z2Compress(data); c1 = comboCompress(data);
+      if (opt.length <= pro.length && opt.length <= z6.length && opt.length <= z5.length && opt.length <= z4.length && opt.length <= z3.length && opt.length <= z2.length && opt.length <= c1.length && opt.length <= data.length) return [METHOD_OPTIMA, opt];
       if (pro.length <= z6.length && pro.length <= z5.length && pro.length <= z4.length && pro.length <= z3.length && pro.length <= z2.length && pro.length <= c1.length && pro.length <= data.length) return [METHOD_PRO, pro];
       if (z6.length <= z5.length && z6.length <= z4.length && z6.length <= z3.length && z6.length <= z2.length && z6.length <= c1.length && z6.length <= data.length) return [METHOD_Z6, z6];
       if (z5.length <= z4.length && z5.length <= z3.length && z5.length <= z2.length && z5.length <= c1.length && z5.length <= data.length) return [METHOD_Z5, z5];
@@ -1295,6 +1353,7 @@
     if (method === 'z6') { z6 = z6Compress(data); return z6.length < data.length ? [METHOD_Z6, z6] : [METHOD_STORE, data]; }
     if (method === 'ss') { var ss = ssCompress(data); return ss.length < data.length ? [METHOD_SS, ss] : [METHOD_STORE, data]; }
     if (method === 'pro') { var prob = prossCompress(data); return prob.length < data.length ? [METHOD_PRO, prob] : [METHOD_STORE, data]; }
+    if (method === 'optima') { var optb = optimaCompress(data); return optb.length < data.length ? [METHOD_OPTIMA, optb] : [METHOD_STORE, data]; }
     return [METHOD_STORE, data];
   }
 
@@ -1303,7 +1362,7 @@
        method: 'auto'(默认)/'store'/'combo'/'z2'/'z3'/'z4'/'z5' */
     assertCrypto();
     var pl = [], i;
-    pl.push.apply(pl, u32be(files.length));
+    pl.push(u32be(files.length));
     var blocks = [];
     for (i = 0; i < files.length; i++) {
       var f = files[i];
@@ -1311,18 +1370,18 @@
       var crc = crc32(f.data);
       var picked = pickBlock(f.data, method);
       var use = picked[0], block = picked[1];
-      pl.push.apply(pl, u32be(nb.length));
-      pl.push.apply(pl, nb);
-      pl.push.apply(pl, u64be(f.data.length));
-      pl.push(use);
-      pl.push.apply(pl, u32be(crc));
+      pl.push(u32be(nb.length));
+      pl.push(nb);
+      pl.push(u64be(f.data.length));
+      pl.push(new Uint8Array([use]));
+      pl.push(u32be(crc));
       blocks.push(block);
     }
     for (i = 0; i < blocks.length; i++) {
-      pl.push.apply(pl, u64be(blocks[i].length));
-      pl.push.apply(pl, blocks[i]);
+      pl.push(u64be(blocks[i].length));
+      pl.push(blocks[i]);   // 直接压入 Uint8Array 块，避免 push.apply 大数组爆栈
     }
-    var payloadPlain = new Uint8Array(pl);
+    var payloadPlain = concatBytes.apply(null, pl);
 
     var kdf = KDF_NONE, salt = new Uint8Array(16), iv = new Uint8Array(12), iters = 0, payload = payloadPlain;
     if (password) {
@@ -1482,6 +1541,7 @@
       else if (headers[i].method === METHOD_Z6) data = z6Decompress(blocks[i]);
       else if (headers[i].method === METHOD_SS) data = ssDecompress(blocks[i]);
       else if (headers[i].method === METHOD_PRO) data = prossDecompress(blocks[i]);
+      else if (headers[i].method === METHOD_OPTIMA) data = optimaDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
@@ -1495,11 +1555,11 @@
   }
 
   global.XEBZ = {
-    VERSION: '1.0.0',
+    VERSION: '2.8',
     FORMAT: 'XHCBZ-v1',
-    METHODS: { auto: '自动（八算法择优）', store: '仅存储', combo: 'XHC-Combo',
-               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe', pro: 'XHCZ-ProSS' },
-    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss', 'pro'],
+    METHODS: { auto: '自动（Optima 六边形战士择优）', store: '仅存储', combo: 'XHC-Combo',
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe', pro: 'XHCZ-ProSS', optima: 'XHCZ-Optima 六边形战士' },
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss', 'pro', 'optima'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
@@ -1522,6 +1582,8 @@
     prossCompress: prossCompress,
     prossDecompress: prossDecompress,
     prossPickMode: prossPickMode,
+    optimaCompress: optimaCompress,
+    optimaDecompress: optimaDecompress,
     z5LzCompress: z5LzCompress,
     z5LzDecompress: z5LzDecompress,
     z5LzCompress: z5LzCompress,
