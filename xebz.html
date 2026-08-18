@@ -105,7 +105,9 @@
         </a>
       </label>
       <select id="packMethod">
-        <option value="auto">自动（XHCZ7 自适应择优，压缩率全局最高，构造性优于 Optima）</option>
+        <option value="auto">自动（XHCZ8 单流+自适应择优，压缩率全局最高，构造性优于 XHCZ7/Optima）</option>
+        <option value="x8auto">XHCZ8 · 自动择优（2.10：单流/自适应/存储 全局最小，大文件显著优于 XHCZ7）</option>
+        <option value="z8">XHCZ8 · 单流（2.10：4MB 窗口 LZ + z7 四模型 CM，连续上下文优于分块）</option>
         <option value="adapt">XHCZ7 · 自适应择优（2.9：逐块择优 ss/z3/z4/z6/pross/z7/store，每类数据压缩率均≥历史最优）</option>
         <option value="z7">XHCZ7 · 多模型上下文混合（2.9：四模型 order-1~4 混合，文本/代码/CSV 优于 Optima）</option>
         <option value="optima">XHCZ-Optima · 六边形战士（2.8：逐块择优 ss/z3/z4/z6/pross/store，每类数据压缩率均≥历史最优）</option>
