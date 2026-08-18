@@ -110,6 +110,7 @@
     <a href="#pross">XHCZ-ProSS</a>
     <a href="#optima">XHCZ-Optima</a>
     <a href="#z7">XHCZ7</a>
+    <a href="#z8">XHCZ8</a>
     <a href="#bench">实测对比</a>
   </div>
 </div>
@@ -130,7 +131,7 @@
 
   <!-- 时间线 -->
   <h2 class="sec-title" id="timeline">代际谱系<small>XEBZ 格式版本演进</small></h2>
-  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代 → 2.6 速度+安全 → 2.7 综合产品线 → 2.8 六边形战士 → 2.9 多模型上下文混合</p>
+  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代 → 2.6 速度+安全 → 2.7 综合产品线 → 2.8 六边形战士 → 2.9 多模型上下文混合 → 2.10 单流 + 自适应择优</p>
   <div class="timeline">
     <div class="tl-item"><div class="tl-dot"></div><b>XHC-Combo</b><span>XEBZ 1.0</span><div class="tag">快速</div></div>
     <div class="tl-item"><div class="tl-dot"></div><b>XHCZ2</b><span>XEBZ 2.0</span><div class="tag">基础</div></div>
@@ -143,6 +144,7 @@
     <div class="tl-item"><div class="tl-dot" style="background:#059669;box-shadow:0 0 0 2px #059669;"></div><b>XHCZ-ProSS</b><span>XEBZ 2.7</span><div class="tag" style="background:#d1fae5;color:#047857;">综合</div></div>
     <div class="tl-item"><div class="tl-dot" style="background:#7c3aed;box-shadow:0 0 0 2px #7c3aed;"></div><b>XHCZ-Optima</b><span>XEBZ 2.8</span><div class="tag" style="background:#ede9fe;color:#6d28d9;">六边形战士</div></div>
     <div class="tl-item"><div class="tl-dot" style="background:#be123c;box-shadow:0 0 0 2px #be123c;"></div><b>XHCZ7</b><span>XEBZ 2.9</span><div class="tag" style="background:#ffe4e6;color:#9f1239;">多模型混合</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#0e7490;box-shadow:0 0 0 2px #0e7490;"></div><b>XHCZ8</b><span>XEBZ 2.10</span><div class="tag" style="background:#cffafe;color:#0e7490;">单流择优</div></div>
   </div>
 
   <!-- XHC-Combo -->
@@ -393,6 +395,27 @@
     <div class="note" style="margin-top:10px;">实测：XHCZ7(adapt) 在 6 类统一数据集上合计 95802B vs Optima 96844B，<b>节省 1.08%</b>；结构化文本（日志 -15%、中文、英文）提升最明显，CSV/代码/随机与历史最优持平（已是最优，无更大空间）。打包器「自动」模式现已默认指向 XHCZ7 自适应择优。</div>
   </div>
 
+  <div class="alg" id="z8" style="border-color:#0e7490;">
+    <div class="head">
+      <div class="badge" style="background:linear-gradient(135deg,#0e7490,#06b6d4);">Z8</div>
+      <h3>XHCZ8</h3><span class="ver">XEBZ 2.10 · 单流 + 自适应择优</span>
+      <span class="pos" style="background:#cffafe;color:#0e7490;">构造性优于 XHCZ7</span>
+    </div>
+    <div class="desc">在 XHCZ7 四模型 CM 之上，<b>x8 单流</b> = <b>4MB 窗口强 LZ</b>（z3_lz 的超集，仅窗口 1MB→4MB）+ 复用 z7 四模型混合 CM，且<b>整文件连续编码</b>（不强制 1MB 分块）。<b>x8auto（默认「自动」）</b> = 全局在 {x8 单流, XHCZ7 分块 adapt, ProSS, z6…, store} 间取最小，<b>顶层对 z8/adapt 一视同仁地写方法字节，无嵌套开销</b>。<b>核心收益：连续 CM 在大文件上碾压分块 adapt</b>——6MB 日志实测 95853B vs adapt 143329B（<b>-33%</b>）；中小文件上 x8 ≡ z7（4MB 窗口在无 &gt;1MB 跨距匹配时与 1MB 窗口等价），但 x8auto 仍 ≤ adapt。Python 与 JS 前端<b>字节级互通</b>（x8/x8auto 双向 roundtrip 验证通过）。</div>
+    <div class="mech">
+      <b>单流连续上下文：</b>
+      <div class="step"><b>Step 1 · 4MB 窗口 LZ</b>：z3_lz 窗口 1MB→4MB，捕获更远匹配（跨 1~4MB 仍有效）</div>
+      <div class="step"><b>Step 2 · 复用 z7 四模型 CM</b>：整文件连续 order-1~4 混合，不重置跨块上下文</div>
+      <div class="step"><b>Step 3 · x8auto 顶层择优</b>：{x8, adapt, ProSS, z6…, store} min，方法字节原生写入</div>
+    </div>
+    <div class="num">
+      <div class="cell">6MB 日志 <b>-33%</b>（95853B vs adapt 143329B）</div>
+      <div class="cell">中文/英文 <b>-6%</b>（单流胜过分块）</div>
+      <div class="cell">字节级 <b>Python↔JS 互通</b></div>
+    </div>
+    <div class="note" style="margin-top:10px;">实测：XHCZ8「自动」模式在 6 类统一数据集上 ≤ XHCZ7(adapt)（cn/en/log/code/rnd/大日志严格更优，CSV 持平）；大文件因连续 CM 收益显著。打包器「自动」模式现已默认指向 <b>XHCZ8 择优</b>。</div>
+  </div>
+
   <!-- 实测对比 -->
   <h2 class="sec-title" id="bench">实测压缩率对比<small>统一测试集 · 越小越好 · 绿色为最优</small></h2>
   <p class="sec-sub">同一测试集下十代算法实测（Python 实现，压缩后大小 / 原始大小，越小越好，绿色为最优；XHCZ-Optima 列为六边形战士 = 历史冠军，XHCZ7(adapt) 构造性 ≥ Optima，在更大/结构化数据集上提升更明显，见上卡片）。</p>
@@ -470,7 +493,7 @@
   </p>
 </div>
 
-<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.9 · 实现完全自研，无第三方压缩库依赖</div>
+<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.10 · 实现完全自研，无第三方压缩库依赖</div>
 
 </body>
 </html>
