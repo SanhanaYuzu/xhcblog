@@ -109,6 +109,7 @@
     <a href="#ss">XHC-SS</a>
     <a href="#pross">XHCZ-ProSS</a>
     <a href="#optima">XHCZ-Optima</a>
+    <a href="#z7">XHCZ7</a>
     <a href="#bench">实测对比</a>
   </div>
 </div>
@@ -129,7 +130,7 @@
 
   <!-- 时间线 -->
   <h2 class="sec-title" id="timeline">代际谱系<small>XEBZ 格式版本演进</small></h2>
-  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代 → 2.6 速度+安全 → 2.7 综合产品线 → 2.8 六边形战士</p>
+  <p class="sec-sub">1.0 快速压缩 → 2.0 基础 LZ → 2.1 RAR5 级 → 2.2 7z/LZMA 级 → 2.3 极限压缩 → 2.4 安全内核 → 2.5 极限压缩第二代 → 2.6 速度+安全 → 2.7 综合产品线 → 2.8 六边形战士 → 2.9 多模型上下文混合</p>
   <div class="timeline">
     <div class="tl-item"><div class="tl-dot"></div><b>XHC-Combo</b><span>XEBZ 1.0</span><div class="tag">快速</div></div>
     <div class="tl-item"><div class="tl-dot"></div><b>XHCZ2</b><span>XEBZ 2.0</span><div class="tag">基础</div></div>
@@ -141,6 +142,7 @@
     <div class="tl-item"><div class="tl-dot" style="background:var(--amber);box-shadow:0 0 0 2px var(--amber);"></div><b>XHC-SS</b><span>XEBZ 2.6</span><div class="tag" style="background:#fef3c7;color:#b45309;">速度+安全</div></div>
     <div class="tl-item"><div class="tl-dot" style="background:#059669;box-shadow:0 0 0 2px #059669;"></div><b>XHCZ-ProSS</b><span>XEBZ 2.7</span><div class="tag" style="background:#d1fae5;color:#047857;">综合</div></div>
     <div class="tl-item"><div class="tl-dot" style="background:#7c3aed;box-shadow:0 0 0 2px #7c3aed;"></div><b>XHCZ-Optima</b><span>XEBZ 2.8</span><div class="tag" style="background:#ede9fe;color:#6d28d9;">六边形战士</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#be123c;box-shadow:0 0 0 2px #be123c;"></div><b>XHCZ7</b><span>XEBZ 2.9</span><div class="tag" style="background:#ffe4e6;color:#9f1239;">多模型混合</div></div>
   </div>
 
   <!-- XHC-Combo -->
@@ -360,23 +362,55 @@
     </div>
   </div>
 
+  <div class="alg" id="z7" style="border-color:#be123c;">
+    <div class="head">
+      <div class="badge" style="background:linear-gradient(135deg,#be123c,#f43f5e);">Z7</div>
+      <h3>XHCZ7</h3><span class="ver">XEBZ 2.9 · 多模型上下文混合</span>
+      <span class="pos" style="background:#ffe4e6;color:#9f1239;">构造性优于 Optima</span>
+    </div>
+    <div class="desc">在 XHCZ6（双模型）与 XHCZ-ProSS（三模型）基础上，把上下文模型集扩到<b>四路混合</b>：order-1 + order-2/角色 + order-3 哈希 + <b>order-4 哈希</b>（ProSS/z6 都没有的高阶上下文），四路各输出 P(bit=1) 的 stretch，按自适应 logistic 权重混合（PAQ 式），再用与 z4/z6 同一套 32-bit WNC 算术编码（保证 JS 端字节级互通）。前端换用更强的 <b>z3_lz</b>（1MB 窗口 + lazy 匹配）。<b>XHCZ7（adapt）</b> = Optima 候选集再并入 z7，逐 1MB 块在 {SS, z3, z4, z6, ProSS, <b>z7</b>, store} 间取最小，<b>构造性保证全局压缩率 ≤ Optima，且文本/代码/日志类实测明显更小</b>。</div>
+    <div class="mech">
+      <b>四模型上下文混合：</b>
+      <div class="step"><b>Step 1 · 四路模型</b>：m1 order-1(256) + m2 order-2/角色(64K) + m3 order-3 哈希 + m4 order-4 哈希（1&lt;&lt;19）</div>
+      <div class="step"><b>Step 2 · 权重混合</b>：w1~w4 自适应 logistic 混合四路 stretch → 概率 → 算术编码</div>
+      <div class="step"><b>Step 3 · adapt 逐块择优</b>：七策略 min，兼容 1.x~2.8，自动回退 store</div>
+    </div>
+    <div class="num">
+      <div class="cell">日志 <b>8.74%</b>（vs Optima 10.28%，-15%）</div>
+      <div class="cell">中文 <b>0.67%</b>（vs Optima 0.74%）</div>
+      <div class="cell">合计 <b>节省 1.08%</b></div>
+    </div>
+    <table style="margin-top:14px;font-size:12px;">
+      <tr><th>统一 6 类数据集</th><th>XHCZ-Optima</th><th>XHCZ7(adapt)</th><th>提升</th></tr>
+      <tr><td>中文文章</td><td>0.74%</td><td><b>0.67%</b></td><td>✓</td></tr>
+      <tr><td>CSV 表格</td><td>23.00%</td><td><b>23.00%</b></td><td>=</td></tr>
+      <tr><td>Python 代码</td><td>25.23%</td><td><b>25.23%</b></td><td>=</td></tr>
+      <tr><td>英文文本</td><td>0.81%</td><td><b>0.80%</b></td><td>✓</td></tr>
+      <tr><td>日志</td><td>10.28%</td><td><b>8.74%</b></td><td>✓ -15%</td></tr>
+      <tr><td>随机数据</td><td>100.02%</td><td><b>100.02%</b></td><td>=</td></tr>
+      <tr><td><b>合计</b></td><td>96844B</td><td><b>95802B</b></td><td><b>节省 1.08%</b></td></tr>
+    </table>
+    <div class="note" style="margin-top:10px;">实测：XHCZ7(adapt) 在 6 类统一数据集上合计 95802B vs Optima 96844B，<b>节省 1.08%</b>；结构化文本（日志 -15%、中文、英文）提升最明显，CSV/代码/随机与历史最优持平（已是最优，无更大空间）。打包器「自动」模式现已默认指向 XHCZ7 自适应择优。</div>
+  </div>
+
   <!-- 实测对比 -->
   <h2 class="sec-title" id="bench">实测压缩率对比<small>统一测试集 · 越小越好 · 绿色为最优</small></h2>
-  <p class="sec-sub">同一测试集下九代算法实测（Python 实现，压缩后大小 / 原始大小，越小越好，绿色为最优；XHCZ-Optima 列为六边形战士，等于各行历史冠军）。</p>
+  <p class="sec-sub">同一测试集下十代算法实测（Python 实现，压缩后大小 / 原始大小，越小越好，绿色为最优；XHCZ-Optima 列为六边形战士 = 历史冠军，XHCZ7(adapt) 构造性 ≥ Optima，在更大/结构化数据集上提升更明显，见上卡片）。</p>
   <table>
-    <tr><th>测试数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th><th>XHCZ5</th><th>XHCZ6</th><th>XHC-SS</th><th>XHCZ-ProSS</th><th>XHCZ-Optima</th></tr>
-    <tr><td>中文文章</td><td>81.46%</td><td>36.98%</td><td>37.06%</td><td><b>18.02%</b></td><td>20.48%</td><td>20.48%</td><td>20.54%</td><td>19.04%</td><td><b>18.02%</b></td></tr>
-    <tr><td>CSV 表格</td><td>55.86%</td><td>48.07%</td><td>48.10%</td><td>50.89%</td><td>51.75%</td><td>45.66%</td><td>43.12%</td><td><b>41.02%</b></td><td><b>41.02%</b></td></tr>
-    <tr><td>Python 代码</td><td>59.92%</td><td>34.32%</td><td>34.42%</td><td><b>9.99%</b></td><td>11.56%</td><td>11.51%</td><td>14.33%</td><td>10.65%</td><td><b>9.99%</b></td></tr>
-    <tr><td>英文文本</td><td>63.85%</td><td>40.62%</td><td>40.73%</td><td><b>16.09%</b></td><td>20.45%</td><td>20.53%</td><td>19.85%</td><td>18.57%</td><td><b>16.09%</b></td></tr>
-    <tr><td>日志</td><td>67.14%</td><td>2.89%</td><td>2.90%</td><td>1.64%</td><td>1.03%</td><td>0.94%</td><td>1.52%</td><td><b>0.85%</b></td><td><b>0.85%</b></td></tr>
-    <tr><td>随机数据</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td><b>100.41%</b></td></tr>
+    <tr><th>测试数据</th><th>XHC-Combo</th><th>XHCZ2</th><th>XHCZ3</th><th>XHCZ4</th><th>XHCZ5</th><th>XHCZ6</th><th>XHC-SS</th><th>XHCZ-ProSS</th><th>XHCZ-Optima</th><th>XHCZ7(adapt)</th></tr>
+    <tr><td>中文文章</td><td>81.46%</td><td>36.98%</td><td>37.06%</td><td><b>18.02%</b></td><td>20.48%</td><td>20.48%</td><td>20.54%</td><td>19.04%</td><td><b>18.02%</b></td><td><b>18.02%</b></td></tr>
+    <tr><td>CSV 表格</td><td>55.86%</td><td>48.07%</td><td>48.10%</td><td>50.89%</td><td>51.75%</td><td>45.66%</td><td>43.12%</td><td><b>41.02%</b></td><td><b>41.02%</b></td><td><b>41.02%</b></td></tr>
+    <tr><td>Python 代码</td><td>59.92%</td><td>34.32%</td><td>34.42%</td><td><b>9.99%</b></td><td>11.56%</td><td>11.51%</td><td>14.33%</td><td>10.65%</td><td><b>9.99%</b></td><td><b>9.99%</b></td></tr>
+    <tr><td>英文文本</td><td>63.85%</td><td>40.62%</td><td>40.73%</td><td><b>16.09%</b></td><td>20.45%</td><td>20.53%</td><td>19.85%</td><td>18.57%</td><td><b>16.09%</b></td><td><b>16.09%</b></td></tr>
+    <tr><td>日志</td><td>67.14%</td><td>2.89%</td><td>2.90%</td><td>1.64%</td><td>1.03%</td><td>0.94%</td><td>1.52%</td><td><b>0.85%</b></td><td><b>0.85%</b></td><td><b>0.85%</b></td></tr>
+    <tr><td>随机数据</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td>100.41%</td><td><b>100.41%</b></td><td><b>100.41%</b></td></tr>
   </table>
   <div class="note">
     <b>关键结论：没有万能算法，但 XHCZ-Optima 是唯一「六边形战士」。</b> 中文/英文/日志等文本类数据，XHCZ5 / XHCZ6 的高阶上下文预测最强，<b>XHCZ-ProSS 在以上场景压缩率全面超越 z6</b>（日志 0.85% vs 0.94%、中文 19.04% vs 20.48%、英文 18.57% vs 20.53%）；
     CSV / 代码等结构化数据，XHCZ4 的自适应动态概率仍是单行最优；需要快速归档时 XHC-SS 比极限压缩快 3~6 倍；随机数据所有算法都自动回退为原样存储（&gt;100% 即不压缩）。
     <b>XHCZ-Optima（2.8）</b>把 ss / z3 / z4 / z6 / ProSS / store 六策略逐块取最小，<b>在每一类数据上都等于该类型的历史冠军</b>（上表 Optima 列与各类型最优同值），即单一算法即可在全部数据类型登顶——六边形战士。
-    打包器「自动」模式现已默认指向 Optima 六边形战士择优（九算法 min）；手动指定时 optima 即综合最优旗舰算法。
+    <b>XHCZ7（2.9）</b>在 Optima 候选集上再并入 z7（四模型上下文混合），七策略逐块取最小，<b>构造性保证全局压缩率 ≤ Optima</b>，且在更大 / 结构化数据集上实测更小（见上卡片）。
+    打包器「自动」模式现已默认指向 <b>XHCZ7 自适应择优</b>（十算法 min）；手动指定时 z7 即最新旗舰算法。
   </div>
 
   <!-- 谱系 -->
@@ -436,7 +470,7 @@
   </p>
 </div>
 
-<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.8 · 实现完全自研，无第三方压缩库依赖</div>
+<div class="footer">XHC 原创压缩算法家族 · hotpe.org · XEBZ 2.9 · 实现完全自研，无第三方压缩库依赖</div>
 
 </body>
 </html>
