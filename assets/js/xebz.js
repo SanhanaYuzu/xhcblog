@@ -23,12 +23,12 @@
   'use strict';
 
   var MAGIC = new Uint8Array([0x58, 0x48, 0x43, 0x45, 0x42, 0x5a]); // "XHCEBZ"
-  var VERSION = 0x0209;  // 2.9 XHCZ7（多模型上下文混合 CM，构造性优于 Optima；读取兼容 1.x~2.8）
+  var VERSION = 0x020A;  // 2.10 XHCZ8（x8 单流=4MB-LZ+z7 四模型 CM；x8auto=min(x8,adapt,store)，构造性优于 XHCZ7；读取兼容 1.x~2.9）
   var KDF_NONE = 0, KDF_PBKDF2 = 1, KDF_ARGON2 = 2, KDF_COMBO3 = 3;
   var CIPHER_CHACHA20 = 1, CIPHER_DUAL = 2;
   var DEFAULT_ITER = 100000;
   var HEADER_LEN = 51;
-  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7, METHOD_PRO = 8, METHOD_OPTIMA = 9, METHOD_Z7 = 10, METHOD_ADAPT = 11;
+  var METHOD_STORE = 0, METHOD_COMBO = 1, METHOD_Z2 = 2, METHOD_Z3 = 3, METHOD_Z4 = 4, METHOD_Z5 = 5, METHOD_Z6 = 6, METHOD_SS = 7, METHOD_PRO = 8, METHOD_OPTIMA = 9, METHOD_Z7 = 10, METHOD_ADAPT = 11, METHOD_Z8 = 12, METHOD_X8AUTO = 13;
   var OPTIMA_BLOCK = 1048576;
   var OPTIMA_MODE_SS = 0, OPTIMA_MODE_PRO = 1, OPTIMA_MODE_STORE = 2, OPTIMA_MODE_Z4 = 3, OPTIMA_MODE_Z6 = 4, OPTIMA_MODE_Z3 = 5;
   var RUN_MAX = 258;
@@ -237,7 +237,7 @@
   function z2Decompress(data) { return z2LzDecompress(z2AceDecode(data, 0)); }
 
   /* ---------- XHCZ3（2.1 RAR5 级增强：1MB 窗口 + lazy + 距离分层 + 分块自适应） ---------- */
-  var Z3_WINDOW = 1 << 20, Z3_BLOCK = 65536;
+  var Z3_WINDOW = 1 << 20, Z3_BLOCK = 65536, Z8_WINDOW = 4 << 20;
   var TOKEN_MATCH_EXT = 0x03;
 
   function z3LzCompress(data) {
@@ -315,7 +315,62 @@
         var rl = tokens[i + 1] + 4;
         for (var m3 = 0; m3 < rl; m3++) out.push(tokens[i + 2]);
         i += 3;
-      } else { out.push(t); i++; }
+      }       else { out.push(t); i++; }
+    }
+    return new Uint8Array(out);
+  }
+
+  // XHCZ8（XEBZ 2.10）：4MB 窗口强 LZ 预变换（z3_lz 的超集，仅窗口不同），供 x8 单流复用
+  function z8LzCompress(data) {
+    var n = data.length, out = [], i = 0, chain = new Map();
+    function h3(p) { return (data[p] << 16) | (data[p + 1] << 8) | data[p + 2]; }
+    function findMatch(pos) {
+      if (pos + 3 > n) return [0, 0];
+      var last = chain.has(h3(pos)) ? chain.get(h3(pos)) : -1;
+      if (last < 0 || pos - last > Z8_WINDOW) return [0, 0];
+      var m = 0;
+      while (m < 258 && pos + m < n && data[last + m] === data[pos + m]) m++;
+      if (m < 4) return [0, 0];
+      return [m, pos - last];
+    }
+    while (i < n) {
+      var r = findMatch(i), bl = r[0], bo = r[1];
+      if (bl >= 4) {
+        if (i + 4 <= n) {
+          var r2 = findMatch(i + 1);
+          if (r2[0] > bl + 1) {
+            var b = data[i];
+            if (b === 0x00 || b === 0x01 || b === 0x02 || b === TOKEN_MATCH_EXT) out.push(0x00, b);
+            else out.push(b);
+            if (i + 3 <= n) chain.set(h3(i), i);
+            i++;
+            continue;
+          }
+        }
+        if (bo <= 0xFFFF) {
+          out.push(0x01, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 4);
+        } else {
+          out.push(TOKEN_MATCH_EXT, (bo >> 16) & 255, (bo >> 8) & 255, bo & 255, Math.min(bl, 258) - 4);
+        }
+        for (var k = 0; k < bl; k++)
+          if (i + k + 3 <= n) chain.set(h3(i + k), i + k);
+        i += bl;
+      } else {
+        var j = i + 1;
+        while (j < n && data[j] === data[i] && j - i < 258) j++;
+        if (j - i >= 4) {
+          out.push(0x02, (j - i) - 4, data[i]);
+          for (var k2 = 0; k2 < j - i; k2++)
+            if (i + k2 + 3 <= n) chain.set(h3(i + k2), i + k2);
+          i = j;
+        } else {
+          var b2 = data[i];
+          if (b2 === 0x00 || b2 === 0x01 || b2 === 0x02 || b2 === TOKEN_MATCH_EXT) out.push(0x00, b2);
+          else out.push(b2);
+          if (i + 3 <= n) chain.set(h3(i), i);
+          i++;
+        }
+      }
     }
     return new Uint8Array(out);
   }
@@ -992,6 +1047,39 @@
   }
   function z7Decompress(data) { return z3LzDecompress(z7Decode(data)); }
 
+  // XHCZ8（XEBZ 2.10）：x8 单流 = z8 4MB-LZ + 复用 z7 四模型混合 CM；x8auto = 全局 min(x8, adapt, store)
+  function x8Compress(data) {
+    var tokens = z8LzCompress(data);
+    var enc = z7Encode(tokens);
+    var out = new Uint8Array(4 + enc.length);
+    out.set(u32be(tokens.length), 0);
+    out.set(enc, 4);
+    return out;
+  }
+  function x8Decompress(data) { return z3LzDecompress(z7Decode(data)); }
+  function x8autoCompress(data) {
+    if (data.length === 0) return concatBytes(new Uint8Array([2]), u32be(0));
+    var c8 = x8Compress(data);
+    var ca = adaptCompress(data);
+    var cands = [[c8.length, 0, c8], [ca.length, 1, ca], [data.length, 2, data]];
+    cands.sort(function (a, b) { return a[0] - b[0]; });
+    var best = cands[0];
+    var mode = best[1], payload = best[2];
+    if (mode === 2) return concatBytes(new Uint8Array([2]), u32be(payload.length), payload);
+    return concatBytes(new Uint8Array([mode]), payload);
+  }
+  function x8autoDecompress(data) {
+    var mode = data[0];
+    if (mode === 2) {
+      var plen = readU32(data, 1);
+      var payload = data.subarray(5, 5 + plen);
+      return payload;
+    }
+    var payload = data.subarray(1);
+    if (mode === 0) return x8Decompress(payload);
+    return adaptDecompress(payload);
+  }
+
   function adaptCompress(data) {
     var n = data.length;
     if (n === 0) return u32be(0);
@@ -1565,13 +1653,16 @@
   }
   /* ---------- pack / unpack ---------- */
   function pickBlock(data, method) {
-    /* 返回 [use, block]。method='auto' 全部择优（adapt=Optima 候选集+Z7，保证不劣于 Optima）；否则强制指定算法（更大则 store 兜底） */
+    /* 返回 [use, block]。method='auto' 全部择优（XHCZ8=x8auto=min(z8单流,adapt分块,store) 为首项，保证不劣于 XHCZ7(adapt) 与 Optima）；否则强制指定算法（更大则 store 兜底） */
     var z6, z5, z4, z3, z2, c1, pro;
     if (!method || method === 'auto') {
       var ad = adaptCompress(data);
+      var z8b = x8Compress(data);   // XHCZ8 单流 = z8 4MB-LZ + 复用 z7 四模型 CM
       pro = prossCompress(data);
       z6 = z6Compress(data); z5 = z5Compress(data); z4 = z4Compress(data); z3 = z3Compress(data);
       z2 = z2Compress(data); c1 = comboCompress(data);
+      // XHCZ8 产品（默认 auto）：全局 min over {z8, adapt, pro, z6.., store}，返回原生方法字节（无嵌套标签，顶层容器对 z8/adapt 一视同仁）
+      if (z8b.length <= ad.length && z8b.length <= pro.length && z8b.length <= z6.length && z8b.length <= z5.length && z8b.length <= z4.length && z8b.length <= z3.length && z8b.length <= z2.length && z8b.length <= c1.length && z8b.length <= data.length) return [METHOD_Z8, z8b];
       if (ad.length <= pro.length && ad.length <= z6.length && ad.length <= z5.length && ad.length <= z4.length && ad.length <= z3.length && ad.length <= z2.length && ad.length <= c1.length && ad.length <= data.length) return [METHOD_ADAPT, ad];
       if (pro.length <= z6.length && pro.length <= z5.length && pro.length <= z4.length && pro.length <= z3.length && pro.length <= z2.length && pro.length <= c1.length && pro.length <= data.length) return [METHOD_PRO, pro];
       if (z6.length <= z5.length && z6.length <= z4.length && z6.length <= z3.length && z6.length <= z2.length && z6.length <= c1.length && z6.length <= data.length) return [METHOD_Z6, z6];
@@ -1594,6 +1685,15 @@
     if (method === 'optima') { var optb = optimaCompress(data); return optb.length < data.length ? [METHOD_OPTIMA, optb] : [METHOD_STORE, data]; }
     if (method === 'z7') { var z7b = z7Compress(data); return z7b.length < data.length ? [METHOD_Z7, z7b] : [METHOD_STORE, data]; }
     if (method === 'adapt') { var adb = adaptCompress(data); return adb.length < data.length ? [METHOD_ADAPT, adb] : [METHOD_STORE, data]; }
+    if (method === 'z8') { var z8bb = x8Compress(data); return z8bb.length < data.length ? [METHOD_Z8, z8bb] : [METHOD_STORE, data]; }
+    if (method === 'x8auto') {
+      // XHCZ8 聚焦产品：全局 min over {z8 单流, adapt 分块, store}，返回原生方法字节（无嵌套标签）
+      var z8xb = x8Compress(data);
+      var adxb = adaptCompress(data);
+      if (z8xb.length <= adxb.length && z8xb.length <= data.length) return [METHOD_Z8, z8xb];
+      if (adxb.length <= data.length) return [METHOD_ADAPT, adxb];
+      return [METHOD_STORE, data];
+    }
     return [METHOD_STORE, data];
   }
 
@@ -1784,6 +1884,8 @@
       else if (headers[i].method === METHOD_OPTIMA) data = optimaDecompress(blocks[i]);
       else if (headers[i].method === METHOD_ADAPT) data = adaptDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z7) data = z7Decompress(blocks[i]);
+      else if (headers[i].method === METHOD_Z8) data = x8Decompress(blocks[i]);
+      else if (headers[i].method === METHOD_X8AUTO) data = x8autoDecompress(blocks[i]);
       else if (headers[i].method === METHOD_Z5) data = z5Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z4) data = z4Decompress(blocks[i]);
       else if (headers[i].method === METHOD_Z3) data = z3Decompress(blocks[i]);
@@ -1797,11 +1899,11 @@
   }
 
   global.XEBZ = {
-    VERSION: '2.9',
+    VERSION: '2.10',
     FORMAT: 'XHCBZ-v1',
-    METHODS: { auto: '自动（XHCZ7 多模型上下文混合择优）', store: '仅存储', combo: 'XHC-Combo',
-               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe', pro: 'XHCZ-ProSS', optima: 'XHCZ-Optima 六边形战士', z7: 'XHCZ7 多模型上下文混合', adapt: 'XHCZ7 自适应择优（推荐）' },
-    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss', 'pro', 'optima', 'z7', 'adapt'],
+    METHODS: { auto: '自动（XHCZ8 单流+自适应择优）', store: '仅存储', combo: 'XHC-Combo',
+               z2: 'XHCZ2', z3: 'XHCZ3', z4: 'XHCZ4', z5: 'XHCZ5', z6: 'XHCZ6', ss: 'XHC-SS SpeedSafe', pro: 'XHCZ-ProSS', optima: 'XHCZ-Optima 六边形战士', z7: 'XHCZ7 多模型上下文混合', adapt: 'XHCZ7 自适应择优', z8: 'XHCZ8 单流（4MB-LZ+z7 CM）', x8auto: 'XHCZ8 自动择优（推荐）' },
+    METHOD_IDS: ['auto', 'store', 'combo', 'z2', 'z3', 'z4', 'z5', 'z6', 'ss', 'pro', 'optima', 'z7', 'adapt', 'z8', 'x8auto'],
     pack: pack,
     unpack: unpack,
     comboCompress: comboCompress,
@@ -1834,6 +1936,11 @@
     z7Decode: z7Decode,
     adaptCompress: adaptCompress,
     adaptDecompress: adaptDecompress,
+    x8Compress: x8Compress,
+    x8Decompress: x8Decompress,
+    x8autoCompress: x8autoCompress,
+    x8autoDecompress: x8autoDecompress,
+    z8LzCompress: z8LzCompress,
     z5LzCompress: z5LzCompress,
     z5LzDecompress: z5LzDecompress,
     z5LzCompress: z5LzCompress,
