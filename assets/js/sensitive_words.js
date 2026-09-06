@@ -1,5 +1,5 @@
 /* ============================================================
-   XHC 博客 · 敏感词检测系统
+   XHCDNS · 敏感词检测系统
    - 词库 = 内置兜底词 + Supabase sensitive_words 表（管理员维护）
    - XHCSW.check(text) → 返回命中敏感词数组
    - XHCSW.manage(adminKey) → 管理员词库管理面板（增/删词）
