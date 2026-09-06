@@ -1,5 +1,5 @@
 /* ===========================================================
-   XHC 博客 · Supabase 配置
+   XHCDNS · Supabase 配置
    -----------------------------------------------------------
    部署真实功能前，请在 Supabase 后台新建项目，然后：
      1) Project Settings → API 复制 Project URL 和 anon public key

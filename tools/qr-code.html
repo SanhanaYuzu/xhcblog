@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>二维码生成器 - XHC 博客</title>
+  <title>二维码生成器 - XHCDNS</title>
   <link rel="icon" href="../assets/images/xhc-96x96.png">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -82,6 +82,31 @@
     }
     .tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+    .style-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+    .style-row label{font-size:13px;font-weight:600;color:var(--text-2);margin:0;}
+    .style-row select{
+      padding:9px 10px;border:1px solid var(--border);border-radius:9px;
+      background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none;cursor:pointer;
+    }
+    .style-row select:focus{border-color:var(--primary);}
+    .img-ctl{margin-bottom:16px;display:none;}
+    .img-ctl.show{display:block;}
+    .img-drop{
+      border:1.5px dashed var(--border);border-radius:12px;padding:14px;
+      display:flex;align-items:center;gap:14px;background:var(--bg);cursor:pointer;transition:.15s;
+    }
+    .img-drop:hover{border-color:var(--primary);}
+    .img-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#fff;flex:none;}
+    .img-meta{font-size:13px;color:var(--text-2);line-height:1.5;flex:1;min-width:0;}
+    .img-meta .nm{color:var(--text);font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .img-meta .hint{color:var(--text-3);font-size:12px;}
+    .img-remove{
+      margin-left:auto;border:1px solid var(--border);background:var(--card);color:var(--text-2);
+      border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;flex:none;
+    }
+    .img-remove:hover{border-color:var(--primary);color:var(--primary);}
+    .img-pick{display:none;}
+
     @media(max-width:760px){
       .qr-wrap{grid-template-columns:1fr;}
       .panel{padding:18px 15px;}
@@ -103,15 +128,15 @@
   <header class="header">
     <div class="container">
       <a class="brand" href="../index.html">
-        <img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo">
-        <span class="brand-name">XHC<b>博客</b></span>
+        <img src="../assets/images/xhc-96x96.png" alt="XHCDNS logo" class="site-logo">
+        <span class="brand-name">XHC<b>DNS</b></span>
       </a>
       <nav class="nav" id="navCats"></nav>
       <div class="search">
         <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
         <button id="searchBtn" title="搜索">🔍</button>
       </div>
-      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      
       <span id="accountSlot"></span>
     </div>
   </header>
@@ -122,7 +147,7 @@
       <span class="ico">📱</span>
       <h1>二维码生成器</h1>
     </div>
-    <p class="tool-sub">输入文本或网址即可实时生成二维码，支持自定义尺寸、容错级别与配色，可下载 PNG 图片。</p>
+    <p class="tool-sub">输入文本或网址即可实时生成二维码，支持自定义尺寸、容错级别与配色；可上传图片生成「中心图标」品牌码或「艺术图片」二维码；支持下载 PNG。</p>
 
     <div class="panel">
       <div class="qr-wrap">
@@ -130,16 +155,39 @@
         <div>
           <div class="field">
             <label for="qrText">内容（文本 / 网址 / 任意字符）</label>
-            <textarea id="qrText" placeholder="在此输入要生成二维码的内容，例如：https://xhc.dpdns.org">https://xhc.dpdns.org</textarea>
+            <textarea id="qrText" placeholder="在此输入要生成二维码的内容，例如：https://xhcdns.com">https://xhc.dpdns.org</textarea>
             <div class="quick">
-              <button type="button" data-fill="https://xhc.dpdns.org">🌐 本站网址</button>
+              <button type="button" data-fill="https://xhcdns.com">🌐 本站网址</button>
               <button type="button" data-fill="WIFI:T:WPA;S:WiFi名称;P:密码;;">📶 WiFi 模板</button>
               <button type="button" data-fill="mailto:hello@example.com">✉️ 邮箱模板</button>
-              <button type="button" data-fill="tel:10086">📞 电话模板</button>
+                <button type="button" data-fill="tel:10086">📞 电话模板</button>
+              </div>
             </div>
-          </div>
 
-          <div class="opt-grid">
+            <div class="style-row">
+              <label for="qrStyle">样式</label>
+              <select id="qrStyle">
+                <option value="standard" selected>标准二维码</option>
+                <option value="logo">中心图标（品牌）</option>
+                <option value="art">艺术图片二维码</option>
+              </select>
+              <span id="styleHint" style="font-size:12px;color:var(--text-3);"></span>
+            </div>
+
+            <div class="img-ctl" id="imgCtl">
+              <label style="display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px;">上传图片（作为中心图标或艺术底图）</label>
+              <div class="img-drop" id="imgDrop">
+                <img class="img-thumb" id="imgThumb" alt="预览" style="display:none;">
+                <div class="img-meta">
+                  <span class="nm" id="imgName"></span>
+                  <span class="hint" id="imgHint">点击选择图片（建议正方形、对比度高的图，艺术模式效果更佳）</span>
+                </div>
+                <button type="button" class="img-remove" id="imgRemove" style="display:none;">移除</button>
+              </div>
+              <input type="file" id="imgPick" class="img-pick" accept="image/*">
+            </div>
+
+            <div class="opt-grid">
             <div class="field" style="margin-bottom:0;">
               <label for="qrSize">尺寸</label>
               <div class="range-row">
@@ -193,8 +241,8 @@
   <!-- 页脚 -->
   <footer class="footer">
     <div class="container">
-      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
-      本站由 XHC 制作
+      © <span id="year"></span> XHCDNS · 认准 <a href="https://xhcdns.com" target="_blank">xhcdns.com</a> 官方域名<br>
+      本站由 XHCDNS 制作
     </div>
   </footer>
 
@@ -236,6 +284,7 @@
     (function () {
       var textEl = document.getElementById("qrText");
       var canvas = document.getElementById("qrCanvas");
+      var ctx = canvas.getContext("2d");
       var emptyEl = document.getElementById("qrEmpty");
       var tipEl = document.getElementById("qrTip");
       var dlBtn = document.getElementById("dlBtn");
@@ -243,8 +292,16 @@
       var marginEl = document.getElementById("qrMargin"), marginVal = document.getElementById("marginVal");
       var ecEl = document.getElementById("qrEc");
       var fgEl = document.getElementById("qrFg"), bgEl = document.getElementById("qrBg");
+      var styleEl = document.getElementById("qrStyle"), styleHint = document.getElementById("styleHint");
+      var imgCtl = document.getElementById("imgCtl");
+      var imgDrop = document.getElementById("imgDrop");
+      var imgPick = document.getElementById("imgPick");
+      var imgThumb = document.getElementById("imgThumb");
+      var imgName = document.getElementById("imgName");
+      var imgHint = document.getElementById("imgHint");
+      var imgRemove = document.getElementById("imgRemove");
       var toastEl = document.getElementById("tipToast");
-      var timer = null, ready = false;
+      var timer = null, ready = false, hasImg = false, imgObj = null;
 
       function toast(msg) {
         toastEl.textContent = msg;
@@ -262,33 +319,155 @@
         tipEl.className = isErr ? "qr-tip err" : "qr-tip";
       }
 
+      function done(text, size, extra) {
+        canvas.style.display = "block";
+        emptyEl.style.display = "none";
+        dlBtn.disabled = false;
+        ready = true;
+        tipEl.className = "qr-tip";
+        tipEl.textContent = "共 " + text.length + " 个字符 · " + size + "×" + size + " px" + (extra || "");
+      }
+
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.arcTo(x + w, y, x + w, y + h, r);
+        c.arcTo(x + w, y + h, x, y + h, r);
+        c.arcTo(x, y + h, x, y, r);
+        c.arcTo(x, y, x + w, y, r);
+        c.closePath();
+      }
+
+      function loadImage(file, cb) {
+        if (!file) return cb(new Error("no file"));
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var img = new Image();
+          img.onload = function () { imgObj = img; hasImg = true; cb(null); };
+          img.onerror = function () { cb(new Error("图片加载失败")); };
+          img.src = e.target.result;
+        };
+        reader.onerror = function () { cb(new Error("读取失败")); };
+        reader.readAsDataURL(file);
+      }
+
+      // 中心图标：在已生成的二维码正中叠加 logo（带白底圆角）
+      function drawLogo() {
+        var iw = imgObj.width, ih = imgObj.height;
+        var ar = iw / ih;
+        var lw = canvas.width * 0.22, lh = lw;
+        if (ar >= 1) lh = lw / ar; else lw = lh * ar;
+        var pad = Math.max(6, Math.round(Math.min(lw, lh) * 0.16));
+        var bx = (canvas.width - (lw + pad * 2)) / 2;
+        var by = (canvas.height - (lh + pad * 2)) / 2;
+        ctx.save();
+        roundRect(ctx, bx, by, lw + pad * 2, lh + pad * 2, Math.min(14, pad));
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.lineWidth = Math.max(1, pad * 0.25);
+        ctx.strokeStyle = "rgba(0,0,0,.06)";
+        ctx.stroke();
+        ctx.restore();
+        ctx.drawImage(imgObj, bx + pad, by + pad, lw, lh);
+      }
+
+      // 三个定位角（finder pattern）坐标
+      function finderAt(r, c, N) {
+        var f = [[0, 0], [0, N - 7], [N - 7, 0]];
+        for (var i = 0; i < 3; i++) {
+          var o = f[i];
+          if (r >= o[0] && r < o[0] + 7 && c >= o[1] && c < o[1] + 7) return o;
+        }
+        return null;
+      }
+      function finderDark(rr, cc) {
+        if (rr === 0 || rr === 6 || cc === 0 || cc === 6) return true;   // 外环
+        if (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4) return true;       // 中心 3×3
+        return false;                                                     // 白环留空
+      }
+
+      // 艺术图片二维码：按图片明暗把数据模块渲染成不同大小的圆点（halftone），定位角保持实心
+      function renderArtistic(text, size, margin, fg, bg) {
+        var model;
+        try {
+          model = window.QRCode.create(text, { errorCorrectionLevel: "H" });
+        } catch (e) {
+          showEmpty("生成失败：内容过长，请减少字符数", true);
+          return;
+        }
+        var N = model.modules.size, mod = model.modules;
+        var quiet = Math.max(2, margin);
+        var full = N + quiet * 2;
+        var ms = Math.max(2, Math.floor(size / full));
+        var px = ms * full;
+        canvas.width = px; canvas.height = px;
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, px, px);
+
+        // 将图片按 cover 方式缩放到 N×N，取每模块亮度
+        var tmp = document.createElement("canvas"); tmp.width = N; tmp.height = N;
+        var tctx = tmp.getContext("2d");
+        var iw = imgObj.width, ih = imgObj.height, s = Math.max(N / iw, N / ih);
+        var dw = iw * s, dh = ih * s;
+        tctx.drawImage(imgObj, (N - dw) / 2, (N - dh) / 2, dw, dh);
+        var data = tctx.getImageData(0, 0, N, N).data;
+        function lum(r, c) {
+          var i = (r * N + c) * 4;
+          return (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+        }
+
+        ctx.fillStyle = fg;
+        for (var r = 0; r < N; r++) {
+          for (var c = 0; c < N; c++) {
+            if (!mod.get(r, c)) continue;                 // 浅模块留白
+            var x = (c + quiet) * ms, y = (r + quiet) * ms;
+            var fo = finderAt(r, c, N);
+            if (fo) {                                      // 定位角必须实心，保证可扫
+              if (finderDark(r - fo[0], c - fo[1])) ctx.fillRect(x, y, ms, ms);
+              continue;
+            }
+            var l = lum(r, c);                            // 0=暗 1=亮
+            var k = 0.32 + 0.18 * (1 - l);                // 圆点半径系数 0.32~0.50
+            ctx.beginPath();
+            ctx.arc(x + ms / 2, y + ms / 2, ms * k, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        done(text, size, " · 艺术图片（容错 H）");
+      }
+
       function render() {
-        var text = textEl.value;
         if (!window.QRCode || typeof window.QRCode.toCanvas !== "function") {
           showEmpty("二维码库加载失败，请检查网络后刷新页面重试", true);
           return;
         }
-        if (!text.trim()) {
-          showEmpty("");
+        var text = textEl.value;
+        if (!text.trim()) { showEmpty(""); return; }
+        var style = styleEl.value;
+        if (style !== "standard" && !hasImg) {
+          showEmpty("请先上传图片（" + (style === "logo" ? "中心图标" : "艺术底图") + "）", false);
+          return;
+        }
+        var size = parseInt(sizeEl.value, 10);
+        var margin = parseInt(marginEl.value, 10);
+        var ec = ecEl.value;
+        var fg = fgEl.value, bg = bgEl.value;
+
+        if (style === "art") {                       // 艺术模式强制高容错，保证可扫
+          ecEl.value = "H";
+          renderArtistic(text, size, margin, fg, bg);
           return;
         }
         var opts = {
-          width: parseInt(sizeEl.value, 10),
-          margin: parseInt(marginEl.value, 10),
-          errorCorrectionLevel: ecEl.value,
-          color: { dark: fgEl.value, light: bgEl.value }
+          width: size, margin: margin, errorCorrectionLevel: ec,
+          color: { dark: fg, light: bg }
         };
         window.QRCode.toCanvas(canvas, text, opts, function (err) {
           if (err) {
             showEmpty("生成失败：内容过长，请减少字符数或降低容错级别", true);
             return;
           }
-          canvas.style.display = "block";
-          emptyEl.style.display = "none";
-          dlBtn.disabled = false;
-          ready = true;
-          tipEl.className = "qr-tip";
-          tipEl.textContent = "共 " + text.length + " 个字符 · " + opts.width + "×" + opts.width + " px";
+          if (style === "logo") drawLogo();
+          done(text, size, style === "logo" ? " · 含中心图标" : "");
         });
       }
 
@@ -310,9 +489,46 @@
         schedule();
       });
 
+      styleEl.addEventListener("change", function () {
+        var s = styleEl.value;
+        if (s === "standard") {
+          imgCtl.classList.remove("show");
+          styleHint.textContent = "";
+        } else {
+          imgCtl.classList.add("show");
+          styleHint.textContent = s === "logo" ? "图片将置于二维码中心" : "图片越清晰、对比越强扫描越稳（建议短内容）";
+          if (s === "art") ecEl.value = "H";
+        }
+        render();
+      });
+
       document.getElementById("colorReset").addEventListener("click", function () {
         fgEl.value = "#000000";
         bgEl.value = "#ffffff";
+        render();
+      });
+
+      imgDrop.addEventListener("click", function () { imgPick.click(); });
+      imgPick.addEventListener("change", function () {
+        var f = imgPick.files && imgPick.files[0];
+        if (!f) return;
+        loadImage(f, function (err) {
+          if (err) { toast("图片读取失败"); return; }
+          imgThumb.src = imgObj.src;
+          imgThumb.style.display = "block";
+          imgName.textContent = f.name;
+          imgHint.style.display = "none";
+          imgRemove.style.display = "inline-block";
+          render();
+        });
+      });
+      imgRemove.addEventListener("click", function (e) {
+        e.stopPropagation();
+        hasImg = false; imgObj = null; imgPick.value = "";
+        imgThumb.style.display = "none";
+        imgName.textContent = "";
+        imgHint.style.display = "";
+        imgRemove.style.display = "none";
         render();
       });
 
@@ -355,6 +571,6 @@
   </script>
 
   <!-- 左下角水印 -->
-  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="../assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <div class="watermark"><a href="https://xhcdns.com" target="_blank" title="XHCDNS"><img src="../assets/images/watermark.png" alt="XHCDNS"></a></div>
 </body>
 </html>

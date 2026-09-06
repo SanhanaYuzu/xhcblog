@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>工具箱 - XHC 博客</title>
+  <title>工具箱 - XHCDNS</title>
   <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
@@ -65,15 +65,15 @@
   <header class="header">
     <div class="container">
       <a class="brand" href="index.html">
-        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
-        <span class="brand-name">XHC<b>博客</b></span>
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHCDNS logo" class="site-logo">
+        <span class="brand-name">XHC<b>DNS</b></span>
       </a>
       <nav class="nav" id="navCats"></nav>
       <div class="search">
         <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
         <button id="searchBtn" title="搜索">🔍</button>
       </div>
-      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      
       <span id="accountSlot"></span>
     </div>
   </header>
@@ -177,6 +177,36 @@
           <span class="t-icon">🎨</span>
           <div class="t-name">像素画板</div>
           <div class="t-desc">点阵绘图，多种尺寸，导出 PNG</div>
+        </a>
+        <a class="tool-card" href="tools/tic-tac-toe.html">
+          <span class="t-icon">⭕</span>
+          <div class="t-name">井字棋</div>
+          <div class="t-desc">经典 3×3 井字棋，你执 X 电脑执 O</div>
+        </a>
+        <a class="tool-card" href="tools/reaction-test.html">
+          <span class="t-icon">⚡</span>
+          <div class="t-name">反应速度测试</div>
+          <div class="t-desc">绿灯亮起后尽快点击，测反应毫秒</div>
+        </a>
+        <a class="tool-card" href="tools/blackjack.html">
+          <span class="t-icon">🃏</span>
+          <div class="t-name">21点</div>
+          <div class="t-desc">经典 21 点，要牌凑近 21 不爆即胜</div>
+        </a>
+        <a class="tool-card" href="tools/sudoku.html">
+          <span class="t-icon">🔢</span>
+          <div class="t-name">数独</div>
+          <div class="t-desc">9×9 数独填空，校验行列宫</div>
+        </a>
+        <a class="tool-card" href="tools/slot-machine.html">
+          <span class="t-icon">🎰</span>
+          <div class="t-name">老虎机</div>
+          <div class="t-desc">三转轮老虎机，押注旋转赢积分</div>
+        </a>
+        <a class="tool-card" href="tools/math-quiz.html">
+          <span class="t-icon">🧠</span>
+          <div class="t-name">速算挑战</div>
+          <div class="t-desc">30 秒内尽可能多答对四则运算</div>
         </a>
       </div>
     </section>
@@ -290,6 +320,26 @@
           <div class="t-name">Unicode 字符查询</div>
           <div class="t-desc">浏览符号/数学/表情，点击复制</div>
         </a>
+        <a class="tool-card" href="tools/http-status.html">
+          <span class="t-icon">📟</span>
+          <div class="t-name">HTTP 状态码速查</div>
+          <div class="t-desc">常见状态码中英文对照，可搜索</div>
+        </a>
+        <a class="tool-card" href="tools/regex-library.html">
+          <span class="t-icon">📚</span>
+          <div class="t-name">正则片段库</div>
+          <div class="t-desc">常用正则一键加载，实时测试</div>
+        </a>
+        <a class="tool-card" href="tools/json-diff.html">
+          <span class="t-icon">🆚</span>
+          <div class="t-name">JSON 对比</div>
+          <div class="t-desc">逐键比较，列出增删与变更</div>
+        </a>
+        <a class="tool-card" href="tools/color-palette.html">
+          <span class="t-icon">🎨</span>
+          <div class="t-name">调色板生成</div>
+          <div class="t-desc">输入基础色，生成互补类似三角配色</div>
+        </a>
       </div>
     </section>
 
@@ -297,31 +347,6 @@
     <section class="tool-section" data-cat="util">
       <h2>🛠️ 实用工具</h2>
       <div class="tool-grid">
-        <a class="tool-card" href="xebp.html">
-          <span class="t-icon">🖼️</span>
-          <div class="t-name">图片加密 XEBP</div>
-          <div class="t-desc">图片加密为 .xebp / 解密恢复（AES-256-GCM）</div>
-        </a>
-        <a class="tool-card" href="xebx.html">
-          <span class="t-icon">🗜️</span>
-          <div class="t-name">文件加密 XEBX</div>
-          <div class="t-desc">压缩包/视频/文本加密为 .xeba/.xebm/.xebt</div>
-        </a>
-        <a class="tool-card" href="xebz.html">
-          <span class="t-icon">📦</span>
-          <div class="t-name">XEBZ 压缩</div>
-          <div class="t-desc">原创独立压缩格式，多文件打包/解压，压缩率可达 20% 以下</div>
-        </a>
-        <a class="tool-card" href="xebm-player.html">
-          <span class="t-icon">🎬</span>
-          <div class="t-name">XEBM 播放器</div>
-          <div class="t-desc">.xebm 加密视频解密即播</div>
-        </a>
-        <a class="tool-card" href="xhc-ecosystem.html">
-          <span class="t-icon">🌐</span>
-          <div class="t-name">XHC 生态介绍</div>
-          <div class="t-desc">XHCZ 压缩算法演进 · 加密格式家族 · 网站与软件总览</div>
-        </a>
         <a class="tool-card" href="tools/qr-code.html">
           <span class="t-icon">📱</span>
           <div class="t-name">二维码生成器</div>
@@ -532,6 +557,46 @@
           <div class="t-name">视频会议</div>
           <div class="t-desc">仿腾讯会议，摄像头/麦克风/共享屏幕，点对点通话</div>
         </a>
+        <a class="tool-card" href="tools/unit-converter.html">
+          <span class="t-icon">📏</span>
+          <div class="t-name">单位换算</div>
+          <div class="t-desc">长度质量温度面积体积速度等换算</div>
+        </a>
+        <a class="tool-card" href="tools/stopwatch.html">
+          <span class="t-icon">⏱️</span>
+          <div class="t-name">秒表计时器</div>
+          <div class="t-desc">开始/暂停/计圈/重置，精确到百分秒</div>
+        </a>
+        <a class="tool-card" href="tools/percentage.html">
+          <span class="t-icon">📊</span>
+          <div class="t-name">百分比计算器</div>
+          <div class="t-desc">计算 A 是 B 的百分之几与变化率</div>
+        </a>
+        <a class="tool-card" href="tools/statistics.html">
+          <span class="t-icon">📈</span>
+          <div class="t-name">统计计算</div>
+          <div class="t-desc">均值中位数众数极差方差标准差</div>
+        </a>
+        <a class="tool-card" href="tools/timezone.html">
+          <span class="t-icon">🌐</span>
+          <div class="t-name">时区转换</div>
+          <div class="t-desc">输入时间，同时换算多个常用时区</div>
+        </a>
+        <a class="tool-card" href="tools/pythagoras.html">
+          <span class="t-icon">📐</span>
+          <div class="t-name">勾股定理</div>
+          <div class="t-desc">已知两边求第三边或判断直角</div>
+        </a>
+        <a class="tool-card" href="tools/random-number.html">
+          <span class="t-icon">🎲</span>
+          <div class="t-name">随机数生成</div>
+          <div class="t-desc">指定范围生成不重复或重复整数</div>
+        </a>
+        <a class="tool-card" href="tools/day-of-week.html">
+          <span class="t-icon">📅</span>
+          <div class="t-name">星期查询</div>
+          <div class="t-desc">输入日期查星期几及相差天数</div>
+        </a>
       </div>
     </section>
 
@@ -634,6 +699,36 @@
           <div class="t-name">三体问题</div>
           <div class="t-desc">三星引力演化，初值敏感</div>
         </a>
+        <a class="tool-card" href="tools/wave-interference.html">
+          <span class="t-icon">🌊</span>
+          <div class="t-name">波干涉</div>
+          <div class="t-desc">双相干波源叠加的干涉图样</div>
+        </a>
+        <a class="tool-card" href="tools/spring-mass.html">
+          <span class="t-icon">🔧</span>
+          <div class="t-name">弹簧振子</div>
+          <div class="t-desc">简谐振动与位移曲线</div>
+        </a>
+        <a class="tool-card" href="tools/solar-system.html">
+          <span class="t-icon">🪐</span>
+          <div class="t-name">太阳系模拟</div>
+          <div class="t-desc">太阳居中，行星按不同速度绕行</div>
+        </a>
+        <a class="tool-card" href="tools/standing-wave.html">
+          <span class="t-icon">🎻</span>
+          <div class="t-name">弦驻波</div>
+          <div class="t-desc">调节谐波次数观察驻波形态</div>
+        </a>
+        <a class="tool-card" href="tools/electric-field.html">
+          <span class="t-icon">🧲</span>
+          <div class="t-name">电场线</div>
+          <div class="t-desc">放置电荷，观察电场矢量分布</div>
+        </a>
+        <a class="tool-card" href="tools/pendulum-wave.html">
+          <span class="t-icon">🌀</span>
+          <div class="t-name">摆钟阵列</div>
+          <div class="t-desc">长度递增单摆形成行波图案</div>
+        </a>
       </div>
     </section>
 
@@ -643,8 +738,8 @@
   <!-- 页脚 -->
   <footer class="footer">
     <div class="container">
-      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
-      本站由 XHC 制作
+      © <span id="year"></span> XHCDNS · 认准 <a href="https://xhcdns.com" target="_blank">xhcdns.com</a> 官方域名<br>
+      本站由 XHCDNS 制作
     </div>
   </footer>
 
@@ -654,7 +749,7 @@
   <script src="assets/js/app.js"></script>
 
   <!-- 左下角水印 -->
-  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <div class="watermark"><a href="https://xhcdns.com" target="_blank" title="XHCDNS"><img src="assets/images/watermark.png" alt="XHCDNS"></a></div>
 
   <!-- 工具箱搜索 + 分类筛选 -->
   <script>

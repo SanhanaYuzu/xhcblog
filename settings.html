@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>账户设置 - XHC 博客</title>
+  <title>账户设置 - XHCDNS</title>
   <link rel="icon" href="assets/images/xhc-96x96.png?v=20260812">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -21,15 +21,15 @@
   <header class="header">
     <div class="container">
       <a class="brand" href="index.html">
-        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHC 博客 logo" class="site-logo">
-        <span class="brand-name">XHC<b>博客</b></span>
+        <img src="assets/images/xhc-96x96.png?v=20260812" alt="XHCDNS logo" class="site-logo">
+        <span class="brand-name">XHC<b>DNS</b></span>
       </a>
       <nav class="nav" id="navCats"></nav>
       <div class="search">
         <input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off">
         <button id="searchBtn" title="搜索">🔍</button>
       </div>
-      <a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+      
       <span id="accountSlot"></span>
     </div>
   </header>
@@ -52,13 +52,6 @@
       <input id="setDisplayName" type="text" placeholder="昵称">
       <label>简介</label>
       <textarea id="setBio" rows="3" placeholder="一句话介绍自己"></textarea>
-      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
-      <label>更换登录邮箱</label>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input id="setNewEmail" type="email" placeholder="新邮箱（将发送确认链接）" style="flex:1;">
-        <button type="button" class="btn btn-outline" id="changeEmailBtn" style="flex:none;">发送确认</button>
-      </div>
-      <div class="hint">⚠️ 点击新邮箱里的确认链接后才完成更换；链接 1 小时有效；旧邮箱仍可登录直到确认。</div>
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
       <label>修改密码（留空表示不修改）</label>
       <input id="setPwd" type="password" placeholder="新密码（至少 6 位）">
@@ -95,8 +88,8 @@
   <!-- 页脚 -->
   <footer class="footer">
     <div class="container">
-      © <span id="year"></span> NT Group · XHC 的小站 · 认准 <a href="http://xhc.dpdns.org" target="_blank">xhc.dpdns.org</a> 官方域名<br>
-      本站由 XHC 制作
+      © <span id="year"></span> XHCDNS · 认准 <a href="https://xhcdns.com" target="_blank">xhcdns.com</a> 官方域名<br>
+      本站由 XHCDNS 制作
     </div>
   </footer>
 
@@ -106,6 +99,6 @@
   <script src="assets/js/app.js"></script>
 
   <!-- 左下角水印 -->
-  <div class="watermark"><a href="http://xhc.dpdns.org" target="_blank" title="XHC.DPDNS.ORG"><img src="assets/images/watermark.png" alt="XHC.DPDNS.ORG"></a></div>
+  <div class="watermark"><a href="https://xhcdns.com" target="_blank" title="XHCDNS"><img src="assets/images/watermark.png" alt="XHCDNS"></a></div>
 </body>
 </html>

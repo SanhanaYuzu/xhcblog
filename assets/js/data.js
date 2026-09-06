@@ -1,5 +1,5 @@
 /* ===========================================================
-   XHC 博客 · 文章数据
+   XHCDNS · 文章数据
    新增文章：往 ARTICLES 数组里 push 一个对象即可。
    字段说明：
      id        唯一标识（用于 URL ?id= 与评论存储）
@@ -14,13 +14,13 @@
    =========================================================== */
 
 const SITE = {
-  name: "XHC 的小站",
+  name: "XHCDNS",
   domain: "xhc.dpdns.org",
   author: "XHC",
   avatar: "assets/images/xhc-96x96.png",
-  bio: "分享 Windows / Linux / MacOS 原版系统与实用软件，全部免费。认准 xhc.dpdns.org 官方域名！",
+  bio: "分享 Windows / Linux / MacOS 原版系统与实用软件，全部免费。认准 xhcdns.com 官方域名！",
   links: [
-    { label: "主站", url: "http://xhc.dpdns.org" },
+    { label: "主站", url: "https://xhcdns.com" },
     { label: "资源", url: "http://windows.xhc.dpdns.org" },
     { label: "GitHub", url: "https://github.com/SanhanaYuzu/LittleTools-by-Ai" },
     { label: "QQ", url: "tencent://message/?uin=3958588526" }

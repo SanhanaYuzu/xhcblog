@@ -1,5 +1,5 @@
 /* ===========================================================
-   XHC 博客 · 交互逻辑（Supabase 真实模式 + 本地演示模式）
+   XHCDNS · 交互逻辑（Supabase 真实模式 + 本地演示模式）
    -----------------------------------------------------------
    未配置 Supabase key → 演示模式（文章用 data.js、账号/帖子/评论
    存浏览器 localStorage，密码明文仅演示用）。
@@ -14,39 +14,6 @@
   const PER_PAGE = 5;
   const LS = "xhc_demo_";
 
-  /* 动态加载私信桌面提醒脚本（全站任意页面生效，幂等） */
-  try {
-    if (!document.getElementById("xhc-dm-notify-script")) {
-      var _dm = document.createElement("script");
-      _dm.id = "xhc-dm-notify-script";
-      _dm.src = "assets/js/dm_notify.js";
-      _dm.async = true;
-      document.head.appendChild(_dm);
-    }
-  } catch (e) {}
-
-  /* 动态加载敏感词检测脚本（全站任意页面生效，幂等） */
-  try {
-    if (!document.getElementById("xhc-sw-script")) {
-      var _sw = document.createElement("script");
-      _sw.id = "xhc-sw-script";
-      _sw.src = "assets/js/sensitive_words.js";
-      _sw.async = true;
-      document.head.appendChild(_sw);
-    }
-  } catch (e) {}
-
-  /* 敏感词检测工具：命中返回词数组，未命中返回 [] */
-  function swCheck(text) {
-    if (window.XHCSW) {
-      try { return window.XHCSW.check(text); } catch (e) {}
-    }
-    return [];
-  }
-  function swHint(hits) {
-    return "⛔ 内容包含敏感词：" + hits.slice(0, 6).join("、") + "，请修改后再发布";
-  }
-
   /* ---- OAuth 回跳检测（必须在 createClient 处理 URL 之前抓取）---- */
   function _oauthErr() {
     var e = getParam("error");
@@ -59,7 +26,7 @@
 
   let sb = null;
   if (CFG.enabled && window.supabase && window.supabase.createClient) {
-    try { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { experimental: { passkey: true } } }); }
+    try { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY); }
     catch (e) { console.error("Supabase 初始化失败：", e); sb = null; }
   }
   const REAL = !!sb;
@@ -236,9 +203,6 @@
             OAUTH_RETURN = false;
             toast("第三方登录成功，欢迎回来！");
             var am = qs("#authModal"); if (am) am.style.display = "none";
-            var pp = "";
-            try { pp = sessionStorage.getItem("xhc_pending_provider") || "oauth"; sessionStorage.removeItem("xhc_pending_provider"); } catch (err) { pp = "oauth"; }
-            reportLogin(pp);
           }
           cb(user);
         });
@@ -255,25 +219,6 @@
       var u = { id: uid(), email: email, pwd: pwd, display_name: (meta && meta.display_name) || email.split("@")[0],
         username: "user_" + Math.random().toString(36).slice(2, 8), bio: "", avatar_url: "", created_at: nowISO() };
       users.push(u); this._dset("users", users);
-      localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
-      return { data: { user: u } };
-    },
-    async signUpWithPhone(phone, pwd, name) {
-      if (REAL) {
-        return sb.auth.signUp({ phone: phone, password: pwd, options: { data: { display_name: name || ("用户" + phone.slice(-4)) } } });
-      }
-      var users = this._dget("users", []);
-      if (users.some(function (u) { return u.phone === phone; })) return { error: { message: "该手机号已注册，请直接登录" } };
-      var u = { id: uid(), phone: phone, email: "", pwd: pwd, display_name: name || ("用户" + phone.slice(-4)),
-        username: "user_" + Math.random().toString(36).slice(2, 8), bio: "", avatar_url: "", created_at: nowISO() };
-      users.push(u); this._dset("users", users);
-      localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
-      return { data: { user: u } };
-    },
-    async signInWithPhone(phone, pwd) {
-      if (REAL) return sb.auth.signInWithPassword({ phone: phone, password: pwd });
-      var u = this._dget("users", []).filter(function (x) { return x.phone === phone && x.pwd === pwd; })[0];
-      if (!u) return { error: { message: "手机号或密码错误" } };
       localStorage.setItem(LS + "session", u.id); this._demoAuthEmit();
       return { data: { user: u } };
     },
@@ -348,8 +293,6 @@
       if (REAL) {
         try {
           var q = sb.from("posts").select("*, author:profiles!posts_user_id_fkey(display_name, avatar_url, username)", { count: "exact" });
-          /* 定时发布过滤：未到发布时间的不在公开列表显示 */
-          q = q.or("scheduled_at.is.null,scheduled_at.lte." + new Date().toISOString());
           if (opts.category) q = q.eq("category", opts.category);
           if (opts.tag) q = q.contains("tags", [opts.tag]);
           if (opts.q) q = q.or("title.ilike.%" + opts.q + "%,summary.ilike.%" + opts.q + "%,category.ilike.%" + opts.q + "%");
@@ -370,8 +313,6 @@
       }
       this.ensureDemo();
       var posts = this._dget("posts", []);
-      /* 定时发布过滤（demo） */
-      posts = posts.filter(function (p) { var sa = p.scheduled_at; return !sa || new Date(sa) <= new Date(); });
       if (opts.category) posts = posts.filter(function (p) { return p.category === opts.category; });
       if (opts.tag) posts = posts.filter(function (p) { return (p.tags || []).indexOf(opts.tag) >= 0; });
       if (opts.q) { var s = opts.q.toLowerCase(); posts = posts.filter(function (p) { return (p.title + p.summary + p.category + (p.tags || []).join(" ")).toLowerCase().indexOf(s) >= 0; }); }
@@ -390,12 +331,6 @@
         try {
           var r = await sb.from("posts").select("*, author:profiles!posts_user_id_fkey(display_name, avatar_url, username)").eq("id", id).single();
           if (r.error) throw r.error;
-          /* 定时文章：未到发布时间且非作者本人 → 视为未发布 */
-          if (r.data && r.data.scheduled_at && new Date(r.data.scheduled_at) > new Date()) {
-            var me = await sb.auth.getUser();
-            var isAuthor = me && me.data && me.data.user && me.data.user.id === r.data.user_id;
-            if (!isAuthor) return { post: null, error: null };
-          }
           return { post: r.data, error: null };
         } catch (e) {
           var m = (e && e.message) || "";
@@ -564,18 +499,18 @@
         .sort(function (a, b) { return a.created_at < b.created_at ? -1 : 1; });
       return { comments: cs, error: null };
     },
-    async addComment(postId, content, replyToId) {
+    async addComment(postId, content) {
       if (REAL) {
         var me = await sb.auth.getUser();
-          var r = await sb.from("comments").insert({ post_id: postId, user_id: me.data.user.id, content: content, reply_to_id: replyToId || null })
+          var r = await sb.from("comments").insert({ post_id: postId, user_id: me.data.user.id, content: content })
           .select("*, author:profiles!comments_user_id_fkey(display_name, avatar_url, username)").single();
         return r;
       }
       var u = localStorage.getItem(LS + "session");
       var users = this._dget("users", []);
       var me2 = users.filter(function (x) { return x.id === u; })[0];
-      var c = { id: uid(), post_id: postId, user_id: u, content: content, reply_to_id: replyToId || null,
-        created_at: nowISO(), likes_count: 0, author: me2 ? { display_name: me2.display_name, avatar_url: me2.avatar_url, username: me2.username } : null };
+      var c = { id: uid(), post_id: postId, user_id: u, content: content,
+        created_at: nowISO(), author: me2 ? { display_name: me2.display_name, avatar_url: me2.avatar_url, username: me2.username } : null };
       var cs = this._dget("comments", []); cs.push(c); this._dset("comments", cs);
       return { data: c, error: null };
     },
@@ -664,69 +599,7 @@
       hc.insertBefore(tbtn, qs("#accountSlot"));
       tbtn.addEventListener("click", toggleTheme);
     }
-    /* 未检测到 XHC 浏览器 → 弹窗提示 */
-    function showXhcNoInstalled(reason) {
-      var msg = reason || "你没有安装 XHC 浏览器，请安装后打开。";
-      if (qs("#xhcNoInstMask")) return;
-      var mask = document.createElement("div");
-      mask.id = "xhcNoInstMask";
-      mask.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px";
-      mask.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px 30px;width:340px;max-width:88vw;box-shadow:0 12px 48px rgba(0,0,0,.28);text-align:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">' +
-        '<div style="font-size:44px;margin-bottom:12px">🖥️</div>' +
-        '<div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:10px">未检测到 XHC 浏览器</div>' +
-        '<div style="font-size:13.5px;color:#4b5563;line-height:1.7;margin-bottom:20px">' + esc(msg) + '</div>' +
-        '<button type="button" style="width:100%;padding:11px;background:#1a73e8;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer">我知道了</button>' +
-        '</div>';
-      mask.addEventListener("click", function (ev) {
-        if (ev.target === mask) document.body.removeChild(mask);
-      });
-      mask.querySelector("button").addEventListener("click", function () {
-        document.body.removeChild(mask);
-      });
-      document.body.appendChild(mask);
-    }
-    /* 唤起本机 XHC 浏览器（账户菜单「打开浏览器」入口共用逻辑） */
-    async function openXhcLocal() {
-      if (window.top !== window) {
-        toast("当前页面嵌在浏览器内，无法唤起本地应用。请用系统浏览器打开本页再试", "warn");
-        return;
-      }
-      var url = location.href;
-      try {
-        var r = await fetch("http://127.0.0.1:45123/open", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: url })
-        });
-        var txt = await r.text();
-        if (txt.indexOf("opened:") === 0) { toast("已在 XHC 浏览器中打开"); return; }
-        showXhcNoInstalled("XHC 浏览器已安装但启动失败，请重跑安装程序修复后再试。");
-      } catch (e) { /* 守护没跑/端口不通 → 未安装或未启动 */ }
-      showXhcNoInstalled();
-    }
-    /* 顶部全局注入「💬 私信」按钮（原「打开浏览器」按钮已替换为私信） */
-    if (hc && !qs("#openDmBtn")) {
-      var lb = document.createElement("a");
-      lb.id = "openDmBtn"; lb.className = "btn-home";
-      lb.href = "messages.html"; lb.textContent = "💬 私信";
-      lb.title = "进入私信";
-      var slot = qs("#accountSlot", hc);
-      if (slot) hc.insertBefore(lb, slot);
-      else hc.appendChild(lb);
-    }
-    /* 顶部全局注入「🔔 通知铃铛」（登录后可见，未读红点） */
-    if (hc && !qs("#notifBell")) {
-      var nb = document.createElement("button");
-      nb.id = "notifBell"; nb.type = "button"; nb.className = "btn-home";
-      nb.style.cssText = "position:relative;font-size:15px;line-height:1;";
-      nb.innerHTML = "🔔<span id=\"notifDot\" style=\"display:none;position:absolute;top:-2px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;box-sizing:border-box;\">0</span>";
-      nb.title = "消息通知";
-      var nslot = qs("#accountSlot", hc);
-      if (nslot) hc.insertBefore(nb, nslot);
-      else hc.appendChild(nb);
-      nb.addEventListener("click", openNotifPanel);
-    }
-    /* 把「返回主站」和「💬 论坛」移到主题切换按钮的右侧（紧挨着），最终顺序：search | 🌙 | 返回主站 | 论坛 | 登录/注册 */
+    /* 把「💬 论坛」移到主题切换按钮的右侧（紧挨着），最终顺序：search | 🌙 | 论坛 | 登录/注册 */
     var toggle = qs("#themeToggle", hc);
     var home = qs(".btn-home:not(#forumNavLink):not(#themeToggle)", hc);
     var forum = qs("#forumNavLink", hc);
@@ -753,191 +626,32 @@
       m.innerHTML =
         '<div class="modal">' +
         '<button class="modal-x" id="authClose">×</button>' +
-        '<div class="modal-head">' +
         '<div class="tabs auth-tabs">' +
         '<a data-mode="signin" class="active">登录</a><a data-mode="signup">注册</a>' +
         '</div>' +
-        '</div>' +
-        '<div class="modal-body">' +
         '<div id="authMsg" class="auth-msg"></div>' +
         '<form id="authForm">' +
-        '<input id="authEmail" type="text" placeholder="邮箱或手机号（手机号用密码注册/登录）" required autocomplete="off">' +
+        '<input id="authEmail" type="email" placeholder="邮箱" required>' +
         '<input id="authPwd" type="password" placeholder="密码（至少 6 位）" required minlength="6">' +
         '<input id="authName" type="text" placeholder="昵称（注册时可选）" style="display:none">' +
         '<button type="submit" class="btn btn-primary" id="authSubmit">登录</button>' +
         '</form>' +
-        '<div class="cf-box" id="cfBox">' +
-        '<span class="cf-checkbox" id="cfCheckbox" title="点击完成验证"></span>' +
-        '<span class="cf-label" id="cfLabel">我不是机器人</span>' +
-        '<span class="cf-badge">XHC<span class="cf-q">?</span></span>' +
-        '</div>' +
         '<div class="auth-divider"><span>或</span></div>' +
-        '<button class="btn btn-passkey" id="passkeyLogin">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M17.81 7.71 11.46 1.36a1.05 1.05 0 0 0-1.42 0L3.7 7.71A1 1 0 0 0 3.36 9H7v10a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-5h2v5a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5V9H5.14a1 1 0 0 0-.7-1.29 1 1 0 0 0 .36 0z"/></svg>' +
-        ' Passkey 通行密钥' +
-        '</button>' +
         '<button class="btn btn-github" id="githubLogin">' +
         '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
         ' GitHub 登录' +
+        '</button>' +
         '<button class="btn btn-microsoft" id="microsoftLogin">' +
         '<svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>' +
         ' 微软账户登录' +
-        '<button class="btn btn-gitlab" id="gitlabLogin">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12 1 9.3 9H3.4l4.9 3.6L6.6 21 12 16.9 17.4 21l-1.7-8.4L20.6 9h-5.9L12 1z"/></svg>' +
-        ' GitLab 登录' +
         '</button>' +
-'<button class="more-toggle" id="moreToggle"><span>邮箱验证码（免密登录）</span><span class="icn">▶</span></button>' +
-        '<div class="more-area" id="moreArea">' +
-        '<div class="otp-box">' +
-        '<div class="otp-row otp-title">📧 邮箱验证码（免密登录，新邮箱自动注册）</div>' +
-        '<input id="otpAccount" type="email" placeholder="输入邮箱" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
-        '<button type="button" class="btn btn-otp" id="otpSend" style="width:100%;margin-bottom:10px">发送验证码</button>' +
-        '<input id="otpCode" type="text" placeholder="8 位验证码" inputmode="numeric" maxlength="8" autocomplete="one-time-code" style="width:100%;box-sizing:border-box;margin-bottom:8px">' +
-        '<button type="button" class="btn btn-primary" id="otpLogin">验证码登录</button>' +
-        '<div class="otp-hint" id="otpHint">新用户输入邮箱，验证通过即自动注册账号</div>' +
-        '</div>' +
-        '</div>' +
         '<p class="hint" style="margin-top:10px;">' +
         (REAL ? "使用邮箱密码注册登录，数据保存在 Supabase。" : "演示模式：账号数据仅存本浏览器，密码明文，仅供体验。") +
         '</p>' +
-        '</div>' +
         '</div>';
-document.body.appendChild(m);
+      document.body.appendChild(m);
       m.addEventListener("click", function (e) { if (e.target === m) closeAuth(); });
       qs("#authClose").addEventListener("click", closeAuth);
-      /* ---- 验证码登录 / 微信 / QQ（国内常用） ---- */
-      (function () {
-        var st = document.createElement("style");
-        st.textContent =
-          ".otp-box{margin:10px 0 2px;display:flex;flex-direction:column;gap:8px}" +
-          ".otp-row{display:flex;gap:8px;align-items:center}" +
-          ".otp-row input{flex:1 1 auto;min-width:0}" +
-          ".otp-row button{flex:0 0 auto;flex-shrink:0;width:auto}" +
-          ".otp-sel{flex:1;height:38px;border:1px solid #d8dee6;border-radius:8px;padding:0 10px;font-size:14px;background:#fff;color:#2b3440;outline:none}" +
-          ".btn-otp{background:#10b981;color:#fff;border:none;border-radius:8px;padding:11px;height:auto;cursor:pointer;font-size:14px;white-space:nowrap}" +
-          ".btn-otp:disabled{opacity:.6;cursor:default}" +
-          ".otp-hint{font-size:12px;color:#8c959f;margin:2px 0 4px}" +
-          ".btn-wechat{background:#07c160 !important;color:#fff !important}" +
-          ".btn-passkey,.btn-github,.btn-microsoft,.btn-gitlab{width:100%}" +
-          ".btn-passkey{background:#202124 !important;color:#fff !important;margin-top:10px}" +
-          ".btn-passkey:hover{background:#000 !important}" +
-          ".btn-gitlab{background:#fc6d26 !important;color:#fff !important;margin-top:10px}" +
-          ".btn-github{margin-top:10px}" +
-          ".btn-microsoft{margin-top:10px}" +
-".btn-qq{background:#12b7f5 !important;color:#fff !important}" +
-          ".otp-title{font-size:13px;color:#6b7280;font-weight:600}" +
-          ".modal-head{padding:16px 22px 8px;border-bottom:1px solid #eef0f4;flex:none}" +
-          ".modal-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:14px 22px 18px;-webkit-overflow-scrolling:touch}" +
-          ".modal-foot{padding:0 22px 16px;flex:none}" +
-          ".more-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f7f8fa;border:1px solid #e2e8f0;border-radius:8px;color:#5f6368;font-size:13px;cursor:pointer;margin:8px 0;width:100%}" +
-          ".more-toggle:hover{background:#eef1f5}" +
-          ".more-toggle .icn{transition:transform .2s}" +
-          ".more-toggle.open .icn{transform:rotate(90deg)}" +
-          ".more-area{max-height:0;overflow:hidden;transition:max-height .25s ease}" +
-          ".more-area.open{max-height:520px}" +
-          ".cf-box{display:flex;align-items:center;gap:10px;margin:12px 0 6px;padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;position:relative;user-select:none;cursor:default}" +
-          ".cf-box.ok{background:#f0fdf4;border-color:#86efac}" +
-          ".cf-checkbox{width:24px;height:24px;border:2px solid #cbd5e1;border-radius:5px;flex:none;cursor:pointer;position:relative;background:#fff;box-sizing:border-box}" +
-          ".cf-checkbox:hover{border-color:#94a3b8}" +
-          ".cf-checkbox.loading{border-color:#f59e0b}" +
-          ".cf-checkbox.loading::after{content:'';position:absolute;inset:5px;border:2px solid transparent;border-top-color:#f59e0b;border-radius:50%;animation:cfspin .8s linear infinite}" +
-          ".cf-checkbox.ok{border-color:#22c55e;background:#22c55e}" +
-          ".cf-checkbox.ok::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700}" +
-          ".cf-label{font-size:14px;color:#374151}" +
-          ".cf-badge{position:absolute;right:12px;top:10px;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.5px}" +
-          ".cf-q{width:16px;height:16px;border:1.5px solid #9ca3af;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af}" +
-          "@keyframes cfspin{to{transform:rotate(360deg)}}" +
-          ".modal{display:flex;flex-direction:column;max-height:min(85vh,720px);overflow:hidden;padding:0}";
-        document.head.appendChild(st);
-
-        var otpTimer = null;
-        function otpHint(t) { var h = qs("#otpHint"); if (h) h.textContent = t; }
-        function startCountdown(n) {
-          var b = qs("#otpSend"), left = n;
-          b.disabled = true; b.textContent = "重新发送(" + left + "s)";
-          if (otpTimer) clearInterval(otpTimer);
-          otpTimer = setInterval(function () {
-            left--;
-            if (left <= 0) { clearInterval(otpTimer); b.disabled = false; b.textContent = "发送验证码"; }
-            else b.textContent = "重新发送(" + left + "s)";
-          }, 1000);
-        }
-        qs("#otpSend").addEventListener("click", async function () {
-          var acc = qs("#otpAccount").value.trim();
-          if (!acc) { otpHint("请输入邮箱或手机号"); return; }
-          var type = "email";
-          if (!REAL) { otpHint("演示模式：验证码固定为 123456"); startCountdown(30); return; }
-          var b = qs("#otpSend"); b.disabled = true; b.textContent = "发送中…";
-          try {
-            if (type === "phone") {
-              var r = await sb.auth.signInWithOtp({ phone: acc, options: { shouldCreateUser: true } });
-              if (r.error) throw r.error;
-              otpHint("验证码已发送至手机（若未收到请先配置短信服务商）");
-            } else {
-              var r2 = await sb.auth.signInWithOtp({ email: acc, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname } });
-              if (r2.error) throw r2.error;
-              otpHint("验证码已发送至邮箱（请到邮件中查看 6 位验证码）");
-            }
-            startCountdown(60);
-          } catch (e) {
-            b.disabled = false; b.textContent = "发送验证码";
-            otpHint("发送失败：" + ((e && e.message) || e) + "（邮箱验证码需在 Supabase 邮件模板中显示 Token）");
-          }
-        });
-        qs("#otpLogin").addEventListener("click", async function () {
-          var acc = qs("#otpAccount").value.trim(), code = qs("#otpCode").value.trim();
-          if (!acc || !code) { otpHint("请填写账号和验证码"); return; }
-          var type = "email";
-          if (!REAL) {
-            if (code !== "123456") { otpHint("演示模式验证码为 123456"); return; }
-            closeAuth(); toast("验证码登录成功（演示）"); return;
-          }
-          var b = qs("#otpLogin"); b.disabled = true;
-          try {
-            var payload = type === "phone"
-              ? { phone: acc, token: code, type: "sms" }
-              : { email: acc, token: code, type: "email" };
-            var r = await sb.auth.verifyOtp(payload);
-            if (r.error) throw r.error;
-            closeAuth(); toast("验证码登录成功");
-            reportLogin("otp");
-          } catch (e) {
-            b.disabled = false;
-            otpHint("验证失败：" + ((e && e.message) || e));
-          }
-        });
-
-        /* ---- 滑块人机验证 ---- */
-        window.__capOk = false; window.__capExpire = 0;
-        window.captchaOk = function () { return !!(window.__capOk && Date.now() < window.__capExpire); };
-        window.initCaptcha = function () {
-          var box = qs("#cfBox");
-          if (!box || box.dataset.init) return;
-          box.dataset.init = "1";
-          var cb = qs("#cfCheckbox"), label = qs("#cfLabel");
-          cb.addEventListener("click", function () {
-            if (window.__capOk) return;
-            cb.classList.add("loading");
-            label.textContent = "验证中…";
-            setTimeout(function () {
-              window.__capOk = true; window.__capExpire = Date.now() + 5 * 60 * 1000;
-              cb.classList.remove("loading");
-              cb.classList.add("ok");
-              label.textContent = "验证通过";
-              box.classList.add("ok");
-            }, 600);
-          });
-        };
-
-        /* ---- 更多登录方式折叠 ---- */
-        var mt = qs("#moreToggle"), ma = qs("#moreArea");
-        if (mt && ma) {
-          mt.addEventListener("click", function () {
-            var open = ma.classList.toggle("open");
-            mt.classList.toggle("open", open);
-          });
-        }
-      })();
       qsa(".auth-tabs a", m).forEach(function (a) {
         a.addEventListener("click", function () { switchAuthMode(a.dataset.mode); });
       });
@@ -946,14 +660,7 @@ document.body.appendChild(m);
         var email = qs("#authEmail").value.trim(), pwd = qs("#authPwd").value, name = qs("#authName").value.trim();
         var mode = m.dataset.mode || "signin";
         var btn = qs("#authSubmit"); btn.disabled = true; qs("#authMsg").textContent = "处理中…";
-        if (mode === "signup" && !captchaOk()) {
-          qs("#authMsg").textContent = "请先完成人机验证（拖动滑块到缺口位置）";
-          btn.disabled = false; return;
-        }
-        var isPhone = /^1[3-9]\d{9}$/.test(email);
-        var task = isPhone
-          ? ((mode === "signup") ? Store.signUpWithPhone(email, pwd, name) : Store.signInWithPhone(email, pwd))
-          : ((mode === "signup") ? Store.signUp(email, pwd, { display_name: name }) : Store.signIn(email, pwd));
+        var task = (mode === "signup") ? Store.signUp(email, pwd, { display_name: name }) : Store.signIn(email, pwd);
         Promise.resolve(task).then(function (r) {
           btn.disabled = false;
           if (r.error) { qs("#authMsg").textContent = r.error.message || "操作失败"; return; }
@@ -961,7 +668,6 @@ document.body.appendChild(m);
             qs("#authMsg").textContent = "注册成功！请到邮箱点击确认链接后再登录。"; return;
           }
           closeAuth(); toast(mode === "signup" ? "注册成功，已登录" : "登录成功");
-          reportLogin(isPhone ? "phone" : (mode === "signup" ? "signup" : "email"));
         });
       });
 
@@ -969,7 +675,6 @@ document.body.appendChild(m);
       qs("#githubLogin").addEventListener("click", function () {
         if (!REAL) { toast("演示模式不支持 GitHub 登录", "warn"); return; }
         var btn = qs("#githubLogin"); btn.disabled = true; btn.textContent = "跳转至 GitHub…";
-        try { sessionStorage.setItem("xhc_pending_provider", "github"); } catch (err) {}
         sb.auth.signInWithOAuth({
           provider: "github",
           options: { redirectTo: oauthRedirectUrl() }
@@ -984,7 +689,6 @@ document.body.appendChild(m);
       qs("#microsoftLogin").addEventListener("click", function () {
         if (!REAL) { toast("演示模式不支持微软账户登录", "warn"); return; }
         var btn = qs("#microsoftLogin"); btn.disabled = true; btn.textContent = "跳转至微软账户…";
-        try { sessionStorage.setItem("xhc_pending_provider", "azure"); } catch (err) {}
         sb.auth.signInWithOAuth({
           provider: "azure",
           options: { redirectTo: oauthRedirectUrl() }
@@ -994,514 +698,38 @@ document.body.appendChild(m);
           qs("#authMsg").textContent = "微软账户登录失败：" + (e.message || "请确认已在 Supabase 启用 Azure（Microsoft）提供商");
         });
       });
-
-      /* 通行密钥（Passkey / WebAuthn 无密码登录） */
-      qs("#passkeyLogin").addEventListener("click", function () {
-        if (!REAL) { toast("演示模式不支持 Passkey", "warn"); return; }
-        var btn = qs("#passkeyLogin"); btn.disabled = true; btn.textContent = "正在唤起系统认证…";
-        sb.auth.signInWithPasskey().then(function (r) {
-          btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12 1a7 7 0 0 0-7 7v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V8a7 7 0 0 0-7-7zm-5 9V8a5 5 0 0 1 10 0v2H7zm5 3.5a2.5 2.5 0 0 1 1.5 4.5V21h-3v-3a2.5 2.5 0 0 1 1.5-4.5z"/></svg> 通行密钥登录（Passkey / 刷脸·指纹）';
-          if (r.error) { qs("#authMsg").textContent = "Passkey 失败：" + (r.error.message || ""); return; }
-          closeAuth(); toast("Passkey 登录成功");
-          reportLogin("passkey");
-        });
-      });
-
-      /* GitLab OAuth 登录 */
-      qs("#gitlabLogin").addEventListener("click", function () {
-        if (!REAL) { toast("演示模式不支持 GitLab 登录", "warn"); return; }
-        var btn = qs("#gitlabLogin"); btn.disabled = true; btn.textContent = "跳转至 GitLab…";
-        try { sessionStorage.setItem("xhc_pending_provider", "gitlab"); } catch (err) {}
-        sb.auth.signInWithOAuth({
-          provider: "gitlab",
-          options: { redirectTo: oauthRedirectUrl() }
-        }).catch(function (e) {
-          btn.disabled = false;
-          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12 1 9.3 9H3.4l4.9 3.6L6.6 21 12 16.9 17.4 21l-1.7-8.4L20.6 9h-5.9L12 1z"/></svg> GitLab 登录';
-          qs("#authMsg").textContent = "GitLab 登录失败：" + (e.message || "请确认已在 Supabase 启用 GitLab 提供商");
-        });
-      });
     }
-    /* 账户菜单：构建（可重建）。管理员专有面板默认隐藏，连点标题 5 次验证后显示 */
-    var adminModeOn = false; /* 会话级：本次会话是否打开了管理员模式 */
-    function buildAccountMenu() {
+    if (!qs("#accountMenu")) {
       var menu = document.createElement("div");
-      menu.id = "accountMenu";
-      menu.style.cssText = "display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:20px;";
-      function item(icon, label, href, act) {
-        var body = '<span style="font-size:18px;width:24px;text-align:center;flex:none;">' + icon + '</span>' +
-                   '<span style="flex:1;">' + label + '</span>' +
-                   '<span style="color:#cbd5e1;font-size:16px;">›</span>';
-        return act
-          ? '<a href="javascript:void(0)" data-act="' + act + '" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#111827;font-size:14px;font-weight:500;cursor:pointer;">' + body + '</a>'
-          : '<a href="' + href + '" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#111827;font-size:14px;font-weight:500;">' + body + '</a>';
-      }
-      function sep() { return '<div style="height:1px;background:rgba(0,0,0,.06);margin:6px 6px;"></div>'; }
+      menu.id = "accountMenu"; menu.className = "account-menu";
       menu.innerHTML =
-        '<div onclick="event.stopPropagation()" style="width:380px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.3);">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);flex:none;">' +
-            '<span style="font-weight:700;font-size:15px;color:#111827;cursor:default;user-select:none;" id="acctMenuTitle" title="连点 5 次打开管理员模式">👤 我的账户</span>' +
-            '<button type="button" id="accountMenuClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1;padding:4px 10px;border-radius:6px;">×</button>' +
-          '</div>' +
-          '<div style="overflow-y:auto;padding:8px 8px;flex:1;background:#f8fafc;" onclick="event.stopPropagation()">' +
-            item("✏️", "写文章", "editor.html") +
-            item("📋", "我的帖子", "myposts.html") +
-            item("⭐", "我的收藏", "favs.html") +
-            sep() +
-            item("💬", "论坛", "forum.html") +
-            item("📅", "每日签到", null, "checkin") +
-            item("🧰", "工具箱", "tools.html") +
-            sep() +
-            item("🖼️", "图片加密", "xebp.html") +
-            item("🗜️", "文件加密", "xebx.html") +
-            item("📦", "XEBZ 压缩", "xebz.html") +
-            item("🎬", "XEBM 播放器", "xebm-player.html") +
-            item("🌐", "XHC 生态", "xhc-ecosystem.html") +
-            sep() +
-            item("⚙️", "设置", "settings.html") +
-            item("ℹ️", "关于本站", "about.html") +
-            item("🖥️", "登录设备", null, "sessions") +
-            item("📦", "数据导出", null, "export") +
-            item("🖥️", "打开浏览器", null, "open-browser") +
-            item("🔔", "桌面提醒", null, "desktop-notify") +
-            item("💬", "私信", "messages.html") +
-            item("📊", "我的统计", "stats.html") +
-            item("📝", "我的草稿", null, "drafts") +
-            item("🎁", "神秘按钮", null, "mystery") +
-            (adminModeOn ? sep() + item("👥", "用户管理", "users.html") + item("📋", "敏感词管理", null, "sw-manage") + item("🔓", "退出管理员模式", null, "admin-off") : "") +
-            item("📥", "导入示例", "seed.html") +
-            sep() +
-            '<a href="javascript:void(0)" data-act="logout" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:11px;text-decoration:none;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;">' +
-              '<span style="font-size:18px;width:24px;text-align:center;flex:none;">🚪</span><span style="flex:1;">注销登录</span>' +
-            '</a>' +
-          '</div>' +
-        '</div>';
+        '<a href="editor.html">✏️ 写文章</a>' +
+        '<a href="myposts.html">📋 我的帖子</a>' +
+        '<a href="favs.html">⭐ 我的收藏</a>' +
+        '<div class="sep"></div>' +
+        '<a href="forum.html">💬 论坛</a>' +
+        '<a href="tools.html">🧰 工具箱</a>' +
+        '<a href="settings.html">⚙️ 设置</a>' +
+        '<a id="mysteryBtn">🎁 神秘按钮</a>' +
+        '<div class="sep"></div>' +
+        '<a id="adminModeLink" style="color:var(--primary);font-weight:600;">🛡️ 管理员模式</a>' +
+        (isAdmin() ? '<a href="users.html">👥 用户管理</a>' : '') +
+        '<a href="seed.html">📥 导入示例</a>' +
+        '<div class="sep"></div>' +
+        '<a id="logoutLink" class="danger">🚪 注销登录</a>';
       document.body.appendChild(menu);
-      /* × 关闭 */
-      qs("#accountMenuClose").addEventListener("click", function () { menu.style.display = "none"; });
-      /* 内部动作路由 */
-      qsa("[data-act]", menu).forEach(function (el) {
-        el.addEventListener("click", function (e) {
-          e.preventDefault();
-          var act = el.getAttribute("data-act");
-          menu.style.display = "none";
-          if (act === "logout") { Store.signOut().then(function () { toast("已注销"); }); }
-          else if (act === "sessions") { openSessionsPanel(); }
-          else if (act === "checkin") { doCheckin(); }
-          else if (act === "export") { openExportPanel(); }
-          else if (act === "open-browser") { openXhcLocal(); }
-          else if (act === "drafts") { openDraftsPanel(); }
-          else if (act === "desktop-notify") {
-            if (window.XHCDM) {
-              window.XHCDM.ask().then(function (ok) {
-                if (ok) toast("✅ 已开启桌面提醒，收到私信会弹系统通知");
-                else if (!window.XHCDM.supported()) toast("当前浏览器不支持桌面通知");
-                else toast("⚠️ 通知权限被拒绝，请在浏览器设置中允许本站通知");
-              });
-            } else {
-              toast("桌面提醒脚本未加载，请刷新页面");
-            }
-          }
-          else if (act === "mystery") { openMysteryBox(); }
-          else if (act === "sw-manage") {
-            requireAdminThen(function () {
-              if (window.XHCSW) window.XHCSW.manage(ADMIN_PASSWORD);
-              else toast("敏感词脚本未加载，请刷新页面", "warn");
-            });
-          }
-          else if (act === "admin") { showAdminLogin(); }
-          else if (act === "admin-off") {
-            adminModeOn = false;
-            var old = qs("#accountMenu");
-            if (old && old.parentNode) old.parentNode.removeChild(old);
-            buildAccountMenu();
-            toast("已退出管理员模式（本次会话）");
-          }
-        });
+      qs("#logoutLink").addEventListener("click", function () {
+        Store.signOut().then(function () { toast("已注销"); menu.classList.remove("open"); });
       });
-      /* 点击遮罩关闭 */
-      menu.addEventListener("click", function (e) { if (e.target === menu) menu.style.display = "none"; });
-      /* ESC 关闭 */
-      document.addEventListener("keydown", function accEsc(e) { if (e.key === "Escape" && menu.style.display !== "none") menu.style.display = "none"; });
-      /* 连点标题 5 次 → 管理员登录（隐藏入口） */
-      var acTitle = qs("#acctMenuTitle", menu);
-      if (acTitle) {
-        var clicks = 0, lastClick = 0;
-        acTitle.addEventListener("click", function () {
-          var now = Date.now();
-          if (now - lastClick > 900) clicks = 0;
-          lastClick = now; clicks++;
-          if (clicks >= 5) {
-            clicks = 0;
-            showAdminLogin(function () {
-              adminModeOn = true;
-              var old = qs("#accountMenu");
-              if (old && old.parentNode) old.parentNode.removeChild(old);
-              buildAccountMenu();
-              var m2 = qs("#accountMenu");
-              if (m2) m2.style.display = "flex";
-              toast("🛡️ 管理员模式已开启");
-            });
-          }
-        });
-      }
-      return menu;
-    }
-    if (!qs("#accountMenu")) buildAccountMenu();
-  }
-
-  /* 通知：点赞/收藏/评论时通知文章作者 */
-  async function notifyAuthor(postId, type, extra) {
-    try {
-      var me = await sb.auth.getUser();
-      if (!me || !me.data || !me.data.user) return;
-      var pr = await sb.from("posts").select("user_id, title").eq("id", postId).single();
-      if (pr.error || !pr.data || !pr.data.user_id) return;
-      if (pr.data.user_id === me.data.user.id) return;
-      var t = (pr.data.title || "").slice(0, 30);
-      var content = "";
-      if (type === "like") content = "👍 赞了你的文章《" + t + "》";
-      else if (type === "favorite") content = "⭐ 收藏了你的文章《" + t + "》";
-      else if (type === "comment") content = "💬 评论了你的文章《" + t + "》：" + (extra || "").slice(0, 40);
-      if (!content) return;
-      await sb.from("notifications").insert({ user_id: pr.data.user_id, actor_id: me.data.user.id, post_id: postId, type: type, content: content });
-    } catch (e) {}
-  }
-
-  /* 通知铃铛：注入 + 下拉 + 未读数（通知 + 私信未读合并） */
-  function bellUnreadCount() {
-    try {
-      sb.auth.getSession().then(function (sr) {
-        var sess = sr && sr.data && sr.data.session;
-        var b = qs("#notifBell");
-        if (!b) return;
-        var dot = qs("#notifDot", b);
-        if (!sess) { if (dot) dot.style.display = "none"; return; }
-        var p1 = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", sess.user.id).eq("read", false);
-        var p2 = sb.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", sess.user.id).eq("read", false);
-        Promise.all([p1, p2]).then(function (rs) {
-          var n = 0;
-          rs.forEach(function (r) { if (!r.error && r.count != null) n += r.count; });
-          if (dot) { dot.style.display = n > 0 ? "flex" : "none"; dot.textContent = n > 99 ? "99+" : String(n); }
-        }).catch(function () {});
-      }).catch(function () {});
-    } catch (e) {}
-  }
-  /* 新私信到达（dm_notify.js 广播）→ 刷新红点 */
-  window.addEventListener("xhc:dmbadge", bellUnreadCount);
-  function openNotifPanel() {
-    var id = "notifPanel";
-    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; return; }
-    var panel = document.createElement("div");
-    panel.id = id;
-    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px";
-    panel.innerHTML =
-      '<div style="position:relative;width:480px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
-      '<span style="font-weight:700;color:#111827;font-size:15px;">🔔 消息通知</span>' +
-      '<span style="display:flex;gap:8px;align-items:center;">' +
-      '<button type="button" id="notifReadAll" style="border:none;background:#e8f0fe;color:#1a73e8;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">全部已读</button>' +
-      '<button type="button" id="notifClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;">×</button>' +
-      '</span></div>' +
-      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;" id="notifBody">加载中…</div></div>';
-    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
-    panel.querySelector("#notifClose").addEventListener("click", function () { panel.style.display = "none"; });
-    panel.querySelector("#notifReadAll").addEventListener("click", function () {
-      sb.auth.getSession().then(function (sr) {
-        var sess = sr && sr.data && sr.data.session;
-        if (!sess) return;
-        sb.from("notifications").update({ read: true }).eq("user_id", sess.user.id).eq("read", false)
-          .then(function () { loadNotif(); bellUnreadCount(); toast("已全部标记为已读"); });
+      qs("#adminModeLink").addEventListener("click", function () {
+        menu.classList.remove("open");
+        showAdminLogin();
       });
-    });
-    document.body.appendChild(panel);
-    loadNotif();
-  }
-  function loadNotif() {
-    var body = qs("#notifBody");
-    if (!body) return;
-    body.innerHTML = "加载中…";
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">未登录</div>'; return; }
-      sb.from("notifications").select("*, actor:profiles!notifications_actor_id_fkey(display_name, avatar_url)")
-        .eq("user_id", sess.user.id).order("created_at", { ascending: false }).limit(30)
-        .then(function (r) {
-          var rows = r.data || [];
-          if (!rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">暂无通知</div>'; return; }
-          body.innerHTML = rows.map(function (n) {
-            var d = new Date(n.created_at);
-            var t = isNaN(d.getTime()) ? String(n.created_at) : d.toLocaleString("zh-CN", { hour12: false });
-            var nm = (n.actor && (n.actor.display_name || n.actor.username)) || "有人";
-            var href = n.post_id ? 'href="article.html?id=' + encodeURIComponent(n.post_id) + '"' : 'href="javascript:void(0)"';
-            return '<a ' + href + ' style="display:block;text-decoration:none;padding:10px 12px;border-radius:10px;margin-bottom:8px;background:' + (n.read ? "#f9fafb" : "#eef4ff") + ';border:1px solid rgba(0,0,0,.05);">' +
-              '<div style="font-size:13px;color:#111827;">' + esc(n.content || "新通知") + '</div>' +
-              '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + esc(nm) + ' · ' + esc(t) + (n.read ? "" : ' <span style="color:#1a73e8;font-weight:700;">未读</span>') + '</div>' +
-              '</a>';
-          }).join("");
-          /* 打开面板时自动标记已读（简化：全部已读） */
-          sb.from("notifications").update({ read: true }).eq("user_id", sess.user.id).eq("read", false).then(function () { bellUnreadCount(); });
-        }).catch(function () { body.innerHTML = "加载失败"; });
-    }).catch(function () { body.innerHTML = "加载失败"; });
-  }
-
-  /* 数据导出：文章/评论/收藏/草稿 → 文件下载 */
-  function openExportPanel() {
-    var id = "exportPanel";
-    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; return; }
-    var panel = document.createElement("div");
-    panel.id = id;
-    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px";
-    panel.innerHTML =
-      '<div style="position:relative;width:500px;max-width:94vw;max-height:84vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
-      '<span style="font-weight:700;color:#111827;font-size:15px;">📦 数据导出</span>' +
-      '<button type="button" id="exportClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;">×</button>' +
-      '</div>' +
-      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;color:#4b5563;line-height:1.8;" id="exportBody">' +
-      '<div style="background:#eef4ff;border:1px solid #d6e4ff;color:#1a56db;padding:10px 14px;border-radius:10px;font-size:12.5px;margin-bottom:14px;">导出你的数据备份，可随时本地保存。</div>' +
-      '<button type="button" class="exp-btn" id="expPosts" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;margin-bottom:9px;text-align:left;">' +
-      '<span style="font-size:20px;">📝</span><span style="flex:1;"><b>我的文章</b><br><span style="font-size:12px;color:#9ca3af;">导出为 Markdown 文件</span></span><span style="color:#cbd5e1;">›</span></button>' +
-      '<button type="button" class="exp-btn" id="expComments" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;margin-bottom:9px;text-align:left;">' +
-      '<span style="font-size:20px;">💬</span><span style="flex:1;"><b>我的评论</b><br><span style="font-size:12px;color:#9ca3af;">导出为 JSON 文件</span></span><span style="color:#cbd5e1;">›</span></button>' +
-      '<button type="button" class="exp-btn" id="expFavs" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;margin-bottom:9px;text-align:left;">' +
-      '<span style="font-size:20px;">⭐</span><span style="flex:1;"><b>我的收藏</b><br><span style="font-size:12px;color:#9ca3af;">导出为 JSON 文件</span></span><span style="color:#cbd5e1;">›</span></button>' +
-      '<button type="button" class="exp-btn" id="expDrafts" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:left;">' +
-      '<span style="font-size:20px;">🗂️</span><span style="flex:1;"><b>我的草稿</b><br><span style="font-size:12px;color:#9ca3af;">导出为 JSON 文件</span></span><span style="color:#cbd5e1;">›</span></button>' +
-      '<div id="exportStatus" style="margin-top:12px;font-size:12.5px;color:#6b7280;text-align:center;"></div>' +
-      '</div></div>';
-    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
-    panel.querySelector("#exportClose").addEventListener("click", function () { panel.style.display = "none"; });
-    document.body.appendChild(panel);
-
-    function dl(name, content, type) {
-      try {
-        var blob = new Blob([content], { type: type || "application/json;charset=utf-8" });
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        document.body.appendChild(a); a.click();
-        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
-        var st = qs("#exportStatus"); if (st) st.textContent = "✅ 已导出：" + name;
-      } catch (e) { var st2 = qs("#exportStatus"); if (st2) st2.textContent = "❌ 导出失败：" + (e && e.message); }
+      qs("#mysteryBtn").addEventListener("click", function () {
+        menu.classList.remove("open");
+        openMysteryBox();
+      });
     }
-    function setBusy(btnId, txt) {
-      var b = qs(btnId); if (b) b.style.opacity = .55; b.disabled = true;
-      var st = qs("#exportStatus"); if (st && txt) st.textContent = txt;
-    }
-    function done(btnId) { var b = qs(btnId); if (b) { b.style.opacity = 1; b.disabled = false; } }
-
-    qs("#expPosts").addEventListener("click", function () {
-      setBusy("#expPosts", "正在导出文章…");
-      sb.auth.getUser().then(function (mr) {
-        var uid = mr.data.user.id;
-        sb.from("posts").select("*").eq("user_id", uid).order("created_at", { ascending: false }).then(function (r) {
-          done("#expPosts");
-          if (r.error) { qs("#exportStatus").textContent = "❌ " + (r.error.message || "读取失败"); return; }
-          var md = "# 我的文章（XHC 博客导出）\n\n";
-          (r.data || []).forEach(function (p) {
-            md += "## " + (p.title || "无标题") + "\n\n";
-            if (p.category) md += "分类：" + p.category + "  ";
-            if (p.tags && p.tags.length) md += "标签：" + p.tags.join(", ") + "\n\n";
-            md += (p.summary ? "> " + p.summary + "\n\n" : "");
-            md += (p.content || "") + "\n\n---\n\n";
-          });
-          dl("我的文章_" + new Date().toISOString().slice(0, 10) + ".md", md, "text/markdown;charset=utf-8");
-        });
-      }).catch(function () { done("#expPosts"); qs("#exportStatus").textContent = "❌ 请先登录"; });
-    });
-    qs("#expComments").addEventListener("click", function () {
-      setBusy("#expComments", "正在导出评论…");
-      sb.auth.getUser().then(function (mr) {
-        var uid = mr.data.user.id;
-        sb.from("comments").select("*, post:posts!inner(title)").eq("user_id", uid).order("created_at", { ascending: false }).then(function (r) {
-          done("#expComments");
-          if (r.error) { qs("#exportStatus").textContent = "❌ " + (r.error.message || "读取失败"); return; }
-          dl("我的评论_" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(r.data || [], null, 2));
-        });
-      }).catch(function () { done("#expComments"); qs("#exportStatus").textContent = "❌ 请先登录"; });
-    });
-    qs("#expFavs").addEventListener("click", function () {
-      setBusy("#expFavs", "正在导出收藏…");
-      sb.auth.getUser().then(function (mr) {
-        var uid = mr.data.user.id;
-        sb.from("post_favorites").select("*, post:posts!inner(id,title,category)").eq("user_id", uid).order("created_at", { ascending: false }).then(function (r) {
-          done("#expFavs");
-          if (r.error) { qs("#exportStatus").textContent = "❌ " + (r.error.message || "读取失败"); return; }
-          dl("我的收藏_" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(r.data || [], null, 2));
-        });
-      }).catch(function () { done("#expFavs"); qs("#exportStatus").textContent = "❌ 请先登录"; });
-    });
-    qs("#expDrafts").addEventListener("click", function () {
-      setBusy("#expDrafts", "正在导出草稿…");
-      sb.auth.getUser().then(function (mr) {
-        var uid = mr.data.user.id;
-        sb.from("drafts").select("*").eq("user_id", uid).order("updated_at", { ascending: false }).then(function (r) {
-          done("#expDrafts");
-          if (r.error) { qs("#exportStatus").textContent = "❌ " + (r.error.message || "读取失败"); return; }
-          dl("我的草稿_" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(r.data || [], null, 2));
-        });
-      }).catch(function () { done("#expDrafts"); qs("#exportStatus").textContent = "❌ 请先登录"; });
-    });
-  }
-
-  /* 登录设备面板：展示 login_sessions，可移除记录 */
-  function openSessionsPanel() {
-    var id = "sessionsPanel";
-    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; refreshSessions(); return; }
-    var panel = document.createElement("div");
-    panel.id = id;
-    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:20px";
-    panel.innerHTML =
-      '<div style="position:relative;width:520px;max-width:94vw;max-height:84vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
-      '<span style="font-weight:700;color:#111827;font-size:15px;">🖥️ 登录设备记录</span>' +
-      '<button type="button" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;" id="sessionsClose">×</button>' +
-      '</div>' +
-      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:12px;color:#6b7280;" id="sessionsBody">加载中…</div>' +
-      '</div>';
-    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
-    panel.querySelector("#sessionsClose").addEventListener("click", function () { panel.style.display = "none"; });
-    document.addEventListener("keydown", function escS(e) { if (e.key === "Escape" && panel.style.display !== "none") { panel.style.display = "none"; document.removeEventListener("keydown", escS); } });
-    document.body.appendChild(panel);
-    refreshSessions();
-  }
-
-  /* 草稿：保存 / 面板列表 / 恢复 */
-  async function saveDraft() {
-    try {
-      var me = await sb.auth.getUser();
-      if (!me || !me.data || !me.data.user) { toast("请先登录", "warn"); openAuth(); return; }
-      var data = {
-        user_id: me.data.user.id,
-        title: (qs("#postTitle") ? qs("#postTitle").value : "").trim(),
-        summary: (qs("#postSummary") ? qs("#postSummary").value : "").trim(),
-        category: (qs("#postCategory") ? qs("#postCategory").value : "").trim(),
-        cover: (qs("#postCover") ? qs("#postCover").value : "").trim(),
-        content: (function () {
-          var reBody = qs("#reBody");
-          if (reBody) return reBody.innerHTML.trim();
-          return (qs("#postContent") ? qs("#postContent").value : "").trim();
-        })()
-      };
-      var did = getParam("draft");
-      var r = did ? await sb.from("drafts").update(data).eq("id", did).eq("user_id", me.data.user.id)
-                   : await sb.from("drafts").insert(data);
-      if (r.error) { toast("存草稿失败：" + (r.error.message || ""), "warn"); return; }
-      var newId = did || (r.data && r.data[0] && r.data[0].id) || "";
-      toast("草稿已保存" + (newId ? "（" + newId.slice(0, 8) + "）" : ""));
-    } catch (e) { toast("存草稿失败", "warn"); }
-  }
-  function openDraftsPanel() {
-    var id = "draftsPanel";
-    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; loadDrafts(); return; }
-    var panel = document.createElement("div");
-    panel.id = id;
-    panel.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px";
-    panel.innerHTML =
-      '<div style="position:relative;width:540px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;background:#f8fafc;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:none;">' +
-      '<span style="font-weight:700;color:#111827;font-size:15px;">📝 我的草稿</span>' +
-      '<button type="button" id="draftsClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#555;padding:4px 8px;border-radius:6px;line-height:1;">×</button></div>' +
-      '<div style="flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;" id="draftsBody">加载中…</div></div>';
-    panel.addEventListener("click", function (e) { if (e.target === panel) panel.style.display = "none"; });
-    panel.querySelector("#draftsClose").addEventListener("click", function () { panel.style.display = "none"; });
-    document.body.appendChild(panel);
-    loadDrafts();
-  }
-  function loadDrafts() {
-    var body = qs("#draftsBody");
-    if (!body) return;
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">未登录</div>'; return; }
-      sb.from("drafts").select("*").eq("user_id", sess.user.id).order("updated_at", { ascending: false }).limit(50)
-        .then(function (r) {
-          var rows = r.data || [];
-          if (!rows.length) { body.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:30px 0;">还没有草稿<br><span style="font-size:12px;">在写文章页点「💾 存草稿」即可保存</span></div>'; return; }
-          body.innerHTML = rows.map(function (d) {
-            var dt = new Date(d.updated_at);
-            var t = isNaN(dt.getTime()) ? String(d.updated_at) : dt.toLocaleString("zh-CN", { hour12: false });
-            return '<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:11px;margin-bottom:9px;">' +
-              '<div style="flex:1;min-width:0;cursor:pointer;" data-open="' + esc(d.id) + '">' +
-              '<div style="font-weight:600;font-size:14px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(d.title || "（无标题）") + '</div>' +
-              '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' + esc((d.content || "").slice(0, 40)) + ' · ' + esc(t) + '</div>' +
-              '</div>' +
-              '<button type="button" data-del="' + esc(d.id) + '" style="flex:none;border:none;background:#fef2f2;color:#dc2626;padding:6px 11px;border-radius:8px;font-size:12px;cursor:pointer;">删除</button>' +
-              '</div>';
-          }).join("");
-          qsa("[data-open]", body).forEach(function (el) {
-            el.addEventListener("click", function () { location.href = "editor.html?draft=" + encodeURIComponent(el.getAttribute("data-open")); });
-          });
-          qsa("[data-del]", body).forEach(function (btn) {
-            btn.addEventListener("click", function () {
-              if (!confirm("删除这篇草稿？")) return;
-              sb.from("drafts").delete().eq("id", btn.getAttribute("data-del")).then(function () { loadDrafts(); toast("已删除"); });
-            });
-          });
-        }).catch(function () { body.innerHTML = "加载失败"; });
-    }).catch(function () { body.innerHTML = "加载失败"; });
-  }
-
-  function refreshSessions() {
-    var body = qs("#sessionsBody");
-    if (!body) return;
-    body.innerHTML = "加载中…";
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess) { body.innerHTML = '<div class="empty">未登录</div>'; return; }
-      fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions?user_id=eq." + encodeURIComponent(sess.user.id) + "&order=created_at.desc&limit=50", {
-        headers: { "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token }
-      }).then(function (r) { return r.json(); }).then(function (rows) {
-        if (!Array.isArray(rows) || !rows.length) {
-          // 旧登录没有上报记录 → 自动补记当前会话一条（避免空白），并重新查询
-          body.innerHTML = '<div style="text-align:center;color:#6b7280;padding:20px 0;">暂无记录，正在补记当前登录…</div>';
-          var back = { user_id: sess.user.id, provider: "restored", client: (window.top !== window) ? "网页（内嵌）" : "网页" };
-          back.device = (navigator.userAgent || "").slice(0, 300);
-          window.__xhcIpLookup(function (ip, region) { back.ip = ip; back.region = region; postBack(); });
-          function postBack() {
-          fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token, "Prefer": "return=minimal" },
-            body: JSON.stringify(back)
-          }).then(function (r2) {
-            if (r2.ok) { refreshSessions(); return; }
-            return r2.text().then(function (t2) {
-              body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px 0;line-height:1.8;">补记失败（HTTP ' + r2.status + '）<br><span style="font-size:11px;color:#9ca3af;word-break:break-all;">' + esc(t2 || "").slice(0, 150) + '</span></div>';
-            });
-          }).catch(function () {
-            body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:24px 0;">补记失败：网络错误</div>';
-          });
-          }
-          return;
-        }
-        var provNames = { password: "密码", email: "邮箱密码", phone: "手机号密码", signup: "注册", otp: "邮箱验证码", passkey: "Passkey 通行密钥", github: "GitHub", azure: "微软账户", gitlab: "GitLab", oauth: "第三方", restored: "会话恢复" };
-        body.innerHTML = rows.map(function (row) {
-          var d = new Date(row.created_at);
-          var t = isNaN(d.getTime()) ? String(row.created_at) : d.toLocaleString("zh-CN", { hour12: false });
-          var isWeb = (row.client === "网页") && (window.top === window);
-          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04);">' +
-            '<div style="flex:1;min-width:0;">' +
-            '<div style="font-weight:600;font-size:14px;color:#111827;">' + esc(row.client || "未知客户端") +
-            (isWeb ? ' <span style="font-size:11px;color:#1a73e8;background:#e8f0fe;padding:1px 6px;border-radius:10px;font-weight:700;">当前设备</span>' : "") + '</div>' +
-            '<div style="font-size:12px;color:#6b7280;margin-top:3px;">' + esc(provNames[row.provider] || row.provider || "密码") + ' · ' + esc(t) + '</div>' +
-            '<div style="font-size:12px;color:#9ca3af;margin-top:2px;word-break:break-all;">📡 设备 IP：' + esc(row.ip || "未知") + (row.region ? ' <span style="color:#cbd5e1;">(' + esc(row.region) + ")</span>" : "") + '</div>' +
-            '</div>' +
-            '<button type="button" data-sid="' + esc(row.id) + '" style="flex:none;border:none;background:#fef2f2;color:#dc2626;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">移除</button>' +
-            '</div>';
-        }).join("");
-        qsa("[data-sid]", body).forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var sid = btn.getAttribute("data-sid");
-            if (!window.confirm("确定移除这条登录记录？")) return;
-            fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions?id=eq." + encodeURIComponent(sid), {
-              method: "DELETE",
-              headers: { "apikey": CFG.SUPABASE_ANON_KEY, "Authorization": "Bearer " + sess.access_token }
-            }).then(function () { toast("已移除该记录"); refreshSessions(); }).catch(function () { toast("移除失败", "warn"); });
-          });
-        });
-      }).catch(function () { body.innerHTML = "加载失败"; });
-    }).catch(function () { body.innerHTML = "加载失败"; });
   }
 
   function openMysteryBox() {
@@ -1529,76 +757,46 @@ document.body.appendChild(m);
     qs("#authName").style.display = (mode === "signup") ? "block" : "none";
     qs("#authSubmit").textContent = (mode === "signup") ? "注册并登录" : "登录";
     qs("#authMsg").textContent = "";
-    try { initCaptcha(); } catch (e) {}
   }
   function openAuth() { var m = qs("#authModal"); if (m) { m.style.display = "flex"; switchAuthMode("signin"); } }
   function closeAuth() { var m = qs("#authModal"); if (m) m.style.display = "none"; }
 
-  /* IP 地区查询（多 API 兜底，国内任一可达即返回；超时 6s） */
-  window.__xhcIpLookup = function (cb) {
-    function done(ip, region) { cb(ip || "", region || ""); }
-    var APIS = [
-      { url: "https://ipwho.is/?lang=zh-CN", ip: function (g) { return (g && g.success) ? (g.ip || "") : ""; }, parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
-      { url: "https://api.ip.sb/geoip",       ip: function (g) { return g ? (g.ip || "") : ""; },       parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
-      { url: "https://ipinfo.io/json",        ip: function (g) { return g ? (g.ip || "") : ""; },       parts: function (g) { return g ? [g.country, g.region, g.city] : []; } },
-      { url: "https://freeipapi.com/api/json",ip: function (g) { return g ? (g.ipAddress || "") : ""; }, parts: function (g) { return g ? [g.countryName, g.regionName, g.cityName] : []; } }
-    ];
-    function chain(i) {
-      if (i >= APIS.length) { done("", ""); return; }
-      var c = APIS[i];
-      fetch(c.url, { signal: AbortSignal.timeout(6000) })
-        .then(function (r) { return r.json(); })
-        .then(function (g) {
-          var ip = c.ip(g);
-          var parts = c.parts(g).filter(function (x) { return x; });
-          if (ip || parts.length) {
-            var uniq = [];
-            parts.forEach(function (x) { if (uniq.indexOf(x) < 0) uniq.push(x); });
-            done(ip, uniq.join(" "));
-          } else chain(i + 1);
-        }).catch(function () { chain(i + 1); });
+  /* 置顶密码校验弹窗（密码：baby2009）。校验通过才允许设置置顶 */
+  var PIN_PASSWORD = "baby2009";
+  function askPinPassword(onOk) {
+    var m = qs("#pinModal");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "pinModal"; m.className = "modal-mask";
+      m.innerHTML =
+        '<div class="modal" style="max-width:340px;">' +
+        '<h3 style="margin-top:0;">🔒 置顶需要密码</h3>' +
+        '<p style="color:var(--text-2);font-size:13px;margin:4px 0 12px;">请输入置顶密码才能设置/取消置顶。</p>' +
+        '<input id="pinInput" type="password" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;" placeholder="置顶密码">' +
+        '<div id="pinErr" style="color:#dc3545;font-size:13px;min-height:18px;margin:8px 0;"></div>' +
+        '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button class="btn btn-outline" id="pinCancel">取消</button>' +
+        '<button class="btn btn-primary" id="pinOk">确定</button>' +
+        '</div></div>';
+      document.body.appendChild(m);
+      m.addEventListener("click", function (e) { if (e.target === m) m.style.display = "none"; });
+      qs("#pinCancel", m).addEventListener("click", function () { m.style.display = "none"; });
     }
-    chain(0);
-  };
-
-  /* 登录成功 → 上报登录记录（设备/方式/地区）到 login_sessions */
-  function reportLogin(provider, client) {
-    provider = provider || "password"; client = client || "网页";
-    try {
-      sb.auth.getSession().then(function (sr) {
-        var sess = sr && sr.data && sr.data.session;
-        if (!sess || !sess.user) return;
-        var info = { user_id: sess.user.id, provider: provider, client: client };
-        function doPost(payload) {
-          payload.device = (navigator.userAgent || "").slice(0, 300);
-          fetch(CFG.SUPABASE_URL + "/rest/v1/login_sessions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": CFG.SUPABASE_ANON_KEY,
-              "Authorization": "Bearer " + sess.access_token,
-              "Prefer": "return=minimal"
-            },
-            body: JSON.stringify(payload)
-          }).catch(function () {});
-        }
-        try { window.__xhcIpLookup(function (ip, region) { info.ip = ip; info.region = region; doPost(info); }); }
-        catch (e) { doPost(info); }
-      }).catch(function () {});
-    } catch (e) {}
-  }
-
-  /* 置顶已合并进管理员模式：非管理员先弹管理员登录，验证成功后执行操作 */
-  function requireAdminThen(fn) {
-    if (isAdmin()) { fn(); return; }
-    toast("请先进入管理员模式", "warn");
-    showAdminLogin(fn);
+    m.style.display = "flex";
+    var input = qs("#pinInput", m), err = qs("#pinErr", m), ok = qs("#pinOk", m);
+    input.value = ""; err.textContent = ""; input.focus();
+    var check = function () {
+      if (input.value === PIN_PASSWORD) { m.style.display = "none"; onOk(); }
+      else { err.textContent = "密码错误，无法设置置顶"; }
+    };
+    ok.onclick = check;
+    input.onkeydown = function (e) { if (e.key === "Enter") check(); };
   }
 
   /* ===========================================================
-     管理员系统（密码 admin1234）
+     管理员系统（密码 xihaochen2014）
      =========================================================== */
-  var ADMIN_PASSWORD = "admin1234";
+  var ADMIN_PASSWORD = "xihaochen2014";
   var ADMIN_KEY = "xhc_admin_auth";
 
   function isAdmin() {
@@ -1610,7 +808,6 @@ document.body.appendChild(m);
     if (!m) {
       m = document.createElement("div");
       m.id = "adminModal"; m.className = "modal-mask";
-      m.style.zIndex = "10001"; /* 高于账户菜单 9998 */
       m.innerHTML =
         '<div class="modal" style="max-width:380px;">' +
         '<h3 style="margin-top:0;">🛡️ 管理员模式</h3>' +
@@ -1823,124 +1020,12 @@ document.body.appendChild(m);
       '<img class="account-ava" src="' + esc(av) + '" alt=""><span class="account-name">' + esc(name) + '</span>' +
       '<span class="caret">▾</span></div>';
     var box = qs(".account", slot);
-    if (box) box.addEventListener("click", function (e) {
+    var menu = qs("#accountMenu");
+    box.addEventListener("click", function (e) {
       e.stopPropagation();
-      var m = qs("#accountMenu");
-      if (!m) { buildAccountMenu(); m = qs("#accountMenu"); }
-      if (m) m.style.display = (m.style.display === "flex") ? "none" : "flex";
+      menu.classList.toggle("open");
     });
-  }
-
-  /* 作者资料卡（点击作者打开：资料 + 统计 + 发私信） */
-  var authorCardUid = null; /* 作者卡当前 uid（供关注相关函数共用） */
-  function openAuthorCard(uid) {
-    if (!uid) return;
-    authorCardUid = uid;
-    var id = "authorCard";
-    if (qs("#" + id)) { qs("#" + id).style.display = "flex"; refreshFollow(); loadFollowCounts(); return; }
-    var card = document.createElement("div");
-    card.id = id;
-    card.style.cssText = "display:flex;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px;";
-    card.innerHTML =
-      '<div style="position:relative;width:360px;max-width:92vw;background:#fff;border-radius:18px;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;">' +
-      '<button type="button" style="position:absolute;top:12px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1;" onclick="var c=document.getElementById(\'authorCard\');if(c)c.style.display=\'none\';">×</button>' +
-      '<div style="width:72px;height:72px;border-radius:50%;margin:4px auto 12px;background:#eef1f5;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px;color:#9aa3af;" id="acAva">?</div>' +
-      '<div style="font-size:17px;font-weight:700;color:#111827;" id="acName">加载中…</div>' +
-      '<div style="font-size:12px;color:#9ca3af;margin-top:3px;" id="acMeta"></div>' +
-      '<div style="display:flex;justify-content:center;gap:14px;font-size:12px;color:#6b7280;margin-top:6px;" id="acFollowCounts"><span id="acFC">粉丝 0</span><span id="acGC">关注 0</span></div>' +
-      '<div style="font-size:12.5px;color:#6b7280;margin-top:10px;min-height:18px;" id="acBio"></div>' +
-      '<div style="display:flex;gap:8px;margin-top:16px;">' +
-      '<button type="button" id="acStats" style="flex:1;padding:9px;border:1px solid #e2e8f0;background:#f8fafc;color:#374151;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;">📊 统计</button>' +
-      '<button type="button" id="acMsg" style="flex:1;padding:9px;border:none;background:#1a73e8;color:#fff;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;">💬 发私信</button>' +
-      '<button type="button" id="acFollow" style="flex:1;padding:9px;border:none;background:#1a73e8;color:#fff;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;">+ 关注</button>' +
-      '</div></div>';
-    card.addEventListener("click", function (e) { if (e.target === card) card.style.display = "none"; });
-    document.body.appendChild(card);
-    sb.from("profiles").select("*, username, display_name, avatar_url, bio, created_at").eq("id", uid).single()
-      .then(function (r) {
-        var p = r.data;
-        if (!p) return;
-        var nm = p.display_name || p.username || "用户";
-        qs("#acName").textContent = nm;
-        qs("#acAva").innerHTML = p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" alt="">' : (nm[0] || "?");
-        qs("#acBio").textContent = p.bio || "";
-        var cd = new Date(p.created_at);
-        qs("#acMeta").textContent = "注册于 " + (isNaN(cd.getTime()) ? "" : cd.toLocaleDateString("zh-CN"));
-      }).catch(function () {});
-    qs("#acStats").addEventListener("click", function () { location.href = "stats.html?uid=" + encodeURIComponent(uid); });
-    qs("#acMsg").addEventListener("click", function () { location.href = "messages.html?to=" + encodeURIComponent(uid); });
-    qs("#acFollow").addEventListener("click", toggleFollow);
-    refreshFollow();
-    loadFollowCounts();
-  }
-
-  /* 关注 / 取关 */
-  function toggleFollow() {
-    var fb = qs("#acFollow"); if (!fb) return;
-    if (!REAL) { toast("演示模式不支持关注", "warn"); return; }
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess) { openAuth(); return; }
-      var on = fb.dataset.following === "1";
-      if (on) {
-        sb.from("follows").delete().eq("follower_id", sess.user.id).eq("following_id", authorCardUid)
-          .then(function () { refreshFollow(); loadFollowCounts(); toast("已取消关注"); });
-      } else {
-        sb.from("follows").insert({ follower_id: sess.user.id, following_id: authorCardUid })
-          .then(function (r) {
-            if (r.error) { toast("关注失败：" + (r.error.message || ""), "warn"); return; }
-            refreshFollow(); loadFollowCounts(); toast("✅ 已关注");
-          });
-      }
-    });
-  }
-  /* 刷新关注按钮状态 */
-  function refreshFollow() {
-    var fb = qs("#acFollow"); if (!fb) return;
-    if (!REAL) { fb.style.display = "none"; return; }
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess || sess.user.id === authorCardUid) { fb.style.display = "none"; return; }
-      sb.from("follows").select("id").eq("follower_id", sess.user.id).eq("following_id", authorCardUid).single()
-        .then(function (r) {
-          var f = !r.error && r.data;
-          fb.style.display = "";
-          fb.dataset.following = f ? "1" : "0";
-          fb.textContent = f ? "✓ 已关注" : "+ 关注";
-          fb.style.background = f ? "#e8f0fe" : "#1a73e8";
-          fb.style.color = f ? "#1a56db" : "#fff";
-        }).catch(function () { fb.style.display = "none"; });
-    }).catch(function () { fb.style.display = "none"; });
-  }
-  /* 文章页作者行关注按钮状态 */
-  function refreshMetaFollow() {
-    var mf = qs("#metaFollow");
-    if (!mf || !mf.dataset.au || !REAL) return;
-    var auid = mf.dataset.au;
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess || sess.user.id === auid) { mf.style.display = "none"; return; }
-      mf.style.display = "";
-      sb.from("follows").select("id").eq("follower_id", sess.user.id).eq("following_id", auid).single()
-        .then(function (r) {
-          var f = !r.error && r.data;
-          mf.dataset.following = f ? "1" : "0";
-          mf.textContent = f ? "✓ 已关注" : "+ 关注";
-          mf.style.background = f ? "#e8f0fe" : "transparent";
-          mf.style.color = f ? "#1a56db" : "#2563eb";
-        }).catch(function () { mf.style.display = "none"; });
-    }).catch(function () { mf.style.display = "none"; });
-  }
-  /* 粉丝 / 关注数 */
-  function loadFollowCounts() {
-    var fc = qs("#acFC"), gc = qs("#acGC");
-    if ((!fc && !gc) || !REAL) return;
-    var p1 = sb.from("follows").select("id", { count: "exact", head: true }).eq("following_id", authorCardUid);
-    var p2 = sb.from("follows").select("id", { count: "exact", head: true }).eq("follower_id", authorCardUid);
-    Promise.all([p1, p2]).then(function (rs) {
-      if (fc) fc.textContent = "粉丝 " + ((rs[0].count) || 0);
-      if (gc) gc.textContent = "关注 " + ((rs[1].count) || 0);
-    }).catch(function () {});
+    document.addEventListener("click", function () { menu.classList.remove("open"); });
   }
 
   /* ===========================================================
@@ -2000,7 +1085,6 @@ document.body.appendChild(m);
       if (span) span.textContent = (r.liked ? "❤️ 已赞 " : "👍 点赞 ") + fmt(r.likes);
     }
     toast(r.liked ? "已点赞 👍" : "已取消点赞");
-    if (r.liked) notifyAuthor(postId, "like", "");
   }
   async function toggleFav(postId, btn) {
     var user = await Store.getSession();
@@ -2014,7 +1098,6 @@ document.body.appendChild(m);
       if (span) span.textContent = (r.favorited ? "⭐ 已收藏 " : "☆ 收藏 ") + fmt(r.favorites);
     }
     toast(r.favorited ? "已收藏 ⭐" : "已取消收藏");
-    if (r.favorited) notifyAuthor(postId, "favorite", "");
   }
 
   function renderPager(total, page, f) {
@@ -2049,15 +1132,6 @@ document.body.appendChild(m);
     var tagArr = Object.keys(tags);
     hot = hot.sort(function (a, b) { return (b.views || 0) - (a.views || 0); }).slice(0, 5);
 
-    /* 私信快捷卡（深蓝卡片样式，仿 .btn-home 风格） */
-    var dmCard = '<div class="card"><div class="card-h"><span class="bar"></span> 私信</div><div class="card-b" style="padding:0;">' +
-      '<a href="messages.html" id="sidebarDmBtn" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:#fff;border-radius:0 0 12px 12px;text-decoration:none;font-weight:600;position:relative;transition:opacity .15s;" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">' +
-      '<span style="font-size:22px;background:rgba(255,255,255,.18);width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;">💬</span>' +
-      '<span style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;">我的私信</div><div style="font-size:11px;opacity:.85;margin-top:2px;">查看 / 发起新对话</div></span>' +
-      '<span style="font-size:18px;opacity:.7;flex:none;">›</span>' +
-      '<span id="sidebarDmDot" style="display:none;position:absolute;top:8px;right:10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;line-height:1;box-sizing:border-box;">0</span>' +
-      '</a></div></div>';
-
     var author = '<div class="card author-card"><div class="card-h"><span class="bar"></span> 站长</div><div class="card-b">' +
       '<img class="ava" src="' + esc("assets/images/master-avatar.png") + '" alt="">' +
       '<div class="name">' + esc(SITE.author || "XHC") + "</div>" +
@@ -2076,82 +1150,9 @@ document.body.appendChild(m);
 
     var clockCard = '<div class="card" id="clockCard"><div class="card-h"><span class="bar"></span> 北京时间</div><div class="card-b" style="text-align:center;padding:14px 0;"><div id="bjClock" style="font-size:28px;font-weight:700;font-family:\'Courier New\',monospace;letter-spacing:2px;color:var(--primary,#2563eb);">--:--:--</div><div style="font-size:12px;color:var(--muted,#888);margin-top:4px;" id="bjDate">----/--/--</div></div></div>';
 
-    var rankCard = '<div class="card"><div class="card-h"><span class="bar"></span> 积分榜 TOP5</div><div class="card-b" id="rankList" style="padding:0;">加载中…</div></div>';
-
-    sbx.innerHTML = dmCard + author + catCard + hotCard + tagCard + clockCard + rankCard;
+    sbx.innerHTML = author + catCard + hotCard + tagCard + clockCard;
     startBJClock();
-    updateSidebarDmDot();
-    loadRankCard();
   }
-
-  /* 每日签到（RPC 原子加分，防重复） */
-  function doCheckin() {
-    if (!REAL) { toast("演示模式不支持签到", "warn"); return; }
-    sb.rpc("xhc_checkin").then(function (r) {
-      var d = r.data || {};
-      if (r.error) { toast("签到失败：" + (r.error.message || ""), "warn"); return; }
-      if (d.ok) toast("✅ 签到成功！+" + d.points + " 分（连续 " + d.streak + " 天）");
-      else if (d.error === "done") toast("今天已经签到过啦～明天再来");
-      else if (d.error === "noauth") { toast("请先登录", "warn"); openAuth(); }
-      else toast("签到失败", "warn");
-      loadRankCard();
-    }).catch(function (e) { toast("签到失败：" + ((e && e.message) || "网络错误"), "warn"); });
-  }
-
-  /* 侧栏积分榜：TOP5 + 我的积分 + 签到按钮 */
-  function loadRankCard() {
-    var rl = qs("#rankList"); if (!rl || !REAL) return;
-    sb.from("profiles").select("id, display_name, username, points")
-      .order("points", { ascending: false }).limit(5)
-      .then(function (r) {
-        var rows = (r.data || []).filter(function (u) { return (u.points || 0) > 0; });
-        var html = rows.map(function (u, i) {
-          var nm = u.display_name || u.username || "用户";
-          return '<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-2,#f0f2f5);">' +
-            '<span style="flex:none;width:20px;text-align:center;font-weight:700;color:' + (i === 0 ? "#f59e0b" : i === 1 ? "#9ca3af" : i === 2 ? "#d97706" : "var(--text-3,#999)") + ';">' + (i + 1) + "</span>" +
-            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--text,#111827);">' + esc(nm) + "</span>" +
-            '<span style="flex:none;font-size:12px;color:var(--text-2,#666);">' + fmt(u.points || 0) + " 分</span></div>";
-        }).join("");
-        html += '<div style="padding:9px 12px;">';
-        sb.auth.getSession().then(function (sr) {
-          var sess = sr && sr.data && sr.data.session;
-          if (!sess) {
-            html += '<button type="button" id="rankCheckin" style="width:100%;border:none;background:var(--primary,#2563eb);color:#fff;padding:8px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">📅 每日签到</button>' +
-              '<div style="text-align:center;font-size:11.5px;color:var(--text-3,#999);margin-top:6px;">签到得积分，登录后参与排行</div>';
-            rl.innerHTML = html;
-            var b = qs("#rankCheckin");
-            if (b) b.addEventListener("click", function () { openAuth(); });
-            return;
-          }
-          sb.from("profiles").select("points").eq("id", sess.user.id).single().then(function (pr) {
-            var mine = (pr.data && pr.data.points) || 0;
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
-              '<span style="font-size:12.5px;color:var(--text-2,#666);">我的积分：<b style="color:var(--primary,#2563eb);">' + mine + '</b></span></div>' +
-              '<button type="button" id="rankCheckin" style="width:100%;border:none;background:var(--primary,#2563eb);color:#fff;padding:8px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">📅 每日签到</button>';
-            rl.innerHTML = html;
-            var b = qs("#rankCheckin");
-            if (b) b.addEventListener("click", doCheckin);
-          }).catch(function () { rl.innerHTML = html; });
-        }).catch(function () { rl.innerHTML = html; });
-      }).catch(function () { if (rl) rl.innerHTML = ""; });
-  }
-
-  /* 侧栏私信卡片未读红点（未登录隐藏；登录后实时显示未读私信数） */
-  function updateSidebarDmDot() {
-    var dot = qs("#sidebarDmDot");
-    if (!dot || !sb) return;
-    sb.auth.getSession().then(function (sr) {
-      var sess = sr && sr.data && sr.data.session;
-      if (!sess) { dot.style.display = "none"; return; }
-      sb.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", sess.user.id).eq("read", false)
-        .then(function (r) {
-          var n = (r.count != null) ? r.count : 0;
-          dot.style.display = n > 0 ? "flex" : "none";
-          dot.textContent = n > 99 ? "99+" : String(n);
-        }).catch(function () { dot.style.display = "none"; });
-    }).catch(function () { dot.style.display = "none"; });
-  }
-  window.addEventListener("xhc:dmbadge", updateSidebarDmDot);
 
   /* 实时北京时间时钟（每秒更新） */
   function startBJClock() {
@@ -2265,7 +1266,6 @@ document.body.appendChild(m);
     });
   }
 
-  /* 评论楼中楼 + 点赞渲染 */
   async function renderComments(postId, user) {
     var list = qs("#commentList"), title = qs("#commentTitle");
     if (!list) return;
@@ -2274,101 +1274,26 @@ document.body.appendChild(m);
     if (title) title.textContent = "评论 (" + arr.length + ")";
     if (arr.length === 0) {
       list.innerHTML = '<div style="color:var(--text-3);font-size:14px;padding:8px 0;">暂无评论，来抢沙发吧～</div>';
-      return;
-    }
-    /* 我赞过的评论 */
-    var likedSet = {};
-    if (user && REAL && arr.length) {
-      try {
-        var ids = arr.map(function (c) { return c.id; }).filter(Boolean);
-        var lr = await sb.from("comment_likes").select("comment_id").in("comment_id", ids).eq("user_id", user.id);
-        (lr.data || []).forEach(function (x) { likedSet[x.comment_id] = true; });
-      } catch (e) {}
-    }
-    /* 组织：顶层评论 + 一层回复（回复挂到顶层下） */
-    var tops = [], map = {};
-    arr.forEach(function (c) { if (!c.reply_to_id) { c._reps = []; tops.push(c); map[c.id] = c; } });
-    arr.forEach(function (c) { if (c.reply_to_id && map[c.reply_to_id]) map[c.reply_to_id]._reps.push(c); });
-    var authorMap = {};
-    arr.forEach(function (c) { authorMap[c.id] = (c.author && (c.author.display_name || c.author.username)) || "访客"; });
-
-    function cmtHtml(c, isRep) {
-      var nm = authorMap[c.id];
-      var av = (c.author && c.author.avatar_url) || "assets/images/xhc-96x96.png";
-      var mine = user && (user.id === c.user_id);
-      var liked = !!likedSet[c.id];
-      var repName = c.reply_to_id ? (authorMap[c.reply_to_id] || "?") : "";
-      var btns =
-        '<button class="cbtn clike' + (liked ? " on" : "") + '" data-like="' + esc(c.id) + '">' +
-        (liked ? "❤️ " : "👍 ") + fmt(c.likes_count || 0) + "</button>" +
-        (user ? '<button class="cbtn creply" data-reply="' + esc(c.id) + '" data-name="' + esc(nm) + '">↩ 回复</button>' : "") +
-        (mine ? '<button class="cbtn cdel" data-id="' + esc(c.id) + '">删除</button>' : "");
-      return '<div class="comment-item' + (isRep ? " rep" : "") + '">' +
-        '<img class="cava" src="' + esc(av) + '" alt="">' +
-        '<div class="cbody"><span class="cname">' + esc(nm) + '</span><span class="ctime">' + dateOf(c) + " " + bjTimeStr(c.created_at) + "</span>" +
-        (isRep && repName ? '<div class="ctext"><span class="cat">回复 @' + esc(repName) + "：</span>" + esc(c.content) + "</div>" : '<div class="ctext">' + esc(c.content) + "</div>") +
-        '<div class="cbtns">' + btns + "</div></div></div>";
-    }
-
-    var html = "";
-    tops.forEach(function (c) {
-      html += cmtHtml(c, false);
-      (c._reps || []).forEach(function (rc) { html += cmtHtml(rc, true); });
-    });
-    list.innerHTML = html;
-
-    /* 点赞 */
-    qsa(".clike", list).forEach(function (b) {
-      b.addEventListener("click", function () {
-        if (!user) { toast("请先登录再点赞", "warn"); openAuth(); return; }
-        var cid = b.dataset.like;
-        var on = b.classList.contains("on");
-        if (on) {
-          if (REAL) sb.from("comment_likes").delete().eq("comment_id", cid).eq("user_id", user.id).then(function () {
-            sb.from("comments").select("likes_count").eq("id", cid).single().then(function (cr) {
-              var n = (cr.data && cr.data.likes_count) || 0;
-              sb.from("comments").update({ likes_count: Math.max(0, n - 1) }).eq("id", cid);
-            });
-            renderComments(postId, user);
-          });
-          else { /* demo */ }
-        } else {
-          if (REAL) sb.from("comment_likes").insert({ comment_id: cid, user_id: user.id }).then(function (ir) {
-            if (ir.error) { toast("点赞失败：" + (ir.error.message || ""), "warn"); return; }
-            sb.from("comments").select("likes_count").eq("id", cid).single().then(function (cr) {
-              var n = (cr.data && cr.data.likes_count) || 0;
-              sb.from("comments").update({ likes_count: n + 1 }).eq("id", cid);
-            });
-            renderComments(postId, user);
-          });
-          else { toast("演示模式不支持", "warn"); }
-        }
+    } else {
+      list.innerHTML = arr.map(function (c) {
+        var nm = (c.author && c.author.display_name) || "访客";
+        var av = (c.author && c.author.avatar_url) || "assets/images/xhc-96x96.png";
+        var mine = user && (user.id === c.user_id);
+        return '<div class="comment-item">' +
+          '<img class="cava" src="' + esc(av) + '" alt="">' +
+          '<div class="cbody"><span class="cname">' + esc(nm) + '</span><span class="ctime">' + dateOf(c) + " " + bjTimeStr(c.created_at) + "</span>" +
+          (mine ? '<button class="cdel" data-id="' + c.id + '">删除</button>' : "") +
+          '<div class="ctext">' + esc(c.content) + "</div></div></div>";
+      }).join("");
+      qsa(".cdel", list).forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (!confirm("确定删除这条评论？")) return;
+          Store.removeComment(b.dataset.id).then(function () { renderComments(postId, user); });
+        });
       });
-    });
-    /* 回复 */
-    qsa(".creply", list).forEach(function (b) {
-      b.addEventListener("click", function () {
-        if (!user) { toast("请先登录再回复", "warn"); openAuth(); return; }
-        curReplyTo = { id: b.dataset.reply, name: b.dataset.name };
-        var wrap = qs(".comment-form");
-        if (!wrap) return;
-        wrap.scrollIntoView({ behavior: "smooth", block: "center" });
-        var ta = qs("#commentText", wrap);
-        if (ta) { ta.focus(); ta.placeholder = "回复 @" + b.dataset.name + "："; }
-        var hint = qs("#replyHint");
-        if (hint) hint.style.display = "flex";
-      });
-    });
-    /* 删除 */
-    qsa(".cdel", list).forEach(function (b) {
-      b.addEventListener("click", function () {
-        if (!confirm("确定删除这条评论？")) return;
-        Store.removeComment(b.dataset.id).then(function () { renderComments(postId, user); });
-      });
-    });
+    }
   }
 
-  var curReplyTo = null; /* 当前回复目标 {id, name} */
   async function setupCommentForm(postId, user) {
     var wrap = qs(".comment-form"); if (!wrap) return;
     if (!user) {
@@ -2384,37 +1309,14 @@ document.body.appendChild(m);
     var av = user.avatar_url || SITE.avatar || "assets/images/xhc-96x96.png";
     var nm = user.display_name || user.email || "我";
     wrap.innerHTML =
-      '<div id="replyHint" style="display:none;align-items:center;justify-content:space-between;background:#eef4ff;border:1px solid #d6e4ff;color:#1a56db;font-size:12.5px;padding:6px 12px;border-radius:8px;margin-bottom:8px;">' +
-      '<span id="replyHintTxt">正在回复…</span><button type="button" id="replyCancel" style="border:none;background:none;color:#1a56db;cursor:pointer;font-size:12.5px;font-weight:600;">取消</button></div>' +
       '<img class="cava" src="' + esc(av) + '" alt="">' +
       '<div class="cf-right"><textarea id="commentText" placeholder="写下你的评论…"></textarea>' +
       '<div class="row"><button class="submit" id="commentSubmit">发表评论</button></div></div>';
-    function refreshReplyHint() {
-      var hint = qs("#replyHint"), txt = qs("#replyHintTxt");
-      if (hint && txt) {
-        if (curReplyTo) { hint.style.display = "flex"; txt.textContent = "正在回复 @" + curReplyTo.name; }
-        else { hint.style.display = "none"; }
-      }
-    }
-    refreshReplyHint();
-    var cancel = qs("#replyCancel");
-    if (cancel) cancel.addEventListener("click", function () {
-      curReplyTo = null; refreshReplyHint();
-      var ta = qs("#commentText"); if (ta) ta.placeholder = "写下你的评论…";
-    });
     qs("#commentSubmit").addEventListener("click", function () {
       var ta = qs("#commentText"); var text = ta.value.trim();
       if (!text) { ta.focus(); return; }
-      var swHits = swCheck(text);
-      if (swHits.length) {
-        if (window.XHCSW && window.XHCSW.report) { try { window.XHCSW.report(swHits, "评论", text); } catch (e) {} }
-        toast(swHint(swHits), "warn"); ta.focus(); return;
-      }
-      var rep = curReplyTo ? curReplyTo.id : null;
-      Store.addComment(postId, text, rep).then(function () {
-        ta.value = ""; curReplyTo = null; refreshReplyHint(); ta.placeholder = "写下你的评论…";
-        renderComments(postId, user);
-        notifyAuthor(postId, "comment", text);
+      Store.addComment(postId, text).then(function () {
+        ta.value = ""; renderComments(postId, user);
       });
     });
   }
@@ -2428,101 +1330,20 @@ document.body.appendChild(m);
       qs("#articleMain").innerHTML = '<div class="empty-state"><div class="big">😢</div>文章不存在或已删除<br><a href="index.html" style="color:var(--primary)">返回首页</a></div>';
       return;
     }
-    document.title = a.title + " - XHC 博客";
+    document.title = a.title + " - XHCDNS";
     var au = authorOf(a);
     Store.incViews(id);
-    var auEl = qs("#articleMeta [data-au]");
-    if (auEl) auEl.addEventListener("click", function () { openAuthorCard(auEl.getAttribute("data-au")); });
     qs("#breadcrumb").innerHTML = '<a href="index.html">首页</a> &gt; <a href="index.html?category=' +
       encodeURIComponent(a.category || "") + '">' + esc(a.category || "未分类") + "</a> &gt; <span>" + esc(a.title) + "</span>";
     qs("#articleTitle").textContent = a.title;
     var cc = 0; var cr = await Store.listComments(id); cc = (cr.comments || []).length;
     qs("#articleMeta").innerHTML =
-      '<span style="cursor:pointer;" data-au="' + esc(a.user_id || "") + '" title="查看作者资料">' +
       '<img class="author-ava" src="' + esc(au.avatar) + '" alt="">' +
-      "<span>" + esc(au.name) + "</span></span>" +
-      '<button type="button" id="metaFollow" data-au="' + esc(a.user_id || "") + '" style="display:none;margin-left:8px;border:1px solid #cbd5e1;background:transparent;color:#2563eb;padding:3px 12px;border-radius:14px;font-size:12px;cursor:pointer;font-weight:600;vertical-align:middle;">+ 关注</button>' +
+      "<span>" + esc(au.name) + "</span>" +
       '<span class="cat">' + esc(a.category || "未分类") + "</span>" +
       "<span>📅 " + dateOf(a) + "</span><span>👁 " + fmt(a.views) + "</span><span>💬 " + cc + "</span>";
-    /* 文章页作者关注按钮 */
-    var mf = qs("#metaFollow");
-    if (mf && REAL) {
-      refreshMetaFollow();
-      mf.addEventListener("click", function (e) {
-        e.stopPropagation();
-        authorCardUid = mf.dataset.au;
-        toggleFollow();
-        setTimeout(refreshMetaFollow, 400);
-      });
-    }
-
-    /* ---- 系列合集导航 ---- */
-    if (a.series && REAL) {
-      try {
-        var sres = await sb.from("posts").select("id, title")
-          .eq("series", a.series)
-          .or("scheduled_at.is.null,scheduled_at.lte." + new Date().toISOString())
-          .order("created_at", { ascending: true });
-        var srows = (sres.data || []);
-        if (srows.length > 1) {
-          var si = -1;
-          srows.forEach(function (x, i) { if (x.id === id) si = i; });
-          var sp = si > 0 ? srows[si - 1] : null;
-          var sn = (si >= 0 && si < srows.length - 1) ? srows[si + 1] : null;
-          var nav = document.createElement("div");
-          nav.style.cssText = "background:linear-gradient(90deg,#eff6ff,#f8fafc);border:1px solid #dbeafe;border-radius:12px;padding:12px 16px;margin:10px 0 4px;font-size:13px;";
-          var items = srows.map(function (x, i2) {
-            var cur = x.id === id;
-            return '<a href="article.html?id=' + encodeURIComponent(x.id) + '" style="' + (cur ? "color:#2563eb;font-weight:700;text-decoration:none;" : "color:#4b5563;text-decoration:none;") + '">' + (cur ? "▸ " : "") + esc(x.title) + "</a>";
-          }).join(" &nbsp;·&nbsp; ");
-          nav.innerHTML = '<div style="font-weight:700;color:#1e40af;margin-bottom:6px;">📚 系列《' + esc(a.series) + '》 · 共 ' + srows.length + " 篇</div>" +
-            '<div style="line-height:1.9;">' + items + "</div>" +
-            ((sp || sn) ? '<div style="margin-top:6px;font-size:12.5px;">' +
-              (sp ? '<a href="article.html?id=' + encodeURIComponent(sp.id) + '" style="color:#2563eb;text-decoration:none;">← 上篇：' + esc(sp.title) + "</a>" : "") +
-              (sp && sn ? "　·　" : "") +
-              (sn ? '<a href="article.html?id=' + encodeURIComponent(sn.id) + '" style="color:#2563eb;text-decoration:none;">下篇：' + esc(sn.title) + " →</a>" : "") +
-              "</div>" : "");
-          var titleEl = qs("#articleTitle");
-          if (titleEl) titleEl.parentNode.insertBefore(nav, titleEl.nextSibling);
-        }
-      } catch (e) {}
-    }
     var content = qs("#articleContent");
     content.innerHTML = a.content || "";
-
-    /* ---- 阅读体验：字号调节 + 进度条 ---- */
-    var fsKey = "xhc_fsize";
-    var fs = parseInt(localStorage.getItem(fsKey) || "16", 10);
-    if (isNaN(fs) || fs < 14 || fs > 24) fs = 16;
-    var fsBar = document.createElement("div");
-    fsBar.style.cssText = "display:flex;align-items:center;gap:8px;justify-content:flex-end;margin:2px 0 10px;";
-    fsBar.innerHTML =
-      '<span style="font-size:12px;color:var(--text-3,#888);margin-right:auto;">📖 阅读设置</span>' +
-      '<button type="button" id="fsDec" style="border:1px solid var(--border,#e5e7eb);background:var(--bg,#f8fafc);color:var(--text,#111827);padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">A-</button>' +
-      '<span id="fsVal" style="font-size:12px;color:var(--text-3,#888);min-width:38px;text-align:center;">' + fs + "px</span>" +
-      '<button type="button" id="fsInc" style="border:1px solid var(--border,#e5e7eb);background:var(--bg,#f8fafc);color:var(--text,#111827);padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">A+</button>';
-    content.parentNode.insertBefore(fsBar, content);
-    function applyFs() {
-      content.style.fontSize = fs + "px";
-      content.style.lineHeight = "1.85";
-      var v = qs("#fsVal"); if (v) v.textContent = fs + "px";
-      try { localStorage.setItem(fsKey, String(fs)); } catch (e) {}
-    }
-    applyFs();
-    var fsD = qs("#fsDec"), fsI = qs("#fsInc");
-    if (fsD) fsD.addEventListener("click", function () { if (fs > 14) { fs -= 2; applyFs(); } });
-    if (fsI) fsI.addEventListener("click", function () { if (fs < 24) { fs += 2; applyFs(); } });
-    /* 进度条 */
-    var rp = qs("#readProgress");
-    if (rp) {
-      function upd() {
-        var h = document.documentElement;
-        var max = h.scrollHeight - h.clientHeight;
-        rp.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
-      }
-      upd();
-      window.addEventListener("scroll", upd, { passive: true });
-    }
     qs("#articleTags").innerHTML = (a.tags || []).map(function (t) { return '<a href="index.html?tag=' + encodeURIComponent(t) + '">#' + esc(t) + "</a>"; }).join("");
 
     // 上一篇/下一篇（取全量顺序）
@@ -2542,7 +1363,7 @@ document.body.appendChild(m);
     setupCommentForm(id, user);
     renderComments(id, user);
 
-    /* ---- 置顶按钮（管理员权限） + 管理员操作 ---- */
+    /* ---- 置顶按钮（需密码 baby2009） + 管理员操作 ---- */
     var act = qs("#articleActions");
     if (act) {
       var states = await Store.getStates([id]);
@@ -2569,7 +1390,7 @@ document.body.appendChild(m);
 
       qs("#pinToggle").addEventListener("click", function () {
         if (!user) { toast("请先登录再操作", "warn"); openAuth(); return; }
-        requireAdminThen(function () {
+        askPinPassword(function () {
           Store.pin(id, !pinned).then(function (res) {
             if (res && res.error) { toast("置顶失败：" + (res.error.message || "错误"), "warn"); return; }
             toast(pinned ? "已取消置顶" : "已置顶 ✓");
@@ -2634,12 +1455,6 @@ document.body.appendChild(m);
         qs("#postCategory").value = p.category || "";
         qs("#postTags").value = (p.tags || []).join(", ");
         qs("#postCover").value = p.cover || "";
-        if (qs("#postSeries")) qs("#postSeries").value = p.series || "";
-        if (qs("#postSchedule") && p.scheduled_at) {
-          var sd = new Date(p.scheduled_at);
-          var px = function (x) { return (x < 10 ? "0" : "") + x; };
-          qs("#postSchedule").value = sd.getFullYear() + "-" + px(sd.getMonth() + 1) + "-" + px(sd.getDate()) + "T" + px(sd.getHours()) + ":" + px(sd.getMinutes());
-        }
         /* 加载正文到富编辑器 */
         var reBody = qs("#reBody");
         if (reBody) { reBody.innerHTML = p.content || ""; }
@@ -2647,29 +1462,6 @@ document.body.appendChild(m);
         qs("#publishBtn").textContent = "保存修改";
       }
     }
-    /* 草稿模式：editor.html?draft=<id> 恢复 */
-    var draftId = getParam("draft");
-    if (draftId) {
-      qs("#editorTitle").textContent = "编辑草稿";
-      qs("#editorNote").innerHTML = '<div class="note">📝 正在编辑草稿（保存后仍为草稿，发布后自动删除）</div>';
-      try {
-        var dres = await sb.from("drafts").select("*").eq("id", draftId).single();
-        var dp = dres.data;
-        if (dp) {
-          qs("#postTitle").value = dp.title || "";
-          qs("#postSummary").value = dp.summary || "";
-          qs("#postCategory").value = dp.category || "";
-          qs("#postCover").value = dp.cover || "";
-          var reBody = qs("#reBody");
-          if (reBody) { reBody.innerHTML = dp.content || ""; }
-          else { qs("#postContent").value = dp.content || ""; }
-        }
-      } catch (e) {}
-    }
-    /* 存草稿按钮 */
-    var dbBtn = qs("#saveDraftBtn");
-    if (dbBtn) dbBtn.addEventListener("click", function () { saveDraft(); });
-
     qs("#editorForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var data = {
@@ -2678,13 +1470,6 @@ document.body.appendChild(m);
         category: qs("#postCategory").value.trim() || "未分类",
         tags: qs("#postTags").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean),
         cover: (qs("#coverImageUrl") && qs("#coverImageUrl").value) || qs("#postCover").value.trim(),
-        series: (qs("#postSeries") ? qs("#postSeries").value : "").trim() || null,
-        scheduled_at: (function () {
-          var v = qs("#postSchedule") ? qs("#postSchedule").value : "";
-          if (!v) return null;
-          var d = new Date(v);
-          return isNaN(d.getTime()) ? null : d.toISOString();
-        })(),
         content: (function () {
           var reBody = qs("#reBody");
           if (reBody) { var h = reBody.innerHTML.trim(); qs("#postContent").value = h; return h; }
@@ -2692,13 +1477,6 @@ document.body.appendChild(m);
         })()
       };
       if (!data.title) { toast("请填写标题", "warn"); return; }
-      /* 敏感词检测：标题/摘要/标签/正文（正文自动转纯文本） */
-      var swRaw = [data.title, data.summary, (data.tags || []).join(" "), data.content].join(" ");
-      var swHits = swCheck(swRaw);
-      if (swHits.length) {
-        if (window.XHCSW && window.XHCSW.report) { try { window.XHCSW.report(swHits, "文章发布", data.title + " " + data.summary); } catch (e) {} }
-        toast(swHint(swHits), "warn"); return;
-      }
       var btn = qs("#publishBtn"); btn.disabled = true;
       var task = editId ? Store.update(editId, data) : Store.create(data);
       Promise.resolve(task).then(function (res) {
@@ -2712,36 +1490,10 @@ document.body.appendChild(m);
         }
         var newId = editId || (res.data && res.data.id) || "";
         if (!newId) { toast("发布成功但未获取到文章 ID，请刷新首页查看", "warn"); renderIndex(); return; }
-        /* 发布成功后清除草稿（本地 + 云端） */
+        /* 发布成功后清除草稿 */
         localStorage.removeItem("xhc_draft");
-        var did2 = getParam("draft");
-        if (did2) { try { sb.from("drafts").delete().eq("id", did2); } catch (e) {} }
-        var isSched = data.scheduled_at && new Date(data.scheduled_at) > new Date();
-        if (isSched) {
-          var sd = new Date(data.scheduled_at);
-          toast("⏰ 已设置定时发布：" + sd.toLocaleString("zh-CN", { hour12: false }));
-          location.href = "myposts.html";
-        } else {
-          /* 通知关注者：发布了新文章 */
-          if (REAL) {
-            try {
-              sb.auth.getUser().then(function (mg) {
-                var mid = mg && mg.data && mg.data.user && mg.data.user.id;
-                if (!mid) return;
-                sb.from("follows").select("follower_id").eq("following_id", mid).then(function (fr) {
-                  var fids = (fr.data || []).map(function (x) { return x.follower_id; });
-                  if (fids.length) {
-                    sb.from("notifications").insert(fids.map(function (fid) {
-                      return { user_id: fid, actor_id: mid, post_id: newId, type: "post", content: "📝 发布了新文章《" + (data.title || "").slice(0, 30) + "》" };
-                    }));
-                  }
-                });
-              });
-            } catch (e) {}
-          }
-          toast(editId ? "已保存" : "发布成功");
-          location.href = "article.html?id=" + encodeURIComponent(newId);
-        }
+        toast(editId ? "已保存" : "发布成功");
+        location.href = "article.html?id=" + encodeURIComponent(newId);
       }).catch(function (err) {
         btn.disabled = false;
         var msg = (err && err.message) + "";
@@ -2974,11 +1726,9 @@ document.body.appendChild(m);
     box.innerHTML = posts.length === 0
       ? '<div class="empty-state"><div class="big">📭</div>你还没有发布文章。<br><a class="btn btn-primary" href="editor.html" style="margin-top:12px;">去写第一篇</a></div>'
       : posts.map(function (p) {
-        var isSched = p.scheduled_at && new Date(p.scheduled_at) > new Date();
         return '<div class="card mypost' + (p.pinned ? " pinned" : "") + '">' +
-          '<div class="mp-body"><h3><a href="article.html?id=' + encodeURIComponent(p.id) + '">' + (p.pinned ? "📌 " : "") + (isSched ? "⏰ " : "") + esc(p.title) + "</a></h3>" +
-          '<div class="meta"><span class="cat">' + esc(p.category || "未分类") + "</span><span>👁 " + fmt(p.views) + "</span><span>📅 " + dateOf(p) + "</span>" +
-          (isSched ? '<span style="color:#d97706;font-weight:700;">⏰ 定时中</span>' : "") + "</div></div>" +
+          '<div class="mp-body"><h3><a href="article.html?id=' + encodeURIComponent(p.id) + '">' + (p.pinned ? "📌 " : "") + esc(p.title) + "</a></h3>" +
+          '<div class="meta"><span class="cat">' + esc(p.category || "未分类") + "</span><span>👁 " + fmt(p.views) + "</span><span>📅 " + dateOf(p) + "</span></div></div>" +
           '<div class="mp-actions">' +
           '<a class="btn btn-outline sm" href="editor.html?id=' + encodeURIComponent(p.id) + '">编辑</a>' +
           '<button class="btn btn-outline sm pin-btn" data-pin="' + esc(p.id) + '" data-state="' + (p.pinned ? "1" : "0") + '">' + (p.pinned ? "📌 取消置顶" : "📌 置顶") + "</button>" +
@@ -2993,7 +1743,7 @@ document.body.appendChild(m);
     });
     qsa("[data-pin]", box).forEach(function (b) {
       b.addEventListener("click", function () {
-        requireAdminThen(function () {
+        askPinPassword(function () {
           var id = b.dataset.pin, val = b.dataset.state !== "1";
           Store.pin(id, val).then(function (res) {
             if (res && res.error) { toast("置顶失败：" + (res.error.message || "错误"), "warn"); return; }
@@ -3091,29 +1841,6 @@ document.body.appendChild(m);
           toast(pwd && !REAL ? "演示模式不支持改密码，仅保存资料" : "设置已保存");
           qs("#setPwd").value = "";
         }
-      });
-    });
-
-    /* 换邮箱：向新邮箱发送确认链接，用户点链接后才完成切换 */
-    var ceBtn = qs("#changeEmailBtn");
-    if (ceBtn) ceBtn.addEventListener("click", function () {
-      if (!REAL) { toast("演示模式不支持换邮箱", "warn"); return; }
-      var ne = qs("#setNewEmail").value.trim();
-      if (!ne) { toast("请输入新邮箱", "warn"); return; }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ne)) { toast("邮箱格式不对", "warn"); return; }
-      ceBtn.disabled = true; var oldText = ceBtn.textContent; ceBtn.textContent = "发送中…";
-      sb.auth.updateUser({ email: ne }).then(function (r) {
-        ceBtn.disabled = false; ceBtn.textContent = oldText;
-        if (r.error) {
-          var msg = (r.error.message || "") + "";
-          if (msg.indexOf("redirect_to") >= 0) msg = "请在 Supabase → Authentication → URL Configuration 的 Redirect URLs 里加入当前域名";
-          toast("换邮箱失败：" + msg, "warn"); return;
-        }
-        toast("已向 " + ne + " 发送确认链接，请点链接完成更换");
-        qs("#setNewEmail").value = "";
-      }).catch(function (e) {
-        ceBtn.disabled = false; ceBtn.textContent = oldText;
-        toast("换邮箱失败：" + (e && e.message || ""), "warn");
       });
     });
 

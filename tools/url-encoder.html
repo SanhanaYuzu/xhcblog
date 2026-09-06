@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>URL 编解码 - XHC 博客</title>
+<title>URL 编解码 - XHCDNS</title>
 <link rel="stylesheet" href="../assets/css/style.css">
 <style>
 /* 所有样式统一加 .tool-page 前缀，避免与全局 style.css 冲突 */
@@ -72,10 +72,10 @@ body.dark .tool-page .tip code{background:rgba(255,255,255,.1);}
 <body>
 <div class="page-loader" id="pageLoader"><div class="loader-content"><img src="../assets/images/loading-logo.png" alt="" class="loader-logo"><div class="loader-bar"><div class="loader-bar-inner"></div></div></div></div>
 <header class="header"><div class="container">
-<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHC 博客 logo" class="site-logo"><span class="brand-name">XHC<b>博客</b></span></a>
+<a class="brand" href="../index.html"><img src="../assets/images/xhc-96x96.png" alt="XHCDNS logo" class="site-logo"><span class="brand-name">XHC<b>DNS</b></span></a>
 <nav class="nav" id="navCats"></nav>
 <div class="search"><input id="searchInput" type="text" placeholder="搜索文章、标签…" autocomplete="off"><button id="searchBtn" title="搜索">🔍</button></div>
-<a class="btn-home" href="http://xhc.dpdns.org" target="_blank">返回主站</a>
+
 <span id="accountSlot"></span>
 </div></header>
 <main class="container" style="padding:28px 0 40px;">
@@ -138,7 +138,7 @@ body.dark .tool-page .tip code{background:rgba(255,255,255,.1);}
   <div class="toast" id="toastBox"></div>
 </section>
 </main>
-<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHC 博客 · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
+<footer class="footer"><div class="container"><p>&copy; <span id="year"></span> XHCDNS · 基于 <a href="https://supabase.com" target="_blank">Supabase</a> 全栈驱动</p></div></footer>
 <div class="watermark"><img src="../assets/images/xhcntgroup.png" alt=""></div>
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/data.js"></script>
@@ -223,7 +223,7 @@ body.dark .tool-page .tip code{background:rgba(255,255,255,.1);}
       : (isEnc ? 'encodeURI' : 'decodeURI');
     inLabel.textContent = isEnc ? '输入（原始文本 / URL）' : '输入（已编码的 URL）';
     outLabel.textContent = '结果（' + fn + '）';
-    inputBox.placeholder = isEnc ? '例如：https://xhc.dpdns.org/search?q=前端 工具' : '例如：https%3A%2F%2Fxhc.dpdns.org%2F%E5%B7%A5%E5%85%B7';
+    inputBox.placeholder = isEnc ? '例如：https://xhcdns.com/search?q=前端 工具' : '例如：https%3A%2F%2Fxhc.dpdns.org%2F%E5%B7%A5%E5%85%B7';
     descBox.innerHTML = DESC[std];
   }
 
