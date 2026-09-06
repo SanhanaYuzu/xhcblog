@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>授权确认 · XHC 博客</title>
+<title>授权确认 · XHCDNS</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
@@ -65,7 +65,7 @@
 <div class="card" id="app">
   <div class="top">
     <div class="xlogo">X</div>
-    <div class="brand"><div class="t1">XHC 博客</div><div class="t2">hotpe.org · 授权中心</div></div>
+    <div class="brand"><div class="t1">XHCDNS</div><div class="t2">hotpe.org · 授权中心</div></div>
   </div>
   <div class="state">
     <div class="big">⏳</div>
@@ -78,7 +78,7 @@
 <script src="/assets/js/config.js"></script>
 <script>
 /* ============================================================
-   XHC 博客 · OAuth 授权确认页（GitHub 风格）
+   XHCDNS · OAuth 授权确认页（GitHub 风格）
    部署位置：hotpe.org/oauth/consent.html（GitHub Pages）
    OAuth Server：Authorization Path = /oauth/consent.html
    ============================================================ */
@@ -97,7 +97,7 @@
   };
   function esc(s) { return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function app() { return document.getElementById("app"); }
-  function renderTop(){ return '<div class="top"><div class="xlogo">X</div><div class="brand"><div class="t1">XHC 博客</div><div class="t2">hotpe.org · 授权中心</div></div></div>'; }
+  function renderTop(){ return '<div class="top"><div class="xlogo">X</div><div class="brand"><div class="t1">XHCDNS</div><div class="t2">hotpe.org · 授权中心</div></div></div>'; }
   function renderState(big, title, desc, btn) {
     app().innerHTML = renderTop() + '<div class="state"><div class="big">' + big + '</div><h2>' + title + '</h2><p>' + desc + '</p>' + (btn || "") + '</div>';
   }
@@ -117,8 +117,8 @@
     var sess = sr && sr.data && sr.data.session;
     if (!sess) {
       var ret = encodeURIComponent(location.href);
-      renderState("🔑", "请先登录 XHC 博客", "登录后才能继续授权第三方应用访问你的账号",
-        '<a class="btn" href="/oauth/login.html?redirect=' + ret + '">前往 XHC 博客登录</a>');
+      renderState("🔑", "请先登录 XHCDNS", "登录后才能继续授权第三方应用访问你的账号",
+        '<a class="btn" href="/oauth/login.html?redirect=' + ret + '">前往 XHCDNS登录</a>');
       return;
     }
 
@@ -147,7 +147,7 @@
     app().innerHTML = renderTop() +
       '<div class="body">' +
         '<h1>' + esc(clientName) + ' 想访问你的 XHC 账号</h1>' +
-        '<div class="sub">登录「' + esc(clientName) + '」时，XHC 博客将提供以下信息。<br>请确认后继续。</div>' +
+        '<div class="sub">登录「' + esc(clientName) + '」时，XHCDNS将提供以下信息。<br>请确认后继续。</div>' +
         '<div class="app-row">' +
           (clientLogo ? '<img class="app-ico" src="' + esc(clientLogo) + '" alt="">' : '<div class="app-ico">🛠</div>') +
           '<div><div class="app-name">' + esc(clientName) + '</div><div class="app-uri">' + esc(redirectUri) + '</div></div>' +
@@ -159,8 +159,8 @@
           '<button type="button" class="btn-approve" id="btnApprove">授权 ' + esc(clientName) + '</button>' +
         '</div>' +
         '<div class="foot">' +
-          'XHC 博客仅提供你授权的信息。你可以在 XHC 博客设置中随时撤销授权。<br>' +
-          '<a href="https://hotpe.org" target="_blank">了解 XHC 博客</a>'
+          'XHCDNS仅提供你授权的信息。你可以在 XHCDNS设置中随时撤销授权。<br>' +
+          '<a href="https://hotpe.org" target="_blank">了解 XHCDNS</a>'
         '</div>' +
       '</div>';
 
